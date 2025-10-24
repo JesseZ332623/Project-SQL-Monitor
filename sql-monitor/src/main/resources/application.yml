@@ -1,0 +1,64 @@
+server:
+  address: 0.0.0.0
+  port: 11452
+  shutdown: graceful
+
+spring:
+  application:
+    name: sqlmonitor-db2
+  main:
+    web-application-type: reactive
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+app:
+  r2dbc:
+    master:                 # 被监测指标的数据库服务器
+      host: 172.16.100.201
+      port: 3433
+      user: root
+      password: 123456
+      default-schema:
+    slaver:                 # 查询监测数据的数据库服务器
+      host: localhost
+      port: 3306
+      user: Jesse_EC233
+      password: 3191955858_EC
+      default-schema: sql_monitor
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    user: jesse
+    password: 1234567890
+    virtualhost: /
+    connect-timeout: 30000
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    deep-linking: true
+    display-request-duration: true
+  webjars:
+    prefix: /webjars
+  cache:
+    disabled: true
+  packages-to-scan: com.jesse.sqlmonitor
+  model-converters:
+    jackson:
+      enabled: true
+  model-and-view-allowed: true
+  default-produces-media-type: application/json
+
+logging:
+  level:
+    org:
+      springdoc: DEBUG
+      springframework:
+        data:
+          r2dbc: DEBUG
+        web:
+          reactive: WARN
