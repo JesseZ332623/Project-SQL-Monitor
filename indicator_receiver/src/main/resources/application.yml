@@ -1,0 +1,47 @@
+spring.application.name:
+  indicator_receiver
+
+server:
+  address: 0.0.0.0
+  port: 65533
+  shutdown: graceful
+
+spring:
+  application:
+    name: sql-monitor-indicator-receiver
+  main:
+    web-application-type: reactive
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+app:
+  r2dbc:
+    slaver:                 # 记录监测数据的数据库服务器
+      host: localhost
+      port: 3306
+      user: Jesse_EC233
+      password: 3191955858_EC
+      default-schema: sql_monitor
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    user: jesse
+    password: 1234567890
+    virtualhost: /
+    connect-timeout: 30000
+
+  indicator-receiver:         # 指标接收器相关属性
+    buffer-size: 128          # 指标缓冲区大小
+    buffer-timeout: 5m        # 若超过这个时间段直接刷新缓冲区
+    batch-insert-timeout: 15s # 批量插入操作时间限制
+    shutdown-delay: 5s        # 取消订阅前的延迟时间
+
+logging:
+  level:
+    org:
+      springframework:
+        data:
+          r2dbc: DEBUG
+        web:
+          reactive: WARN
