@@ -1,6 +1,6 @@
 package com.jesse.indicator_receiver.response_body;
 
-import com.jesse.indicator_receiver.constants.SizeUnit;
+import com.jesse.indicator_receiver.contants.SizeUnit;
 import com.jesse.indicator_receiver.response_body.base.ResponseBase;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
