@@ -1,7 +1,7 @@
 package com.jesse.indicator_receiver.service.impl;
 
-import com.jesse.indicator_receiver.response_builder.ReactiveResponseBuilder;
 import com.jesse.indicator_receiver.service.ReceiverLifeCycleService;
+import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.server.ServerRequest;
