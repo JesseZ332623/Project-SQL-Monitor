@@ -7,9 +7,9 @@ import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.monitor.constants.SizeUnit;
 import com.jesse.sqlmonitor.response_body.*;
 import com.jesse.sqlmonitor.response_body.qps.QPSResult;
-import com.jesse.sqlmonitor.response_builder.ReactiveResponseBuilder;
 import com.jesse.sqlmonitor.service.SQLMonitorService;
 import com.jesse.sqlmonitor.indicator_record.service.IndicatorSender;
+import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -21,8 +21,8 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import static com.jesse.sqlmonitor.response_builder.utils.URLParamPrase.praseRequestParam;
 import static com.jesse.sqlmonitor.utils.SQLMonitorUtils.*;
+import static io.github.jessez332623.reactive_response_builder.utils.URLParamPrase.praseRequestParam;
 
 /** SQL 指标监控程序服务实现。*/
 @Slf4j
