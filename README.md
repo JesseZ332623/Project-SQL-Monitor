@@ -14,6 +14,8 @@
 
 - [数据库指标监视器模块](https://github.com/JesseZ332623/Project-SQL-Monitor/tree/main/sql-monitor/src/main/java/com/jesse/sqlmonitor)
 
+- [前端数据库指标仪表盘展示模块](https://github.com/JesseZ332623/Project-SQL-Monitor/tree/main/SQL-Monitor-Dashboard)
+
 ### [Apache License Version 2.0](https://github.com/JesseZ332623/Project-SQL-Monitor/blob/main/LICENSE)
 
 *Lats Update: 2025.10.26*
