@@ -7,6 +7,7 @@ import org.jetbrains.annotations.NotNull;
 
 /** 数据库总查询数快照。*/
 @Getter
+@ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class QueriesSnapshot extends SnapshotBase<QueriesSnapshot>
