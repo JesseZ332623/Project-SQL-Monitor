@@ -15,9 +15,10 @@ import reactor.core.scheduler.Schedulers;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.jesse.sqlmonitor.monitor.constants.Constants.*;
+import static com.jesse.sqlmonitor.monitor.constants.MonitorConstants.*;
 
 /** MySQL QPS 计算器实现。*/
 @Slf4j
@@ -25,12 +26,17 @@ import static com.jesse.sqlmonitor.monitor.constants.Constants.*;
 @RequiredArgsConstructor
 public class QPSCounterImpl implements QPSCounter
 {
+    /** MySQL 全局状态查询器。*/
     private final GlobalStatusQuery globalStatusQuery;
 
     /** 使用 AtomicReference 管理总查询快照，实现无锁操作。*/
     private final
     AtomicReference<QueriesSnapshot> queriesSnapshot
         = new AtomicReference<>(QueriesSnapshot.empty());
+
+    /** 快照计数器，忽略前两次的快照数据（避免头几次 QPS 计算值虚高）。*/
+    private final AtomicInteger snapshotInitCount
+        = new AtomicInteger(0);
 
     /**
      * 根据两张总查询数快照，计算此刻本数据库的 QPS（保留 8 位小数且四舍五入）。
@@ -46,7 +52,7 @@ public class QPSCounterImpl implements QPSCounter
         // 计算两次快照的总查询差
         long queriesDiff = current.getQueries() - previous.getQueries();
 
-        // 如果时间差小于 10 毫秒，直接返回空结果
+        // 如果时间差小于 MIN_TIME_DIFF_MS 毫秒，直接返回空结果
         if (timeDiff < MIN_TIME_DIFF_MS) {
             return QPS.zero();
         }
@@ -115,9 +121,11 @@ public class QPSCounterImpl implements QPSCounter
         do {
             previousQueries = this.queriesSnapshot.get();
 
-            if (previousQueries.isEmpty())
+            if (this.snapshotInitCount.get() < IGNORE_SNAPSHOTS)
             {
-                if (this.queriesSnapshot.compareAndSet(previousQueries, currentQueries)) {
+                if (this.queriesSnapshot.compareAndSet(previousQueries, currentQueries))
+                {
+                    this.snapshotInitCount.getAndIncrement();
                     return QPSResult.buildZeroQPS();
                 }
             }
@@ -134,11 +142,11 @@ public class QPSCounterImpl implements QPSCounter
 
             ++retries;
         }
-        while (retries < MAX_RETRY_TIMES);
+        while (retries < MAX_RETRIES);
 
-        // 如果连着尝试 10 回都发现不一致，
+        // 如果连着尝试 MAX_RETRY_TIMES 回都发现不一致，
         // 说明竞争过于激烈了输出警告日志并返回降级值
-        log.warn("Failed to update QPS after {} retries", MAX_RETRY_TIMES);
+        log.warn("Failed to update QPS after {} retries", MAX_RETRIES);
 
         return QPSResult.onError();
     }
