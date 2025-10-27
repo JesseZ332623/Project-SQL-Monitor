@@ -56,6 +56,14 @@ public class NetWorkTraffic extends ResponseBase<NetWorkTraffic>
     @Schema(description = "在统计网络流量的过程中出错？")
     private boolean error = false;
 
+    /** 是否是一个零结果？ */
+    public boolean isZeroResult()
+    {
+        return
+        this.receivePerSec.equals(BigDecimal.ZERO) &&
+        this.sentPerSec.equals(BigDecimal.ZERO);
+    }
+
     /** 构建零速率结果。*/
     public static NetWorkTraffic
     buildZeroRate(@NotNull TrafficStateSnapshot currentState, SizeUnit unit)
