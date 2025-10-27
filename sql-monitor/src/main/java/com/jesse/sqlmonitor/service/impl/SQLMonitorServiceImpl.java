@@ -18,6 +18,7 @@ import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -36,6 +37,7 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
     /** 指标数据发送器接口。*/
     private final IndicatorSender indicatorSender;
 
+    /** MySQL 指标数据查询仓储类接口。*/
     private final
     MySQLIndicatorsRepository mySQLIndicatorsRepository;
 
@@ -92,17 +94,25 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
         this.mySQLIndicatorsRepository
             .getQPS()
             .flatMap((qpsResult) -> {
-                SentIndicator<QPSResult> qpsIndicator
-                    = new SentIndicator<>(
+                // 对于 QPS 值为 0 的情况，就不往队列发送统计数据了
+                if (!qpsResult.getQps().equals(BigDecimal.ZERO))
+                {
+                    SentIndicator<QPSResult> qpsIndicator
+                        = new SentIndicator<>(
                         LocalDateTime.now(), getDatabaseAddress(), qpsResult
                     );
 
-                return
-                this.indicatorSender
-                    .sendIndicator(qpsIndicator)
-                    .then(ReactiveResponseBuilder.OK(qpsResult, null));
-            })
-            .onErrorResume(this::genericErrorHandle);
+                    return
+                    this.indicatorSender
+                        .sendIndicator(qpsIndicator)
+                        .then(ReactiveResponseBuilder.OK(qpsResult, null));
+                }
+                else
+                {
+                    return
+                    ReactiveResponseBuilder.OK(qpsResult, null);
+                }
+            }).onErrorResume(this::genericErrorHandle);
     }
 
     /** 获取服务器接收 / 发送数据量相关信息的服务的接口。*/
@@ -122,17 +132,25 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
                 this.mySQLIndicatorsRepository
                     .getNetWorkTraffic(unit)
                     .flatMap((networkTraffic) -> {
-                        SentIndicator<NetWorkTraffic> trafficIndicator
-                            = new SentIndicator<>(
-                                LocalDateTime.now(),
-                                getDatabaseAddress(),
-                                networkTraffic
+                        if (!networkTraffic.isZeroResult())
+                        {
+                            SentIndicator<NetWorkTraffic> trafficIndicator
+                                = new SentIndicator<>(
+                                    LocalDateTime.now(),
+                                    getDatabaseAddress(),
+                                    networkTraffic
                             );
 
-                        return
-                        this.indicatorSender
-                            .sendIndicator(trafficIndicator)
-                            .then(ReactiveResponseBuilder.OK(networkTraffic, null));
+                            return
+                            this.indicatorSender
+                                .sendIndicator(trafficIndicator)
+                                .then(ReactiveResponseBuilder.OK(networkTraffic, null));
+                        }
+                        else
+                        {
+                            return
+                            ReactiveResponseBuilder.OK(networkTraffic, null);
+                        }
                     })
             )
             .onErrorResume(this::genericErrorHandle);
@@ -213,19 +231,25 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
         this.mySQLIndicatorsRepository
             .getInnodbBufferCacheHitRate()
             .flatMap((innodbBufferCacheHitRate) -> {
+                if (!innodbBufferCacheHitRate.getCacheHitRate().equals(BigDecimal.ZERO))
+                {
+                    SentIndicator<InnodbBufferCacheHitRate> cacheHitRateIndicator
+                        = new SentIndicator<>(
+                        LocalDateTime.now(), getDatabaseAddress(),
+                        innodbBufferCacheHitRate
+                    );
 
-                SentIndicator<InnodbBufferCacheHitRate> cacheHitRateIndicator
-                    = new SentIndicator<>(
-                    LocalDateTime.now(), getDatabaseAddress(),
-                    innodbBufferCacheHitRate
-                );
-
-                return
-                this.indicatorSender
-                    .sendIndicator(cacheHitRateIndicator)
-                    .then(ReactiveResponseBuilder.OK(innodbBufferCacheHitRate, null));
-            })
-            .onErrorResume(this::genericErrorHandle);
+                    return
+                    this.indicatorSender
+                        .sendIndicator(cacheHitRateIndicator)
+                        .then(ReactiveResponseBuilder.OK(innodbBufferCacheHitRate, null));
+                }
+                else
+                {
+                    return
+                    ReactiveResponseBuilder.OK(innodbBufferCacheHitRate, null);
+                }
+            }).onErrorResume(this::genericErrorHandle);
     }
 
     /** 查询服务器运行时间服务的接口。*/

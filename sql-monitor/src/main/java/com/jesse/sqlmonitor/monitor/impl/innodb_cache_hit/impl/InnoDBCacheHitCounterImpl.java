@@ -7,6 +7,7 @@ import com.jesse.sqlmonitor.response_body.InnodbBufferCacheHitRate;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -14,9 +15,10 @@ import reactor.core.scheduler.Schedulers;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.jesse.sqlmonitor.monitor.constants.Constants.*;
+import static com.jesse.sqlmonitor.monitor.constants.MonitorConstants.*;
 
 /** InnDB 缓存命中率计算器实现。*/
 @Slf4j
@@ -31,14 +33,14 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
     private final AtomicReference<BufferPoolSnapshot> bufferPoolSnapshot
         = new AtomicReference<>(BufferPoolSnapshot.empty());
 
-    /** 存储上一次有效地计算结果。*/
+    /** 快照计数器，忽略前两次的快照数据。*/
+    private final AtomicInteger snapshotInitCount
+        = new AtomicInteger(0);
+
+    /** 存储上一次有效地计算结果的原子引用。*/
     private final
     AtomicReference<CacheHitRate> previousResult
-        = new AtomicReference<>(
-            new CacheHitRate(
-                BigDecimal.ZERO, 0L, false, false
-            )
-    );
+        = new AtomicReference<>(CacheHitRate.zero());
 
     private @NotNull Mono<BufferPoolSnapshot>
     fetchBufferPoolIndicator()
@@ -74,23 +76,14 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
         // 计算两次快照的时间差
         long timeDiff = previous.getTimeDiffMills(current);
 
-        // 如果时间差小于 10 毫秒，直接返回空结果
-        if (timeDiff < MIN_TIME_DIFF_MS)
-        {
-            return CacheHitRate.of(
-                BigDecimal.ZERO, 0L,
-                false, false
-            );
+        // 如果时间差小于 MIN_TIME_DIFF_MS 毫秒，直接返回空结果
+        if (timeDiff < MIN_TIME_DIFF_MS) {
+            return CacheHitRate.zero();
         }
 
-        // 若检查到指标被外部重置，也直接返回空结果
-        if (previous.isReset(current))
-        {
-            return CacheHitRate.of(
-                BigDecimal.ZERO,
-                0L,
-                true, false
-            );
+        // 若检查到指标被外部重置，返回重置空结果
+        if (previous.isReset(current)) {
+            return CacheHitRate.reset();
         }
 
         // 两次查询的 INNODB_BUFFER_POOL_READS 差值
@@ -112,7 +105,7 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
             return CacheHitRate.of(
                 lastHitRate.getCacheHitRate(),
                 timeDiff,
-                lastHitRate.getResetDetected(),
+                lastHitRate.isResetDetected(),
                 true
             );
         }
@@ -149,10 +142,12 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
         do {
             previousSnapshot = this.bufferPoolSnapshot.get();
 
-            if (previousSnapshot.isEmpty())
+            if (snapshotInitCount.get() < IGNORE_SNAPSHOTS)
             {
                 if (this.bufferPoolSnapshot.compareAndSet(previousSnapshot, currentSnapshot))
                 {
+                    snapshotInitCount.getAndIncrement();
+
                     return
                     InnodbBufferCacheHitRate.buildZeroRate();
                 }
@@ -173,14 +168,14 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
 
             ++retries;
         }
-        while (retries < MAX_RETRY_TIMES);
+        while (retries < MAX_RETRIES);
 
 
         // 如果连着尝试 10 回都发现不一致，
         // 说明竞争过于激烈了，输出警告日志并返回降级值
         log.warn(
             "Failed to update InnoDB buffer pool hit cache after {} retries",
-            MAX_RETRY_TIMES
+            MAX_RETRIES
         );
 
         return
@@ -203,7 +198,29 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
     {
         BigDecimal  cacheHitRate;
         long        queryDiff;
-        Boolean     resetDetected;
-        Boolean     usedPreviousResult;  // 标记是否使用了历史数据
+        boolean     resetDetected;
+        boolean     usedPreviousResult;  // 标记是否使用了历史数据
+
+        @Contract(" -> new")
+        public static @NotNull
+        CacheHitRate zero()
+        {
+            return new
+            CacheHitRate(
+                BigDecimal.ZERO,
+                0L, false, false
+            );
+        }
+
+        @Contract(" -> new")
+        public static @NotNull
+        CacheHitRate reset()
+        {
+            return new
+            CacheHitRate(
+                BigDecimal.ZERO,
+                0L, true, false
+            );
+        }
     }
 }

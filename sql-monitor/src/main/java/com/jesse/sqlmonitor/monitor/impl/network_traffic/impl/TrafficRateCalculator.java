@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-import static com.jesse.sqlmonitor.monitor.constants.Constants.MIN_TIME_DIFF_MS;
+import static com.jesse.sqlmonitor.monitor.constants.MonitorConstants.MIN_TIME_DIFF_MS;
 
 /** 数据库服务器网络流量计算器。*/
 @Slf4j
@@ -33,7 +33,7 @@ public class TrafficRateCalculator
         // 计算两次快照的时间差
         long timeDiff = previous.getTimeDiffMills(current);
 
-        // 如果时间差小于 10 毫秒，直接返回空结果
+        // 如果时间差小于 MIN_TIME_DIFF_MS 毫秒，直接返回空结果
         if (timeDiff < MIN_TIME_DIFF_MS) {
             return TrafficRate.zero(unit);
         }

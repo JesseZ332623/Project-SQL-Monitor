@@ -11,9 +11,10 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.jesse.sqlmonitor.monitor.constants.Constants.MAX_RETRY_TIMES;
+import static com.jesse.sqlmonitor.monitor.constants.MonitorConstants.*;
 import static com.jesse.sqlmonitor.monitor.constants.GlobalStatusName.BYTES_RECEIVED;
 import static com.jesse.sqlmonitor.monitor.constants.GlobalStatusName.BYTES_SENT;
 import static com.jesse.sqlmonitor.utils.SQLMonitorUtils.extractLongValue;
@@ -33,6 +34,10 @@ public class NetWorkTrafficCounterImpl implements NetWorkTrafficCounter
     /** 网络流量快照，使用 {@link AtomicReference} 实现无锁操作。*/
     private final AtomicReference<TrafficStateSnapshot> lastState
         = new AtomicReference<>(TrafficStateSnapshot.empty());
+
+    /** 快照计数器，忽略前两次的快照数据（避免头几次 网络流量 计算值虚高）。*/
+    private final AtomicInteger snapshotInitCount
+        = new AtomicInteger(0);
 
     /** 错误处理逻辑，输出异常信息并返回降级值。*/
     private @NotNull Mono<NetWorkTraffic>
@@ -77,10 +82,12 @@ public class NetWorkTrafficCounterImpl implements NetWorkTrafficCounter
             {
                 previousState = this.lastState.get();
 
-                if (previousState.isEmpty())
+                if (this.snapshotInitCount.get() < IGNORE_SNAPSHOTS)
                 {
                     if (this.lastState.compareAndSet(previousState, currentState))
                     {
+                        this.snapshotInitCount.getAndIncrement();
+
                         return
                         NetWorkTraffic.buildZeroRate(currentState, unit);
                     }
@@ -100,11 +107,11 @@ public class NetWorkTrafficCounterImpl implements NetWorkTrafficCounter
 
                 ++retries;
             }
-            while (retries < MAX_RETRY_TIMES);
+            while (retries < MAX_RETRIES);
 
             // 如果连着尝试 10 回都发现不一致，
             // 说明竞争过于激烈了，输出警告日志并返回降级值
-            log.warn("Failed to update QPS after {} retries", MAX_RETRY_TIMES);
+            log.warn("Failed to update QPS after {} retries", MAX_RETRIES);
 
             return NetWorkTraffic.onError();
         });
