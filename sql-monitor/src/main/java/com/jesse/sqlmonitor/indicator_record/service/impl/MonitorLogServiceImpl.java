@@ -7,7 +7,7 @@ import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.indicator_record.service.MonitorLogService;
 import com.jesse.sqlmonitor.indicator_record.service.constants.QPSStatisticsType;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
-import com.jesse.sqlmonitor.response_builder.ReactiveResponseBuilder;
+import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static com.jesse.sqlmonitor.response_builder.utils.URLParamPrase.praseRequestParam;
+import static io.github.jessez332623.reactive_response_builder.utils.URLParamPrase.praseRequestParam;
 
 /** 监控日志数据操作服务实现。*/
 @Slf4j
