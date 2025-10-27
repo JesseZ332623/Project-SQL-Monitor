@@ -1,11 +1,11 @@
 server:
   address: 0.0.0.0
-  port: 11452
+  port: 11451
   shutdown: graceful
 
 spring:
   application:
-    name: sqlmonitor-db2
+    name: sqlmonitor-db1
   main:
     web-application-type: reactive
   lifecycle:
@@ -14,7 +14,7 @@ spring:
 app:
   r2dbc:
     master:                 # 被监测指标的数据库服务器
-      host: 172.16.100.201
+      host: 172.16.100.200
       port: 3433
       user: root
       password: 123456
@@ -33,6 +33,11 @@ app:
     password: 1234567890
     virtualhost: /
     connect-timeout: 30000
+#
+#  calculate:
+#    max-retires: 10
+#    min_time-diff-ms: 500
+#    ignore-snapshots: 2
 
 springdoc:
   api-docs:
