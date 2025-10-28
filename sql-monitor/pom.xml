@@ -32,6 +32,11 @@
 	<dependencies>
         <dependency>
             <groupId>io.github.jessez332623</groupId>
+            <artifactId>reactive_email_sender</artifactId>
+            <version>1.1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.jessez332623</groupId>
             <artifactId>reactive-response-builder</artifactId>
             <version>1.0.0</version>
         </dependency>
