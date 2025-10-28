@@ -20,6 +20,7 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** 定时清历史指标数据的清理器。*/
@@ -101,23 +102,24 @@ public class HistoricalIndicatorCleaner implements DisposableBean
 
         return
         Mono.defer(() -> {
-            // 计算当前时间往前推一个星期的时间点
-            LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
             String serverIp             = this.masterProperties.getHost();
+            LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
+
+            // 初始化一个批量删除结果
+            CleanUpResult cleanUpResult = CleanUpResult.init(serverIp, lastWeekPoint);
 
             log.info("Start to clean up historical indicators older than one week.");
 
             return
             this.monitorLogRepository
-                .deleteIndicator(serverIp, lastWeekPoint)
-                .map((effectedRows) -> {
-
-                    if (effectedRows > 0L)
+                .deleteOneBatchIndicator(serverIp, lastWeekPoint, 2000L)
+                .expand((deleted) -> {
+                    if (deleted > 0)
                     {
-                        log.info(
-                            "Clean up {} rows historical indicator. (IP: {}, Deadline: {})",
-                            effectedRows, serverIp, lastWeekPoint
-                        );
+                        return
+                        this.monitorLogRepository
+                            .deleteOneBatchIndicator(serverIp, lastWeekPoint, 2000L)
+                            .delayElement(Duration.ofMillis(100L));
                     }
                     else
                     {
@@ -125,19 +127,39 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                             "There is no historical indicator data that needs to be cleaned up. (IP: {}, Deadline: {})",
                             serverIp, lastWeekPoint
                         );
-                    }
 
-                    return
-                    CleanUpResult.builder()
-                        .serverIp(serverIp)
-                        .effectedRows(effectedRows)
-                        .oneWeekAgo(lastWeekPoint)
-                        .build();
+                        return Mono.empty();
+                    }
                 })
-                .doOnSuccess((cleanUpResult) -> {
-                    if (cleanUpResult.getEffectedRows() > 1000L) {
+                .doOnNext((oneBatchDeleted) -> {
+                    cleanUpResult.getTotalDeleted().addAndGet(oneBatchDeleted);
+                    cleanUpResult.getBatchCount().incrementAndGet();
+                })
+                .then().thenReturn(cleanUpResult)
+                .timeout(Duration.ofMinutes(5L)) // 要是删了 5 分钟都没删完，也是有问题的
+                .doOnSuccess((ignore) -> {
+                    log.info(
+                        "Clean up {} rows historical indicator. (IP: {}, Deadline: {})",
+                        cleanUpResult.getTotalDeleted().get(),
+                        serverIp, lastWeekPoint
+                    );
+
+                    // 如果总删除数大于 5000 条，可以考虑发送一条邮件给运维
+                    if (cleanUpResult.getTotalDeleted().get() > 5000L) {
                         this.sendBulkDeletionReport(cleanUpResult);
                     }
+                })
+                .doOnError(
+                    TimeoutException.class,
+                    (timeout) -> {
+                        log.warn(
+                            "Clean up historical indicators time out after 5 minutes, " +
+                            "deleted {} rows so far. (IP: {}, Deadline: {})",
+                            cleanUpResult.getTotalDeleted().get(),
+                            serverIp, lastWeekPoint
+                        );
+
+                        this.sendDeletionTimeoutReport(cleanUpResult);
                 })
                 .doOnError((error) -> {
                     log.error(
@@ -145,12 +167,15 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                         serverIp, error.getMessage(), error
                     );
 
+                    // 在批量删除中若出现错误也必须第一时间通知运维
                     this.sendCleanUpFailedReport(lastWeekPoint, error);
                 })
                 .doFinally((signal) -> {
                     this.isRunning.set(false);
                     log.info("Terminate task cleanIndicatorUtilLastWeek(), signal type: {}.", signal);
                 })
+                // 本次批量删除失败不等于整个定时流失败，
+                // 需要返回 Mono.empty() 确保流不中断
                 .onErrorResume((error) -> Mono.empty());
         });
     }
@@ -168,13 +193,35 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                 删除时间点：[%s] 之前的所有数据，
                 执行时间：[%s]
                 """.formatted(
-                    cleanUpResult.getEffectedRows(),
+                    cleanUpResult.getTotalDeleted().get(),
                     cleanUpResult.getServerIp(),
                     cleanUpResult.getOneWeekAgo(),
                     DatetimeFormatter.NOW()))
             .flatMap(this.emailSender::sendEmail)
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe();
+    }
+
+    /** 向运维发送批量删除超时的报告。*/
+    private void
+    sendDeletionTimeoutReport(@NotNull CleanUpResult cleanUpResult)
+    {
+        EmailContent.fromJustText(
+            operationsStaffEmail,
+            "【数据库指标监视器】批量删除历史指标数据超时的报告",
+            """
+                批量删除历史指标数据超过 5 分钟限制！
+                被检测的数据库服务 IP: [%s]，
+                已经删除时间点：[%s] 之前的 [%d] 条数据，
+                执行时间：[%s]
+                """.formatted(
+                cleanUpResult.getServerIp(),
+                cleanUpResult.getOneWeekAgo(),
+                cleanUpResult.getTotalDeleted().get(),
+                DatetimeFormatter.NOW()))
+        .flatMap(this.emailSender::sendEmail)
+        .subscribeOn(Schedulers.boundedElastic())
+        .subscribe();
     }
 
     /** 自动清理任务执行失败的时候也要向运维发送邮件。*/

@@ -45,11 +45,21 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
     }
 
     /**
-     * 删除指定 IP 的下，until 时间点之前的所有指标数据。
+     * 删除指定 IP 的下，until 时间点之前的指定批次的指标数据。
      * （被定时任务：{@link HistoricalIndicatorCleaner} 调用）。
+     *
+     * @param serverIP   数据库服务器 IP
+     * @param until      截止日期
+     * @param batchSize  每个批次的大小
+     *
+     * @return 返回删除的行数（用于最终求和）
      */
     public Mono<Long>
-    deleteIndicator(String serverIP, @NotNull LocalDateTime until)
+    deleteOneBatchIndicator(
+        String serverIP,
+        @NotNull LocalDateTime until,
+        long batchSize
+    )
     {
         final String deleteSQL
             = """
@@ -59,13 +69,16 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
                 server_ip = INET_ATON(:serverIP)
                 AND
                 datetime <= :until
+            ORDER BY log_id DESC
+            LIMIT :batchSize
             """;
 
         return
         this.databaseClient
             .sql(deleteSQL)
-            .bind("serverIP", serverIP)
-            .bind("until", until.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("serverIP",  serverIP)
+            .bind("until",     until.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("batchSize",  batchSize)
             .fetch()
             .rowsUpdated();
     }
