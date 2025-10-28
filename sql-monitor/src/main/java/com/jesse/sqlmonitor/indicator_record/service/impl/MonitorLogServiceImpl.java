@@ -17,13 +17,10 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.jesse.sqlmonitor.constants.DatetimeFormatter.parseDatetime;
 import static io.github.jessez332623.reactive_response_builder.utils.URLParamPrase.praseRequestParam;
 
 /** 监控日志数据操作服务实现。*/
@@ -41,35 +38,7 @@ public class MonitorLogServiceImpl implements MonitorLogService
     Map<String, Class<? extends ResponseBase<?>>>
     typeCache = new ConcurrentHashMap<>();
 
-    private static final
-    List<DateTimeFormatter> DATETIME_FORMATTERS
-        = Arrays.asList(
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),   // 完整格式
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),      // 不含秒
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH"),         // ...
-            DateTimeFormatter.ofPattern("yyyy-MM-dd"),
-            DateTimeFormatter.ofPattern("yyyy-MM"),
-            DateTimeFormatter.ofPattern("yyyy")
-    );
-
     private final MonitorLogRepository monitorLogRepository;
-
-    private static @NotNull LocalDateTime
-    parseDatetime(String dateTimeStr)
-    {
-        for (DateTimeFormatter formatter : DATETIME_FORMATTERS)
-        {
-            try
-            {
-                return
-                LocalDateTime.parse(dateTimeStr, formatter);
-            }
-            catch (DateTimeParseException e) { /* 尝试下一个格式 */ }
-        }
-
-        throw new
-        QueryIndicatorFailed("Could not parse date time: " + dateTimeStr);
-    }
 
     @SuppressWarnings("unchecked")
     private static @NotNull Class<? extends ResponseBase<?>>
@@ -171,35 +140,35 @@ public class MonitorLogServiceImpl implements MonitorLogService
     qpsStatistics(ServerRequest request)
     {
         return
-            Mono.zip(
-                praseRequestParam(request, "type"),
-                praseRequestParam(request, "server-ip"),
-                praseRequestParam(request, "until"))
-            .flatMap((params) -> {
-                final QPSStatisticsType statisticsType
-                    = QPSStatisticsType.valueOf(params.getT1());
-                final String serverIP     = params.getT2();
-                final LocalDateTime until = parseDatetime(params.getT3());
+        Mono.zip(
+            praseRequestParam(request, "type"),
+            praseRequestParam(request, "server-ip"),
+            praseRequestParam(request, "until"))
+        .flatMap((params) -> {
+            final QPSStatisticsType statisticsType
+                = QPSStatisticsType.valueOf(params.getT1());
+            final String serverIP     = params.getT2();
+            final LocalDateTime until = parseDatetime(params.getT3());
 
-                return
-                switch (statisticsType)
-                {
-                    case AVERAGE ->
-                        this.monitorLogRepository
-                            .getAverageQPS(serverIP, until);
-                    case MEDIAN_VALUE ->
-                        this.monitorLogRepository
-                            .getMedianQPS(serverIP, until);
-                    case EXTREME_VALUE ->
-                        this.monitorLogRepository
-                            .getExtremeQPS(serverIP, until);
-                    case STANDARD_DEVIATION ->
-                        this.monitorLogRepository
-                            .getStandingDeviationQPS(serverIP, until);
+            return
+            switch (statisticsType)
+            {
+                case AVERAGE ->
+                    this.monitorLogRepository
+                        .getAverageQPS(serverIP, until);
+                case MEDIAN_VALUE ->
+                    this.monitorLogRepository
+                        .getMedianQPS(serverIP, until);
+                case EXTREME_VALUE ->
+                    this.monitorLogRepository
+                        .getExtremeQPS(serverIP, until);
+                case STANDARD_DEVIATION ->
+                    this.monitorLogRepository
+                        .getStandingDeviationQPS(serverIP, until);
                 };
             })
-            .flatMap((averageValue) ->
-                ReactiveResponseBuilder.OK(averageValue, null))
-            .onErrorResume(this::errorHandle);
+        .flatMap((averageValue) ->
+            ReactiveResponseBuilder.OK(averageValue, null))
+        .onErrorResume(this::errorHandle);
     }
 }
