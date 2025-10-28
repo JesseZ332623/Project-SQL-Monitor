@@ -2,6 +2,7 @@ package com.jesse.sqlmonitor.scheduled_tasks;
 
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
+import com.jesse.sqlmonitor.utils.DatetimeFormatter;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
 import lombok.RequiredArgsConstructor;
@@ -170,7 +171,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                     cleanUpResult.getEffectedRows(),
                     cleanUpResult.getServerIp(),
                     cleanUpResult.getOneWeekAgo(),
-                    LocalDateTime.now()))
+                    DatetimeFormatter.NOW()))
             .flatMap(this.emailSender::sendEmail)
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe();
@@ -193,7 +194,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                          this.masterProperties.getHost(),
                          timePoint,
                          (Objects.isNull(cause)) ? "UNKNOW ERROR" : cause.getMessage(),
-                         LocalDateTime.now()
+                         DatetimeFormatter.NOW()
                     )
             )
             .flatMap(this.emailSender::sendEmail)
