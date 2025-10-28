@@ -6,7 +6,7 @@
     </a>
 </p>
 
-![img_2.png](documents/application-preview.png)
+![img_2.png](/documents/application-preview.png)
 
 ## 模块速览
 
