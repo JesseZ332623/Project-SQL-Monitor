@@ -8,6 +8,7 @@ import com.jesse.sqlmonitor.indicator_record.exception.QueryIndicatorFailed;
 import com.jesse.sqlmonitor.response_body.qps.ExtremeQPS;
 import com.jesse.sqlmonitor.response_body.qps.StandingDeviationQPS;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
+import com.jesse.sqlmonitor.scheduled_tasks.HistoricalIndicatorCleaner;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 
@@ -40,6 +42,32 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
     {
         this.mapper         = objectMapper;
         this.databaseClient = databaseClient;
+    }
+
+    /**
+     * 删除指定 IP 的下，until 时间点之前的所有指标数据。
+     * （被定时任务：{@link HistoricalIndicatorCleaner} 调用）。
+     */
+    public Mono<Long>
+    deleteIndicator(String serverIP, @NotNull LocalDateTime until)
+    {
+        final String deleteSQL
+            = """
+            DELETE FROM
+                monitor_log
+            WHERE
+                server_ip = INET_ATON(:serverIP)
+                AND
+                datetime <= :until
+            """;
+
+        return
+        this.databaseClient
+            .sql(deleteSQL)
+            .bind("serverIP", serverIP)
+            .bind("until", until.atZone(ZoneId.systemDefault()).toInstant())
+            .fetch()
+            .rowsUpdated();
     }
 
     /**
@@ -122,7 +150,7 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
         final String qpsAverageSQL
             = """
             SELECT
-                AVG(JSON_EXTRACT(`indicator`, '$.qps')) AS average_qps
+                AVG(`qps_value`) AS average_qps
             FROM
             	sql_monitor.monitor_log
             WHERE
@@ -141,7 +169,7 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             .fetch()
             .one()
             .map((average) ->
-                ((Double) average.get("average_qps"))
+                (((BigDecimal) average.get("average_qps")).doubleValue())
             );
     }
 
@@ -154,9 +182,9 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             	AVG(qps) AS median_qps
             FROM (
                 SELECT
-            		JSON_EXTRACT(`indicator`, '$.qps') 							    AS qps,
-                    ROW_NUMBER() OVER (ORDER BY JSON_EXTRACT(`indicator`, '$.qps')) AS row_index,
-                    COUNT(*)     OVER () 										    AS total_rows
+            		`qps_value` 							 AS qps,
+                    ROW_NUMBER() OVER (ORDER BY `qps_value`) AS row_index,
+                    COUNT(*)     OVER () 					 AS total_rows
                 FROM
             		sql_monitor.monitor_log
                 WHERE
@@ -178,7 +206,7 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             .fetch()
             .one()
             .map((average) ->
-                ((Double) average.get("median_qps"))
+                (((BigDecimal) average.get("median_qps")).doubleValue())
             );
     }
 
@@ -188,8 +216,8 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
         final String qpsExtremeSQL
             = """
             SELECT
-                MAX(JSON_EXTRACT(`indicator`, '$.qps')) AS max_qps,
-                MIN(JSON_EXTRACT(`indicator`, '$.qps')) AS min_qps
+                MAX(`qps_value`) AS max_qps,
+                MIN(`qps_value`) AS min_qps
             FROM
             	sql_monitor.monitor_log
             WHERE
@@ -209,8 +237,8 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             .one()
             .map((result) ->
                 ExtremeQPS.builder()
-                    .max(Double.parseDouble((String) result.get("max_qps")))
-                    .min(Double.parseDouble((String) result.get("min_qps")))
+                    .max(((BigDecimal) result.get("max_qps")).doubleValue())
+                    .min(((BigDecimal) result.get("min_qps")).doubleValue())
                     .build()
             );
     }
@@ -221,9 +249,9 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
         final String qpsStddevSQL
             = """
             SELECT
-                STDDEV_POP(JSON_EXTRACT(`indicator`, '$.qps')) AS QPS_stddev,
-                AVG(JSON_EXTRACT(`indicator`, '$.qps'))        AS QPS_avg,
-                COUNT(*)                                       AS data_points
+                STDDEV_POP(`qps_value`) AS QPS_stddev,
+                AVG(`qps_value`)        AS QPS_avg,
+                COUNT(*)                AS data_points
             FROM
             	sql_monitor.monitor_log
             WHERE
@@ -243,7 +271,7 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             .one()
             .map((result) -> {
                 final double stddev        = (Double) result.get("QPS_stddev");
-                final double avg           = (Double) result.get("QPS_avg");
+                final double avg           = ((BigDecimal) result.get("QPS_avg")).doubleValue();
                 final double loadStability = stddev / avg;
                 final long   dataPoints    = (Long) result.get("data_points");
 

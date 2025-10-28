@@ -1,11 +1,18 @@
 server:
   address: 0.0.0.0
-  port: 11451
+  port: 11452
   shutdown: graceful
+
+  ssl:
+    enabled: true
+    key-store: classpath:sslkey.p12
+    key-store-password: 1234567890
+    keyStoreType: PKCS12
+    keyAlias: sshkeys
 
 spring:
   application:
-    name: sqlmonitor-db1
+  name: sqlmonitor-db2
   main:
     web-application-type: reactive
   lifecycle:
@@ -14,7 +21,7 @@ spring:
 app:
   r2dbc:
     master:                 # 被监测指标的数据库服务器
-      host: 172.16.100.200
+      host: 172.16.100.201
       port: 3433
       user: root
       password: 123456
@@ -33,11 +40,25 @@ app:
     password: 1234567890
     virtualhost: /
     connect-timeout: 30000
-#
-#  calculate:
-#    max-retires: 10
-#    min_time-diff-ms: 500
-#    ignore-snapshots: 2
+
+  # 是否启用本邮件发送器依赖？（默认启用）
+  reactive-email-sender:
+    enabled: true
+    smtp-host: smtp.qq.com # 提供 SMTP 服务的运营商主机名
+    smtp-port: 465         # SMTP 端口号
+    backoff:
+      max-attempt-times: 5
+      start-backoff-interval: 2 # 指数退避起始时间间隔（单位：秒，默认为 1）
+      max-backoff-interval: 5   # 指数退避封顶时间间隔（单位：秒，默认为 10）
+    max-attachment-size: 8
+    sender-email: 3191955858@qq.com # 发件人邮箱地址
+    session-props:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+          auth: true
+          connectiontimeout: 5000
 
 springdoc:
   api-docs:

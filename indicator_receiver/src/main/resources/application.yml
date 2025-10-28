@@ -6,6 +6,13 @@ server:
   port: 65533
   shutdown: graceful
 
+  ssl:
+    enabled: true
+    key-store: classpath:sslkey.p12
+    key-store-password: 1234567890
+    keyStoreType: PKCS12
+    keyAlias: sshkeys
+
 spring:
   application:
     name: sql-monitor-indicator-receiver
