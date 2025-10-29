@@ -27,7 +27,7 @@ public interface SQLMonitorService
     Mono<ServerResponse>
     getConnectionUsage(ServerRequest request);
 
-    /** 查询所有数据库大小服务的接口。*/
+    /** 查询数据库大小服务的接口。*/
     Mono<ServerResponse>
     getDatabaseSize(ServerRequest request);
 
