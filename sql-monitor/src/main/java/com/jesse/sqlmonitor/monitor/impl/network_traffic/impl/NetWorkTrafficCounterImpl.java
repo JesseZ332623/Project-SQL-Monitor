@@ -76,33 +76,28 @@ public class NetWorkTrafficCounterImpl implements NetWorkTrafficCounter
         return
         Mono.fromCallable(() -> {
             int retries = 0;
-            TrafficStateSnapshot previousState;
+
+            if (this.snapshotInitCount.get() < IGNORE_SNAPSHOTS)
+            {
+                this.lastState.getAndSet(currentState);
+                this.snapshotInitCount.getAndIncrement();
+
+                return
+                NetWorkTraffic.buildZeroRate(currentState, unit);
+            }
 
             do
             {
-                previousState = this.lastState.get();
+                TrafficStateSnapshot previousState = this.lastState.get();
 
-                if (this.snapshotInitCount.get() < IGNORE_SNAPSHOTS)
+                if (this.lastState.compareAndSet(previousState, currentState))
                 {
-                    if (this.lastState.compareAndSet(previousState, currentState))
-                    {
-                        this.snapshotInitCount.getAndIncrement();
-
-                        return
-                        NetWorkTraffic.buildZeroRate(currentState, unit);
-                    }
-                }
-                else
-                {
-                    if (this.lastState.compareAndSet(previousState, currentState))
-                    {
-                        return
-                        NetWorkTraffic.buildTrafficResult(
-                            currentState,
-                            this.trafficRateCalculator
-                                .calculateRate(previousState, currentState, unit)
-                        );
-                    }
+                    return
+                    NetWorkTraffic.buildTrafficResult(
+                        currentState,
+                        this.trafficRateCalculator
+                            .calculateRate(previousState, currentState, unit)
+                    );
                 }
 
                 ++retries;
@@ -111,7 +106,7 @@ public class NetWorkTrafficCounterImpl implements NetWorkTrafficCounter
 
             // 如果连着尝试 10 回都发现不一致，
             // 说明竞争过于激烈了，输出警告日志并返回降级值
-            log.warn("Failed to update QPS after {} retries", MAX_RETRIES);
+            log.warn("Failed to update QPS after {} retries.", MAX_RETRIES);
 
             return NetWorkTraffic.onError();
         });
