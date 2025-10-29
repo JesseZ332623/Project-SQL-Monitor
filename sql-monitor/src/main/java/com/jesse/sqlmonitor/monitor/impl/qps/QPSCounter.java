@@ -1,6 +1,6 @@
 package com.jesse.sqlmonitor.monitor.impl.qps;
 
-import com.jesse.sqlmonitor.response_body.qps.QPSResult;
+import com.jesse.sqlmonitor.response_body.QPSResult;
 import reactor.core.publisher.Mono;
 
 /** MySQL QPS 计算器接口。*/
