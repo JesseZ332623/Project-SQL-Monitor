@@ -11,7 +11,7 @@ final public class MonitorConstants
     public static final
     long MIN_TIME_DIFF_MS = 500L;
 
-    /** 前 2 回的快照结果需要忽略。*/
+    /** 前 3 回的快照结果需要忽略。*/
     public static final
-    int IGNORE_SNAPSHOTS = 2;
+    int IGNORE_SNAPSHOTS = 3;
 }
