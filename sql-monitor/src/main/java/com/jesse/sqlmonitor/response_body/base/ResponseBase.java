@@ -3,9 +3,9 @@ package com.jesse.sqlmonitor.response_body.base;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.jesse.sqlmonitor.response_body.*;
-import com.jesse.sqlmonitor.response_body.qps.ExtremeQPS;
-import com.jesse.sqlmonitor.response_body.qps.QPSResult;
-import com.jesse.sqlmonitor.response_body.qps.StandingDeviationQPS;
+import com.jesse.sqlmonitor.response_body.qps_statistics.ExtremeQPS;
+import com.jesse.sqlmonitor.response_body.QPSResult;
+import com.jesse.sqlmonitor.response_body.qps_statistics.StandingDeviationQPS;
 import lombok.*;
 
 /** 所有响应体的基类，仅作标记。（在 Jackson 序列化/反序列化时有大用，作为类型令牌传入）*/

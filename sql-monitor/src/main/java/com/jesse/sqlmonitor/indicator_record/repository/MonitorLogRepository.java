@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.indicator_record.entity.IndicatorType;
 import com.jesse.sqlmonitor.indicator_record.exception.QueryIndicatorFailed;
-import com.jesse.sqlmonitor.response_body.qps.ExtremeQPS;
-import com.jesse.sqlmonitor.response_body.qps.StandingDeviationQPS;
+import com.jesse.sqlmonitor.response_body.qps_statistics.ExtremeQPS;
+import com.jesse.sqlmonitor.response_body.qps_statistics.StandingDeviationQPS;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
 import com.jesse.sqlmonitor.scheduled_tasks.HistoricalIndicatorCleaner;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +20,7 @@ import reactor.core.publisher.Mono;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Objects;
 
 import static com.jesse.sqlmonitor.utils.SQLMonitorUtils.extractClassName;
 
@@ -181,9 +182,14 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             .bind("until", until)
             .fetch()
             .one()
-            .map((average) ->
-                (((BigDecimal) average.get("average_qps")).doubleValue())
-            );
+            .map((average) -> {
+                BigDecimal averageQPS = ((BigDecimal) average.get("average_qps"));
+
+                return
+                Objects.isNull(averageQPS)
+                    ? -1.00
+                    : averageQPS.doubleValue();
+            });
     }
 
     public Mono<Double>
@@ -218,9 +224,14 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             .bind("until", until)
             .fetch()
             .one()
-            .map((average) ->
-                (((BigDecimal) average.get("median_qps")).doubleValue())
-            );
+            .map((average) -> {
+                BigDecimal medianQPS = ((BigDecimal) average.get("median_qps"));
+
+                return
+                Objects.isNull(medianQPS)
+                    ? -1.00
+                    : medianQPS.doubleValue();
+            });
     }
 
     public Mono<ExtremeQPS>
@@ -248,12 +259,16 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             .bind("until", until)
             .fetch()
             .one()
-            .map((result) ->
+            .map((result) -> {
+                BigDecimal maxQPS = ((BigDecimal) result.get("max_qps"));
+                BigDecimal minQPS = ((BigDecimal) result.get("min_qps"));
+
+                return
                 ExtremeQPS.builder()
-                    .max(((BigDecimal) result.get("max_qps")).doubleValue())
-                    .min(((BigDecimal) result.get("min_qps")).doubleValue())
-                    .build()
-            );
+                    .max((Objects.isNull(maxQPS)) ? -1.00 : maxQPS.doubleValue())
+                    .min((Objects.isNull(minQPS)) ? -1.00 : minQPS.doubleValue())
+                    .build();
+            });
     }
 
     public Mono<StandingDeviationQPS>
@@ -283,10 +298,18 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             .fetch()
             .one()
             .map((result) -> {
-                final double stddev        = (Double) result.get("QPS_stddev");
-                final double avg           = ((BigDecimal) result.get("QPS_avg")).doubleValue();
-                final double loadStability = stddev / avg;
-                final long   dataPoints    = (Long) result.get("data_points");
+                final double stddev
+                    = Objects.isNull(result.get("QPS_stddev"))
+                        ? -1.00 : (Double) result.get("QPS_stddev");
+
+                final double avg
+                    = Objects.isNull(result.get("QPS_avg"))
+                        ? -1.00 : ((BigDecimal) result.get("QPS_avg")).doubleValue();
+
+                final double loadStability
+                    = (stddev == -1.00 || avg == -1.00) ? -1.00 : stddev / avg;
+
+                final long dataPoints    = (Long) result.get("data_points");
 
                 return
                 StandingDeviationQPS.builder()

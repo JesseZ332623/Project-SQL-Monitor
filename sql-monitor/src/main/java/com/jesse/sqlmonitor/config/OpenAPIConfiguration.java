@@ -22,12 +22,22 @@ public class OpenAPIConfiguration
     }
 
     @Bean
-    public GroupedOpenApi publicAPI()
+    public GroupedOpenApi sqlmonitorPublicAPI()
     {
         return
         GroupedOpenApi.builder()
             .group("sqlmonitor")
             .pathsToMatch("/api/sql-monitor/**")
+            .build();
+    }
+
+    @Bean
+    public GroupedOpenApi sqlIndicatorPublicAPI()
+    {
+        return
+        GroupedOpenApi.builder()
+            .group("indicator-record")
+            .pathsToMatch("/api/indicator/**")
             .build();
     }
 }

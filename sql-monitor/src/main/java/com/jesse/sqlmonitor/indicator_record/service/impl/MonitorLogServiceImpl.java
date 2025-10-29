@@ -17,6 +17,7 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -119,7 +120,7 @@ public class MonitorLogServiceImpl implements MonitorLogService
             type = getIndicatorType(params.getT1());
             final String serverIP     = params.getT2();
             final LocalDateTime until = parseDatetime(params.getT3());
-            final QueryOrder order    = QueryOrder.valueOf(params.getT4());
+            final QueryOrder order    = QueryOrder.valueOf(params.getT4().toUpperCase(Locale.ROOT));
 
            return
            this.monitorLogRepository

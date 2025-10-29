@@ -3,7 +3,7 @@ package com.jesse.sqlmonitor.monitor.impl.qps.impl;
 import com.jesse.sqlmonitor.monitor.constants.GlobalStatusName;
 import com.jesse.sqlmonitor.monitor.impl.GlobalStatusQuery;
 import com.jesse.sqlmonitor.monitor.impl.qps.QPSCounter;
-import com.jesse.sqlmonitor.response_body.qps.QPSResult;
+import com.jesse.sqlmonitor.response_body.QPSResult;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;

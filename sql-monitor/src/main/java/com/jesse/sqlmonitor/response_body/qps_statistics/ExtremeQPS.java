@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.response_body.qps;
+package com.jesse.sqlmonitor.response_body.qps_statistics;
 
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
 import io.swagger.v3.oas.annotations.media.Schema;

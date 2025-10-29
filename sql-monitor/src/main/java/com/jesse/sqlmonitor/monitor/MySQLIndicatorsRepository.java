@@ -4,7 +4,7 @@ import com.jesse.sqlmonitor.response_body.*;
 import com.jesse.sqlmonitor.monitor.constants.GlobalStatusName;
 import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.monitor.constants.SizeUnit;
-import com.jesse.sqlmonitor.response_body.qps.QPSResult;
+import com.jesse.sqlmonitor.response_body.QPSResult;
 import org.jetbrains.annotations.NotNull;
 import reactor.core.publisher.Mono;
 

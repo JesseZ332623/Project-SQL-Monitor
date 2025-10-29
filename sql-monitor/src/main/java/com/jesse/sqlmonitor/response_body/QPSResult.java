@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.response_body.qps;
+package com.jesse.sqlmonitor.response_body;
 
 import com.jesse.sqlmonitor.monitor.impl.qps.impl.QPSCounterImpl;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
