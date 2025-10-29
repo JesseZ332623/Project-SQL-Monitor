@@ -1,6 +1,6 @@
 # MySQL SELECT EXPLAIN 查询计划分析概要
 
-这是一次查询计划分析的结果：
+这是一次查询计划分析的结果表：
 
 ![explain-result](select-explain-result.png)
 
