@@ -112,32 +112,28 @@ public class QPSCounterImpl implements QPSCounter
     {
         int retries = 0;
 
-        QueriesSnapshot previousQueries;
+        if (this.snapshotInitCount.get() < IGNORE_SNAPSHOTS)
+        {
+            this.queriesSnapshot.getAndSet(currentQueries);
+
+            this.snapshotInitCount.getAndIncrement();
+            return QPSResult.buildZeroQPS();
+
+        }
 
         /*
          * 之前使用 queriesSnapshot.getAndSet() 可能出现的竞争条件
          *（如果有多个线程同时调用 getAndSet()，会导致部分 QPS 计算不准确）
          */
         do {
-            previousQueries = this.queriesSnapshot.get();
+            QueriesSnapshot previousQueries = this.queriesSnapshot.get();
 
-            if (this.snapshotInitCount.get() < IGNORE_SNAPSHOTS)
+            if (this.queriesSnapshot.compareAndSet(previousQueries, currentQueries))
             {
-                if (this.queriesSnapshot.compareAndSet(previousQueries, currentQueries))
-                {
-                    this.snapshotInitCount.getAndIncrement();
-                    return QPSResult.buildZeroQPS();
-                }
-            }
-            else
-            {
-                if (this.queriesSnapshot.compareAndSet(previousQueries, currentQueries))
-                {
-                    return
-                    QPSResult.buildQPSResult(
-                        this.calculate(previousQueries, currentQueries)
-                    );
-                }
+                return
+                QPSResult.buildQPSResult(
+                    this.calculate(previousQueries, currentQueries)
+                );
             }
 
             ++retries;
@@ -146,7 +142,7 @@ public class QPSCounterImpl implements QPSCounter
 
         // 如果连着尝试 MAX_RETRY_TIMES 回都发现不一致，
         // 说明竞争过于激烈了输出警告日志并返回降级值
-        log.warn("Failed to update QPS after {} retries", MAX_RETRIES);
+        log.warn("Failed to update QPS after {} retries.", MAX_RETRIES);
 
         return QPSResult.onError();
     }
