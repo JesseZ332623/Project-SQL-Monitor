@@ -6,7 +6,7 @@ import com.jesse.sqlmonitor.monitor.MySQLIndicatorsRepository;
 import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.monitor.constants.SizeUnit;
 import com.jesse.sqlmonitor.response_body.*;
-import com.jesse.sqlmonitor.response_body.qps.QPSResult;
+import com.jesse.sqlmonitor.response_body.QPSResult;
 import com.jesse.sqlmonitor.service.SQLMonitorService;
 import com.jesse.sqlmonitor.indicator_record.service.IndicatorSender;
 import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
@@ -195,7 +195,7 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
             .onErrorResume(this::genericErrorHandle);
     }
 
-    /** 获取本数据库所有库的大小的接口。*/
+    /** 查询数据库大小服务的接口。*/
     @Override
     public Mono<ServerResponse>
     getDatabaseSize(ServerRequest request)
