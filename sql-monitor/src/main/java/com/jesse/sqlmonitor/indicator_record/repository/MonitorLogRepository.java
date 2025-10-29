@@ -169,7 +169,7 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             WHERE
             	`indicator_type` = 'QPSResult'
                 AND
-                INET_NTOA(`server_ip`) = :serverIP
+                `server_ip` = INET_ATON(:serverIP)
                 AND
                 `datetime` <= :until
             """;
@@ -203,7 +203,7 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
                 WHERE
             		`indicator_type` = 'QPSResult'
                     AND
-                    INET_NTOA(`server_ip`) = :serverIP
+                    `server_ip` = INET_ATON(:serverIP)
                     AND
                     `datetime` <= :until
             ) AS sorted
@@ -236,7 +236,7 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             WHERE
             	`indicator_type` = 'QPSResult'
                 AND
-                INET_NTOA(`server_ip`) = :serverIP
+                `server_ip` = INET_ATON(:serverIP)
                 AND
                 `datetime` <= :until
             """;
@@ -270,7 +270,7 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
             WHERE
             	`indicator_type` = 'QPSResult'
                 AND
-                INET_NTOA(`server_ip`) = :serverIP
+                `server_ip` = INET_ATON(:serverIP)
                 AND
                 `datetime` <= :until
             """;
