@@ -137,33 +137,27 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
     {
         int retries = 0;
 
-        BufferPoolSnapshot previousSnapshot;
+        if (snapshotInitCount.get() < IGNORE_SNAPSHOTS)
+        {
+            this.bufferPoolSnapshot.getAndSet(currentSnapshot);
+            this.snapshotInitCount.getAndIncrement();
+
+            return
+            InnodbBufferCacheHitRate.buildZeroRate();
+        }
 
         do {
-            previousSnapshot = this.bufferPoolSnapshot.get();
+            BufferPoolSnapshot previousSnapshot = this.bufferPoolSnapshot.get();
 
-            if (snapshotInitCount.get() < IGNORE_SNAPSHOTS)
+            if (this.bufferPoolSnapshot.compareAndSet(previousSnapshot, currentSnapshot))
             {
-                if (this.bufferPoolSnapshot.compareAndSet(previousSnapshot, currentSnapshot))
-                {
-                    snapshotInitCount.getAndIncrement();
+                CacheHitRate hitRate = this.calculate(previousSnapshot, currentSnapshot);
 
-                    return
-                    InnodbBufferCacheHitRate.buildZeroRate();
-                }
-            }
-            else
-            {
-                if (this.bufferPoolSnapshot.compareAndSet(previousSnapshot, currentSnapshot))
-                {
-                    CacheHitRate hitRate = this.calculate(previousSnapshot, currentSnapshot);
+                this.previousResult.set(hitRate);
 
-                    this.previousResult.set(hitRate);
-
-                    return
-                    InnodbBufferCacheHitRate
-                        .buildResult(hitRate);
-                }
+                return
+                InnodbBufferCacheHitRate
+                    .buildResult(hitRate);
             }
 
             ++retries;
@@ -174,7 +168,7 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
         // 如果连着尝试 10 回都发现不一致，
         // 说明竞争过于激烈了，输出警告日志并返回降级值
         log.warn(
-            "Failed to update InnoDB buffer pool hit cache after {} retries",
+            "Failed to update InnoDB buffer pool hit cache after {} retries.",
             MAX_RETRIES
         );
 
