@@ -1,7 +1,9 @@
 package com.jesse.sqlmonitor.route.route_function;
 
+import com.jesse.sqlmonitor.monitor.constants.GlobalStatusName;
+import com.jesse.sqlmonitor.monitor.constants.SizeUnit;
 import com.jesse.sqlmonitor.response_body.*;
-import com.jesse.sqlmonitor.response_body.qps.QPSResult;
+import com.jesse.sqlmonitor.response_body.QPSResult;
 import com.jesse.sqlmonitor.service.SQLMonitorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -80,7 +82,7 @@ public class SQLMonitorRouteFunctionConfiguration
                         @Parameter(
                             name = "sizeUnit",
                             description = "计量单位，可选值：B, KB, MB, GB",
-                            example = "KB",
+                            schema = @Schema(implementation = SizeUnit.class ),
                             required = true
                         )
                     },
@@ -107,9 +109,13 @@ public class SQLMonitorRouteFunctionConfiguration
                     parameters = {
                         @Parameter(
                             name = "statusName",
-                            description = "全局状态名",
-                            required = true,
-                            example = "INNODB_STATUS"
+                            description = """
+                                全局状态名全局状态名，
+                                <a href='https://github.com/JesseZ332623/Project-SQL-Monitor/blob/main/sql-monitor/src/main/java/com/jesse/sqlmonitor/monitor/constants/GlobalStatusName.java'>
+                                    查看完整 GlobalStatusName 列表
+                                </a>
+                                """,
+                            required = true
                         )
                     },
                     responses = {
