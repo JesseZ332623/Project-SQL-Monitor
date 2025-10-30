@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.service;
+package com.jesse.sqlmonitor.monitor.service;
 
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;

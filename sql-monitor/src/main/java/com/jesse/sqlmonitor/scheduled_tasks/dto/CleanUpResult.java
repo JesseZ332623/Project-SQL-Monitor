@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.scheduled_tasks;
+package com.jesse.sqlmonitor.scheduled_tasks.dto;
 
 import lombok.*;
 import org.jetbrains.annotations.Contract;
@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-/** 自动清理历史指标数据的结果的 POJO。*/
+/** 自动清理历史指标数据的结果的 DTO。*/
 @Data
 @ToString
 @NoArgsConstructor(access  = AccessLevel.PUBLIC)

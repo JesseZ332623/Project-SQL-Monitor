@@ -2,6 +2,7 @@ package com.jesse.sqlmonitor.scheduled_tasks;
 
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
+import com.jesse.sqlmonitor.scheduled_tasks.dto.CleanUpResult;
 import com.jesse.sqlmonitor.utils.DatetimeFormatter;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -33,8 +35,8 @@ public class HistoricalIndicatorCleaner implements DisposableBean
     private final ReactiveEmailSender emailSender;
 
     /** 运维人员的邮箱号（大嘘）。*/
-    private static final
-    String operationsStaffEmail = "zhj3191955858@gmail.com";
+    @Value("${app.operation-staff.email}")
+    private String operationsStaffEmail;
 
     /** 被检测数据库属性类。*/
     private final R2dbcMasterProperties masterProperties;
@@ -50,7 +52,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
 
     /**
      * 在应用完全启动时启用本任务，
-     * 启动后过两个星期执行第一次，后面一星期执行一次。
+     * 启动后延迟两个星期执行第一次，后面一星期执行一次。
      */
     @EventListener(ApplicationReadyEvent.class)
     public void startTask()
@@ -66,9 +68,9 @@ public class HistoricalIndicatorCleaner implements DisposableBean
     @Override
     public void destroy()
     {
-        if (Objects.nonNull(cleanupDisposable) && !cleanupDisposable.isDisposed())
+        if (Objects.nonNull(this.cleanupDisposable) && !this.cleanupDisposable.isDisposed())
         {
-            // 如果检查到正在运行，
+            // 如果检查到正在运行，考虑阻塞等待任务完成
             if (isRunning.get())
             {
                 try {
@@ -81,8 +83,8 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                 }
             }
 
-            cleanupDisposable.dispose();
-            cleanupDisposable = null;
+            this.cleanupDisposable.dispose();
+            this.cleanupDisposable = null;
         }
     }
 
@@ -107,8 +109,6 @@ public class HistoricalIndicatorCleaner implements DisposableBean
 
             // 初始化一个批量删除结果
             CleanUpResult cleanUpResult = CleanUpResult.init(serverIp, lastWeekPoint);
-
-            log.info("Start to clean up historical indicators older than one week.");
 
             return
             this.monitorLogRepository
@@ -172,7 +172,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                 })
                 .doFinally((signal) -> {
                     this.isRunning.set(false);
-                    log.info("Terminate task cleanIndicatorUtilLastWeek(), signal type: {}.", signal);
+                    log.info("Task cleanIndicatorUtilLastWeek() execute complete! signal type: {}.", signal);
                 })
                 // 本次批量删除失败不等于整个定时流失败，
                 // 需要返回 Mono.empty() 确保流不中断
