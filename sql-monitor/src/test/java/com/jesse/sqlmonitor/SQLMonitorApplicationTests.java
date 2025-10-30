@@ -1,16 +1,15 @@
 package com.jesse.sqlmonitor;
 
 import com.jesse.sqlmonitor.constants.QueryOrder;
+import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.monitor.MySQLIndicatorsRepository;
 import com.jesse.sqlmonitor.monitor.constants.GlobalStatusName;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
 import com.jesse.sqlmonitor.response_body.NetWorkTraffic;
-import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -45,18 +44,26 @@ class SQLMonitorApplicationTests
             .block();
     }
 
-	@Test
-	public void queriesCountTest()
+    @Test
+    public void getIndicatorIncrementByDurationTest()
     {
-        // 高频的查询并计算 QPS 旨在记录重试次数（目前重试不超过 2 次）
-        Flux.interval(Duration.ofMillis(10L))
-            .flatMap((tick) ->
-                this.mySQLIndicatorsRepository
-                    .getQPS())
-            .doOnNext((qps) -> log.info("{}", qps))
-            .take(100L)
-            .blockLast();
-	}
+        this.monitorLogRepository
+            .getIndicatorIncrementByDuration(
+                masterProperties.getHost(),
+                Duration.ofHours(1))
+            .doOnSuccess(System.out::println)
+            .block();
+    }
+
+    @Test
+    public void getAverageNetworkTrafficTest()
+    {
+        this.monitorLogRepository
+            .getAverageNetworkTraffic(
+                this.masterProperties.getHost(), LocalDateTime.now())
+            .doOnSuccess(System.out::println)
+            .block();
+    }
 
     @Test
     public void getGlobalStatusTest()
