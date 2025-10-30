@@ -2,6 +2,7 @@ package com.jesse.sqlmonitor.scheduled_tasks;
 
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
+import com.jesse.sqlmonitor.scheduled_tasks.dto.CleanUpResult;
 import com.jesse.sqlmonitor.utils.DatetimeFormatter;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.DisposableBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -33,8 +35,8 @@ public class HistoricalIndicatorCleaner implements DisposableBean
     private final ReactiveEmailSender emailSender;
 
     /** 运维人员的邮箱号（大嘘）。*/
-    private static final
-    String operationsStaffEmail = "zhj3191955858@gmail.com";
+    @Value("${app.operation-staff.email}")
+    private String operationsStaffEmail;
 
     /** 被检测数据库属性类。*/
     private final R2dbcMasterProperties masterProperties;
