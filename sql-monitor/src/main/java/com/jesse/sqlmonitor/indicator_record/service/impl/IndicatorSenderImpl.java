@@ -13,6 +13,7 @@ import reactor.rabbitmq.OutboundMessage;
 import reactor.rabbitmq.Sender;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 
 /** 指标数据发送器实现。*/
 @Slf4j
@@ -50,6 +51,7 @@ public class IndicatorSenderImpl implements IndicatorSender
             this.sender
                 .send(Mono.just(message))
                 .then())
+        .timeout(Duration.ofSeconds(1L))
         .onErrorResume((exception) ->
             Mono.error(
                 new RecordIndicatorFailed(
