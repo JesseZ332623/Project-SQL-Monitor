@@ -52,7 +52,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
 
     /**
      * 在应用完全启动时启用本任务，
-     * 启动后过两个星期执行第一次，后面一星期执行一次。
+     * 启动后延迟两个星期执行第一次，后面一星期执行一次。
      */
     @EventListener(ApplicationReadyEvent.class)
     public void startTask()
@@ -68,9 +68,9 @@ public class HistoricalIndicatorCleaner implements DisposableBean
     @Override
     public void destroy()
     {
-        if (Objects.nonNull(cleanupDisposable) && !cleanupDisposable.isDisposed())
+        if (Objects.nonNull(this.cleanupDisposable) && !this.cleanupDisposable.isDisposed())
         {
-            // 如果检查到正在运行，
+            // 如果检查到正在运行，考虑阻塞等待任务完成
             if (isRunning.get())
             {
                 try {
@@ -83,8 +83,8 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                 }
             }
 
-            cleanupDisposable.dispose();
-            cleanupDisposable = null;
+            this.cleanupDisposable.dispose();
+            this.cleanupDisposable = null;
         }
     }
 
@@ -109,8 +109,6 @@ public class HistoricalIndicatorCleaner implements DisposableBean
 
             // 初始化一个批量删除结果
             CleanUpResult cleanUpResult = CleanUpResult.init(serverIp, lastWeekPoint);
-
-            log.info("Start to clean up historical indicators older than one week.");
 
             return
             this.monitorLogRepository
@@ -174,7 +172,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                 })
                 .doFinally((signal) -> {
                     this.isRunning.set(false);
-                    log.info("Terminate task cleanIndicatorUtilLastWeek(), signal type: {}.", signal);
+                    log.info("Task cleanIndicatorUtilLastWeek() execute complete! signal type: {}.", signal);
                 })
                 // 本次批量删除失败不等于整个定时流失败，
                 // 需要返回 Mono.empty() 确保流不中断
