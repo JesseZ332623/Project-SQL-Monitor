@@ -2,7 +2,7 @@
 
 <p>
     <a href="https://skillicons.dev">
-        <img src="https://skillicons.dev/icons?i=mysql,rabbitmq,spring,vue,vite">
+        <img src="https://skillicons.dev/icons?i=mysql,rabbitmq,spring,vue,vite" alt="仪表盘页面预览">
     </a>
 </p>
 
