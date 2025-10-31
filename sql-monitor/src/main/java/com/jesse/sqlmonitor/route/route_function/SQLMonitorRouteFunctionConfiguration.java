@@ -35,19 +35,22 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = BASE_ADDRESS_QUERY,
                 operation = @Operation(
                     operationId = "getDatabaseAddress",
-                    summary = "获取数据库服务器地址和端口号",
-                    tags = {"数据库连接属性信息"},
-                    responses = {
+                    summary     = "获取数据库服务器地址和端口号",
+                    tags        = {"数据库连接属性信息"},
+                    responses   = {
                         @ApiResponse(
                             responseCode = "200",
-                            description = "成功",
-                            content = @Content(
+                            description  = "成功",
+                            content      = @Content(
                                 mediaType = APPLICATION_JSON_VALUE,
-                                examples = {@ExampleObject(value = "172.16.100.200:3433")},
-                                schema = @Schema(implementation = String.class)
+                                examples  = {@ExampleObject(value = "172.16.100.200:3433")},
+                                schema    = @Schema(implementation = String.class)
                             )
                         ),
-                        @ApiResponse(responseCode = "500", description = "数据库断连或其他未知错误")
+                        @ApiResponse(
+                            responseCode = "500",
+                            description  = "数据库断连或其他未知错误"
+                        )
                     }
                 )
             ),
@@ -55,19 +58,22 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = QPS_QUERY,
                 operation = @Operation(
                     operationId = "getQPS",
-                    summary = "获取本数据库此刻的 QPS（每秒查询频率）",
+                    summary     = "获取本数据库此刻的 QPS（每秒查询频率）",
                     description = "实时获取数据库连接的最大连接数、当前连接数和使用率百分比",
-                    tags = {"数据库 QPS 监控"},
-                    responses = {
+                    tags        = {"数据库 QPS 监控"},
+                    responses   = {
                         @ApiResponse(
                             responseCode = "200",
-                            description = "成功",
-                            content = @Content(
+                            description  = "成功",
+                            content      = @Content(
                                 mediaType = APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = QPSResult.class)
+                                schema    = @Schema(implementation = QPSResult.class)
                             )
                         ),
-                        @ApiResponse(responseCode = "500", description = "数据库断连或其他未知错误")
+                        @ApiResponse(
+                            responseCode = "500",
+                            description  = "数据库断连或其他未知错误"
+                        )
                     }
                 )
             ),
@@ -75,27 +81,32 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = NETWORK_TRAFFIC_QUERY,
                 operation = @Operation(
                     operationId = "getNetWorkTraffic",
-                    summary = "获取本数据库网络流量相关数据",
-                    tags = {"数据库网络流量监控"},
+                    summary     = "获取本数据库网络流量相关数据",
+                    tags        = {"数据库网络流量监控"},
                     parameters = {
                         @Parameter(
-                            name = "sizeUnit",
+                            name        = "sizeUnit",
                             description = "计量单位，可选值：B, KB, MB, GB",
-                            schema = @Schema(implementation = SizeUnit.class ),
-                            required = true
+                            schema      = @Schema(implementation = SizeUnit.class ),
+                            required    = true
                         )
                     },
                     responses = {
                         @ApiResponse(
                             responseCode = "200",
-                            description = "成功",
-                            content = @Content(
+                            description  = "成功",
+                            content      = @Content(
                                 mediaType = APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = NetWorkTraffic.class)
+                                schema    = @Schema(implementation = NetWorkTraffic.class)
                             )
                         ),
-                        @ApiResponse(responseCode = "400", description = "计量单位参数非法"),
-                        @ApiResponse(responseCode = "500", description = "数据库断连或其他未知错误")
+                        @ApiResponse(
+                            responseCode = "400",
+                            description  = "计量单位参数非法"),
+                        @ApiResponse(
+                            responseCode = "500",
+                            description  = "数据库断连或其他未知错误"
+                        )
                     }
                 )
             ),
@@ -103,8 +114,8 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = GLOBAL_STATUS_QUERY,
                 operation = @Operation(
                     operationId = "getGlobalStatus",
-                    summary = "获取被数据库的全局状态",
-                    tags = {"数据库的全局状态获取"},
+                    summary     = "获取被数据库的全局状态",
+                    tags        = {"数据库的全局状态获取"},
                     parameters = {
                         @Parameter(
                             name = "statusName",
@@ -120,11 +131,16 @@ public class SQLMonitorRouteFunctionConfiguration
                     responses = {
                         @ApiResponse(
                             responseCode = "200",
-                            description = "成功",
-                            content = @Content(mediaType = APPLICATION_JSON_VALUE)
+                            description  = "成功",
+                            content      = @Content(mediaType = APPLICATION_JSON_VALUE)
                         ),
-                        @ApiResponse(responseCode = "400", description = "全局状态名非法"),
-                        @ApiResponse(responseCode = "500", description = "数据库断连或其他未知错误")
+                        @ApiResponse(
+                            responseCode = "400",
+                            description  = "全局状态名非法"),
+                        @ApiResponse(
+                            responseCode = "500",
+                            description  = "数据库断连或其他未知错误"
+                        )
                     }
                 )
             ),
@@ -132,18 +148,20 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = CONNECTION_USAGE_QUERY,
                 operation = @Operation(
                     operationId = "getConnectionUsage",
-                    summary = "获取数据库连接使用率相关数据",
-                    tags = {"数据库连接使用率获取"},
+                    summary     = "获取数据库连接使用率相关数据",
+                    tags        = {"数据库连接使用率获取"},
                     responses = {
                         @ApiResponse(
                             responseCode = "200",
-                            description = "成功",
-                            content = @Content(
+                            description  = "成功",
+                            content      = @Content(
                                 mediaType = APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = ConnectionUsage.class)
+                                schema    = @Schema(implementation = ConnectionUsage.class)
                             )
                         ),
-                        @ApiResponse(responseCode = "500", description = "数据库断连或其他未知错误")
+                        @ApiResponse(
+                            responseCode = "500",
+                            description  = "数据库断连或其他未知错误")
                     }
                 )
             ),
@@ -151,15 +169,15 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = DATABASE_SIZE_QUERY,
                 operation = @Operation(
                     operationId = "getAllDatabaseSize",
-                    summary = "获取本数据库所有库的大小",
-                    tags = {"数据库所有库大小获取"},
-                    responses = {
+                    summary     = "获取本数据库所有库的大小",
+                    tags        = {"数据库所有库大小获取"},
+                    responses   = {
                         @ApiResponse(
                             responseCode = "200",
-                            description = "成功",
-                            content = @Content(
+                            description  = "成功",
+                            content      = @Content(
                                 mediaType = APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = DatabaseSize.class)
+                                schema    = @Schema(implementation = DatabaseSize.class)
                             )
                         ),
                         @ApiResponse(responseCode = "500", description = "数据库断连或其他未知错误")
@@ -170,18 +188,21 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = INNODB_BUFFER_CACHE_HIT_RATE_QUERY,
                 operation = @Operation(
                     operationId = "getInnodbBufferCacheHitRate",
-                    summary = "查询 InnoDB 缓存命中率",
-                    tags = {"InnoDB 缓存命中率获取"},
+                    summary     = "查询 InnoDB 缓存命中率",
+                    tags        = {"InnoDB 缓存命中率获取"},
                     responses = {
                         @ApiResponse(
                             responseCode = "200",
-                            description = "成功",
-                            content = @Content(
+                            description  = "成功",
+                            content      = @Content(
                                 mediaType = APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = InnodbBufferCacheHitRate.class)
+                                schema    = @Schema(implementation = InnodbBufferCacheHitRate.class)
                             )
                         ),
-                        @ApiResponse(responseCode = "500", description = "数据库断连或其他未知错误")
+                        @ApiResponse(
+                            responseCode = "500",
+                            description = "数据库断连或其他未知错误"
+                        )
                     }
                 )
             ),
@@ -189,18 +210,21 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = SERVER_UPTIME_QUERY,
                 operation = @Operation(
                     operationId = "getServerUpTime",
-                    summary = "查询数据库服务器从启动至今所经过的秒数",
-                    tags = {"数据库服务器从启动至今所经过的秒数获取"},
+                    summary     = "查询数据库服务器从启动至今所经过的秒数",
+                    tags        = {"数据库服务器从启动至今所经过的秒数获取"},
                     responses = {
                         @ApiResponse(
                             responseCode = "200",
-                            description = "成功",
-                            content = @Content(
+                            description  = "成功",
+                            content      = @Content(
                                 mediaType = APPLICATION_JSON_VALUE,
-                                schema = @Schema(implementation = String.class)
+                                schema    = @Schema(implementation = String.class)
                             )
                         ),
-                        @ApiResponse(responseCode = "500", description = "数据库断连或其他未知错误")
+                        @ApiResponse(
+                            responseCode = "500",
+                            description  = "数据库断连或其他未知错误"
+                        )
                     }
                 )
             )
