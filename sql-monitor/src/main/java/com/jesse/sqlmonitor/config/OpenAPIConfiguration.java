@@ -40,4 +40,13 @@ public class OpenAPIConfiguration
             .pathsToMatch("/api/indicator/**")
             .build();
     }
+
+    public GroupedOpenApi scheduledTasksPublicAPI()
+    {
+        return
+        GroupedOpenApi.builder()
+            .group("scheduled-tasks")
+            .pathsToMatch("/api/scheduled-task/**")
+            .build();
+    }
 }
