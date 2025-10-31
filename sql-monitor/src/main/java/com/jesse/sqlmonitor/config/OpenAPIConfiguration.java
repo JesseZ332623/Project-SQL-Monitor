@@ -41,6 +41,7 @@ public class OpenAPIConfiguration
             .build();
     }
 
+    @Bean
     public GroupedOpenApi scheduledTasksPublicAPI()
     {
         return
