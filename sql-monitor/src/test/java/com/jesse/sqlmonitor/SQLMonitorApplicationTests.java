@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /** SQL 监控程序测试类。*/
@@ -48,9 +48,9 @@ class SQLMonitorApplicationTests
     public void getIndicatorIncrementByDurationTest()
     {
         this.monitorLogRepository
-            .getIndicatorIncrementByDuration(
+            .getIndicatorIncrement(
                 masterProperties.getHost(),
-                Duration.ofHours(1))
+                LocalDate.now().atStartOfDay())
             .doOnSuccess(System.out::println)
             .block();
     }

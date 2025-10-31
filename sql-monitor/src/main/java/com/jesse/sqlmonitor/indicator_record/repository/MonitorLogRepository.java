@@ -11,7 +11,6 @@ import org.jetbrains.annotations.NotNull;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
 /** 监控日志实体仓储类接口。*/
@@ -48,9 +47,9 @@ public interface MonitorLogRepository
         @NotNull QueryOrder queryOrder
     );
 
-    /** 查询指定 IP 指定时间段内的指标增长数。*/
+    /** 查询指定 IP 指定时间点到现在的指标增长数。*/
     Mono<IndicatorGrowth>
-    getIndicatorIncrementByDuration(String serverIP, Duration duration);
+    getIndicatorIncrement(String serverIP, LocalDateTime start);
 
     /** 查询并计算指定 IP 指定时间段内的 QPS 平均值。*/
     Mono<Double>

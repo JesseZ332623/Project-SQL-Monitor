@@ -141,7 +141,7 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
 
     @Override
     public Mono<IndicatorGrowth>
-    getIndicatorIncrementByDuration(String serverIP, @NotNull Duration duration)
+    getIndicatorIncrement(String serverIP, @NotNull LocalDateTime start)
     {
         final String indicatorGrowthSQL
             = """
@@ -152,17 +152,14 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
             	sql_monitor.monitor_log
             WHERE
             	`datetime` >= :startPoint
-                AND
-                `server_ip` = INET_ATON(:serverIP);
+            	AND `datetime` <= NOW()
+                AND `server_ip` = INET_ATON(:serverIP);
             """;
-
-        LocalDateTime startPoint
-            = LocalDateTime.now().minusNanos(duration.toNanos());
 
         return
         this.databaseClient
             .sql(indicatorGrowthSQL)
-            .bind("startPoint", startPoint)
+            .bind("startPoint", start)
             .bind("serverIP", serverIP)
             .fetch()
             .one()
