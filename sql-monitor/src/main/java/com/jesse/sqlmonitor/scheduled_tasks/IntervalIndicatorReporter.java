@@ -122,7 +122,7 @@ public class IntervalIndicatorReporter implements DisposableBean
             }
 
             return
-            this.makeIndicatorReport()
+            this.fetchIndicatorReport()
                 .flatMap(this::makeIndicatorReportEmail)
                 .flatMap(this.emailSender::sendEmail)
                 .doOnSuccess((ignore) ->
@@ -188,7 +188,7 @@ public class IntervalIndicatorReporter implements DisposableBean
             }
 
             return
-            this.makeIndicatorReport()
+            this.fetchIndicatorReport()
                 .flatMap(this::makeIndicatorReportEmail)
                 .flatMap(this.emailSender::sendEmail)
                 .onErrorResume(EmailException.class,
@@ -227,7 +227,7 @@ public class IntervalIndicatorReporter implements DisposableBean
 
     /** 收集各种指标，构建一个指标报告。*/
     private @NotNull Mono<IndicatorReport>
-    makeIndicatorReport()
+    fetchIndicatorReport()
     {
         final String serverIp = this.masterProperties.getHost();
 
