@@ -292,13 +292,11 @@ export default {
 		const refreshInterval = ref(3)
 		const selectedUnit    = ref('KB')  // 默认单位
 		const autoUnitEnabled = ref(false) // 自动单位切换
-		const pageVisible     = ref(true)  // 页面可见性状态
-
+		
 		// InnoDB Buffer Cache Hit Rate
 		const innodbBufferCacheHitRate = ref(null)
 		
-		let excepted 		  = null
-		let refreshOperatorID = null
+		let refreshTimer = null
 		
 		// 立刻初始化一次数据库地址 + 端口
 	 	fetchBaseAddress()
@@ -384,17 +382,6 @@ export default {
 			return `${rate.toFixed(2)} ${unit}/s`
 		}
 
-		const convertRateToUnit = (rate, fromUnit, toUnit) => {
-			const units = ['B', 'KB', 'MB', 'GB']
-			const fromIndex = units.indexOf(fromUnit)
-			const toIndex = units.indexOf(toUnit)
-			
-			if (fromIndex === -1 || toIndex === -1) return rate
-			
-			const difference = fromIndex - toIndex
-			return rate * Math.pow(1024, difference)
-		}
-
 		const updateChartData = (chartState, values, timestamp, maxDataPoints = 30) => {
 			const newLabels = [...chartState.labels, timestamp]
 			const newDatasets = chartState.datasets.map((dataset, index) => ({
@@ -461,26 +448,6 @@ export default {
 
 				lastUpdate.value = now.toLocaleString()
 
-				// 如果启用了自动单位，检查是否需要切换单位
-				if (autoUnitEnabled.value) {
-					const maxRate = Math.max(
-						netTrafficResponse.data.receivePerSec, 
-						netTrafficResponse.data.sentPerSec
-					)
-					
-					let suggestedUnit = 'KB'
-					if (maxRate >= 1024) {
-						suggestedUnit = 'MB'
-					} else if (maxRate < 1) {
-						suggestedUnit = 'B'
-					}
-
-					if (suggestedUnit !== currentNetworkUnit.value) {
-						console.log(`Auto-switching unit from ${currentNetworkUnit.value} to ${suggestedUnit}`)
-						// 下次获取数据时会自动使用新单位
-					}
-				}
-
 			} catch (err) {
 				error.value = err.message
 				console.error('Error fetching data:', err)
@@ -499,47 +466,32 @@ export default {
 		}
 
 		const startAutoRefresh = () => {
-			stopAutoRefresh()
+			stopAutoRefresh() // 先清除现有的定时器
 
-			if (!pageVisible.value) {
-				console.log('Page is not visible, auto-refresh will not start.')
-				return
-			}
-
-			let isFetching    = false
-			let lastFetchTime = 0
-			const minInterval = refreshInterval.value * 500
-
-			refreshOperatorID = setInterval(
-				() => {
-					const now = Date.now()
-
-					if (isFetching || (now - lastFetchTime) < minInterval) {
-						return
-					}
-
-					isFetching = true
-
-					fetchData().finally(() => {
-						isFetching = false
-						lastFetchTime = now
-					})
-				}, refreshInterval.value * 1000
-			)
-
+			console.log('Starting auto-refresh with interval:', refreshInterval.value, 'seconds')
+			
+			// 立即执行一次数据获取
 			fetchData()
+			
+			// 设置定时器，无论页面是否可见都会执行
+			refreshTimer = setInterval(() => {
+				console.log('Auto-refresh triggered')
+				fetchData()
+			}, refreshInterval.value * 1000)
 		}
 
 		const stopAutoRefresh = () => {
-			if (refreshOperatorID) {
-				clearTimeout(refreshOperatorID)
-				refreshOperatorID = null
+			if (refreshTimer) {
+				clearInterval(refreshTimer)
+				refreshTimer = null
+				console.log('Auto-refresh stopped')
 			}
 		}
 
+		// 监听刷新间隔变化
 		watch(refreshInterval, (newInterval) => {
 			if (autoRefresh.value) {
-				console.log('Refresh interval changed to', newInterval, 'seconds.')
+				console.log('Refresh interval changed to', newInterval, 'seconds, restarting auto-refresh.')
 				startAutoRefresh()
 			}
 		})
@@ -552,32 +504,19 @@ export default {
 		})
 
 		onMounted(() => {
+			// 初始数据获取
 			fetchData()
 
-			const handleVisibilityChange = () => {
-				pageVisible.value = !document.hidden
-				if (pageVisible.value && autoRefresh.value) {
-					console.log('Page is visible again, resuming auto-refresh.')
-					startAutoRefresh()
-				} else if (!pageVisible.value) {
-					console.log('Page is hidden, pausing auto-refresh.')
-					stopAutoRefresh()
-				}
-			}
-
-			document.addEventListener('visibilitychange', handleVisibilityChange)
-
+			// 如果启用了自动刷新，则启动定时器
 			if (autoRefresh.value) {
 				startAutoRefresh()
 			}
 		})
 
 		onUnmounted(() => {
-			document.removeEventListener('visibilitychange', handleVisibilityChange)
+			// 组件卸载时清除定时器
 			stopAutoRefresh()
 		})
-
-
 
 		return {
 			innodbBufferCacheHitRate,
