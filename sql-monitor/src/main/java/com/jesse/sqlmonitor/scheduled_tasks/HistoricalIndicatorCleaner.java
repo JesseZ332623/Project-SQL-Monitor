@@ -3,6 +3,7 @@ package com.jesse.sqlmonitor.scheduled_tasks;
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
 import com.jesse.sqlmonitor.scheduled_tasks.dto.CleanUpResult;
+import com.jesse.sqlmonitor.scheduled_tasks.exception.ScheduledTasksException;
 import com.jesse.sqlmonitor.utils.DatetimeFormatter;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
@@ -91,19 +92,20 @@ public class HistoricalIndicatorCleaner implements DisposableBean
     /**
      * 清理上一个星期之前的本监视数据库下的所有历史指标数据，
      * 确保数据库中只保留一个星期之内的数据库，维持数据的规模。
+     *（定时任务自动调用）
      */
     private @NotNull Mono<CleanUpResult>
     cleanIndicatorUtilLastWeek()
     {
-        // 检查本定时任务是否正在被执行，避免并行的调用。
-        if (!this.isRunning.compareAndSet(false, true))
-        {
-            log.warn("The task cleanIndicatorUtilLastWeek() already executing, skip...");
-            return Mono.empty();
-        }
-
         return
         Mono.defer(() -> {
+            // 检查本定时任务是否正在被执行，避免并行的调用。
+            if (!this.isRunning.compareAndSet(false, true))
+            {
+                log.warn("(Auto-task) The task cleanIndicatorUtilLastWeek() already executing, skip...");
+                return Mono.empty();
+            }
+
             String serverIp             = this.masterProperties.getHost();
             LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
 
@@ -112,14 +114,14 @@ public class HistoricalIndicatorCleaner implements DisposableBean
 
             return
             this.monitorLogRepository
-                .deleteOneBatchIndicator(serverIp, lastWeekPoint, 2000L)
+                .deleteOneBatchIndicator(serverIp, lastWeekPoint, 5000L)
                 .expand((deleted) -> {
                     if (deleted > 0)
                     {
                         return
                         this.monitorLogRepository
-                            .deleteOneBatchIndicator(serverIp, lastWeekPoint, 2000L)
-                            .delayElement(Duration.ofMillis(100L));
+                            .deleteOneBatchIndicator(serverIp, lastWeekPoint, 5000L)
+                            .delayElement(Duration.ofMillis(50L));
                     }
                     else
                     {
@@ -136,7 +138,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                     cleanUpResult.getBatchCount().incrementAndGet();
                 })
                 .then().thenReturn(cleanUpResult)
-                .timeout(Duration.ofMinutes(5L)) // 要是删了 5 分钟都没删完，也是有问题的
+                .timeout(Duration.ofMinutes(2L)) // 要是删了 2 分钟都没删完，也是有问题的
                 .doOnSuccess((ignore) -> {
                     log.info(
                         "Clean up {} rows historical indicator. (IP: {}, Deadline: {})",
@@ -153,7 +155,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                     TimeoutException.class,
                     (timeout) -> {
                         log.warn(
-                            "Clean up historical indicators time out after 5 minutes, " +
+                            "Clean up historical indicators timeout, " +
                             "deleted {} rows so far. (IP: {}, Deadline: {})",
                             cleanUpResult.getTotalDeleted().get(),
                             serverIp, lastWeekPoint
@@ -178,6 +180,91 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                 // 需要返回 Mono.empty() 确保流不中断
                 .onErrorResume((error) -> Mono.empty());
         });
+    }
+
+    /**
+     * 清理上一个星期之前的本监视数据库下的所有历史指标数据，
+     * 确保数据库中只保留一个星期之内的数据库，维持数据的规模。
+     *（定时任务自动调用）
+     */
+    public @NotNull Mono<CleanUpResult>
+    cleanIndicatorUtilLastWeekManually()
+    {
+        return
+        Mono.defer(() -> {
+            // 检查本定时任务是否正在被执行，避免并行的调用。
+            if (!this.isRunning.compareAndSet(false, true))
+            {
+                return
+                Mono.error(
+                    new ScheduledTasksException(
+                        "The task cleanIndicatorUtilLastWeek() already executing, skip..."
+                    )
+                );
+            }
+
+            String serverIp             = this.masterProperties.getHost();
+            LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
+
+            // 初始化一个批量删除结果
+            CleanUpResult cleanUpResult = CleanUpResult.init(serverIp, lastWeekPoint);
+
+            return
+            this.monitorLogRepository
+                .deleteOneBatchIndicator(serverIp, lastWeekPoint, 5000L)
+                .expand((deleted) -> {
+                    if (deleted > 0)
+                    {
+                        return
+                        this.monitorLogRepository
+                            .deleteOneBatchIndicator(serverIp, lastWeekPoint, 5000L)
+                            .delayElement(Duration.ofMillis(50L));
+                    }
+                    else
+                    {
+                        log.info(
+                            "(Http-request) There is no historical indicator data that needs to be cleaned up. (IP: {}, Deadline: {})",
+                            serverIp, lastWeekPoint
+                        );
+
+                        return Mono.empty();
+                    }
+                })
+                .doOnNext((oneBatchDeleted) -> {
+                    cleanUpResult.getTotalDeleted().addAndGet(oneBatchDeleted);
+                    cleanUpResult.getBatchCount().incrementAndGet();
+                })
+                .then().thenReturn(cleanUpResult)
+                .timeout(Duration.ofMinutes(2L)) // 要是删了 2 分钟都没删完，也是有问题的
+                .onErrorResume(
+                    TimeoutException.class,
+                    (timeout) ->
+                        Mono.error(
+                            new ScheduledTasksException(
+                                String.format(
+                                    "Clean up historical indicators timeout!" +
+                                    "Delete %d rows so far. (IP: %s, Deadline: %s)",
+                                    cleanUpResult.getTotalDeleted().get(),
+                                    serverIp, lastWeekPoint
+                                )
+                            )
+                        )
+                    )
+                    .onErrorResume((error) ->
+                        Mono.error(
+                            new ScheduledTasksException(
+                                String.format(
+                                    "Clean up historical indicators failed, (IP: %s, Caused by: %s)",
+                                    serverIp, error.getMessage()
+                                )
+                            )
+                        )
+                    )
+                    .doFinally((signal) -> {
+                        this.isRunning.set(false);
+                        log.info("(Http-request) Task cleanIndicatorUtilLastWeek() execute complete! signal type: {}.", signal);
+                    });
+            });
     }
 
     /** 向运维发送大批量删除历史指标数据的报告。*/
