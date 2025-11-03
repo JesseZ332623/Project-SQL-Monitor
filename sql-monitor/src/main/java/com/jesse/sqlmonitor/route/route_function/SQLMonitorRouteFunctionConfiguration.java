@@ -36,7 +36,7 @@ public class SQLMonitorRouteFunctionConfiguration
                 operation = @Operation(
                     operationId = "getDatabaseAddress",
                     summary     = "获取数据库服务器地址和端口号",
-                    tags        = {"数据库连接属性信息"},
+                    tags        = {"数据库服务器地址和端口号获取"},
                     responses   = {
                         @ApiResponse(
                             responseCode = "200",
