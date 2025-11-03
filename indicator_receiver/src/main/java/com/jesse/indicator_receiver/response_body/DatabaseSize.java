@@ -28,6 +28,7 @@ public class DatabaseSize extends ResponseBase<DatabaseSize>
     @Schema(description = "兆字节数")
     private double sizeMBytes;
 
+    @lombok.Builder.Default
     @Schema(description = "该数据库下所有表的大小（单位：MB）")
     private Map<String, Double> tableSizes = new LinkedHashMap<>();
 }
