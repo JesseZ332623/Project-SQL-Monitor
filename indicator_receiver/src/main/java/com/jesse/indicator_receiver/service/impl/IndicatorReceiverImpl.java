@@ -64,6 +64,14 @@ public class IndicatorReceiverImpl implements IndicatorReceive
         this.isRunning.set(flag);
     }
 
+    public void
+    rejectToDLQ(@NotNull AcknowledgableDelivery delivery, String reason)
+    {
+        log.warn("Reject message to dead letter queue, reseason: {}", reason);
+
+        delivery.nack(false, false);
+    }
+
     /**
      * 解析从 RabbitMQ 队列消费的指标数据，
      * 将其转换成 {@link MonitorLog} 存入列表后返回，
@@ -95,10 +103,22 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                 sentIndicatorInstance
                     = this.mapper.readValue(sentIndicator, SentIndicator.class);
 
+                // 对于消息载荷实例中指标数据为空的情况，不确认且不重新归队
+                if (Objects.isNull(sentIndicatorInstance.getIndicator()))
+                {
+                    log.warn(
+                        "Received message with null indicator, " +
+                        "message will be discarded: {}", sentIndicator
+                    );
+
+                    this.rejectToDLQ(delivery, "NULL_INDICATOR");
+                    return;
+                }
+
                 // 再将内部的实体信息转化成 JSON 字符串
                 indicatorJSON
                     = this.mapper
-                    .writeValueAsString(sentIndicatorInstance.getIndicator());
+                          .writeValueAsString(sentIndicatorInstance.getIndicator());
             }
             catch (JsonProcessingException exception)
             {
@@ -109,16 +129,18 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                  */
                 log.error(
                     "Could not prase JSON {} caused by: {}",
-                    sentIndicator, exception.getMessage()
+                    (sentIndicator.length() < 64)
+                        ? sentIndicator : sentIndicator.substring(0,  64),
+                    exception.getMessage()
                 );
 
-                delivery.nack(false, false); // 不确认且不重新入队
-
+                // 不确认且不重新入队
+                this.rejectToDLQ(delivery, "INVALID_MESSAGE");
                 return;
             }
 
-            // 只有在 indicator 被正常解析时，才记录日志。
-            if (Objects.nonNull(sentIndicatorInstance.getIndicator()))
+            // 正常的处理流程
+            try
             {
                 // 获取指标的类型信息
                 IndicatorType indicatorTypeName
@@ -146,6 +168,18 @@ public class IndicatorReceiverImpl implements IndicatorReceive
 
                 monitorLogs.add(monitorLog);        // 保存日志
                 successfulDeliveries.add(delivery); // 保存成功的 delivery
+            }
+            catch (Throwable exception)
+            {
+                // 对于业务逻辑处理失败的消息载荷，
+                // 可能是暂时性错误不确认并重新归队
+                log.error(
+                    "Business logic processing failed, message will be redelivered. " +
+                    "Caused by: {}",
+                    exception.getMessage(), exception
+                );
+
+                delivery.nack(false, true);
             }
         });
 
@@ -188,7 +222,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
 
         /*
          * 将这一批指标日志插入数据库，
-         * 如果期间出现错误，这一批次的所有消息都将不在确认并重新入队。
+         * 如果期间出现错误，这一批次的所有消息都将不确认并重新入队。
          *
          * delivery.nack(multiple, requeue); 有两个标志位，语义如下：
          *
