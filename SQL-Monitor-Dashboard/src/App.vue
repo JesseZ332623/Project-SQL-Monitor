@@ -471,7 +471,7 @@ export default {
 			console.log('Starting auto-refresh with interval:', refreshInterval.value, 'seconds')
 			
 			// 立即执行一次数据获取
-			fetchData()
+			// fetchData()
 			
 			// 设置定时器，无论页面是否可见都会执行
 			refreshTimer = setInterval(() => {
