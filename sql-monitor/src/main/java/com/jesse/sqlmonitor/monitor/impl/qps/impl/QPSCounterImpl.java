@@ -136,6 +136,13 @@ public class QPSCounterImpl implements QPSCounter
                 );
             }
 
+            if (retries > 0 )
+            {
+                // 可以考虑调用该方法优化自旋循环
+                //（虽然在低频调用下根本用不到就是了）
+                Thread.onSpinWait();
+            }
+
             ++retries;
         }
         while (retries < MAX_RETRIES);
