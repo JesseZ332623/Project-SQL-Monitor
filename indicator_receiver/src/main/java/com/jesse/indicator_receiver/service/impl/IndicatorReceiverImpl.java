@@ -145,10 +145,10 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                 // 获取指标的类型信息
                 IndicatorType indicatorTypeName
                     = IndicatorType.valueOf(
-                    extractClassName(
-                        sentIndicatorInstance.getIndicator()
-                            .getClass()
-                            .getTypeName()
+                        extractClassName(
+                            sentIndicatorInstance.getIndicator()
+                                .getClass()
+                                .getTypeName()
                     )
                 );
 
