@@ -130,7 +130,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                 log.error(
                     "Could not prase JSON {} caused by: {}",
                     (sentIndicator.length() < 64)
-                        ? sentIndicator : sentIndicator.substring(0,  64),
+                        ? sentIndicator : sentIndicator.substring(0,  64) + "...",
                     exception.getMessage()
                 );
 
