@@ -31,12 +31,15 @@ public class InnodbBufferCacheHitRate extends ResponseBase<InnodbBufferCacheHitR
     @Schema(description = "两次查询的时间间隔（单位：毫秒）")
     private long queryDiff;
 
+    @lombok.Builder.Default
     @Schema(description = "指标是否被外部重置？")
     private boolean resetDetected = false;
 
+    @lombok.Builder.Default
     @Schema(description = "是否使用了上一次的计算结果？")
     private boolean usedPreviousResult = false;
 
+    @lombok.Builder.Default
     @Schema(description = "在过程中是否出错？")
     private boolean error = false;
 }
