@@ -47,9 +47,11 @@ public class NetWorkTraffic extends ResponseBase<NetWorkTraffic>
     @Schema(description = "本次流量统计的计量单位")
     private SizeUnit sizeUnit;
 
+    @lombok.Builder.Default
     @Schema(description = "指标是否被外部重置？")
     private boolean resetDetected = false;
 
+    @lombok.Builder.Default
     @Schema(description = "在统计网络流量的过程中出错？")
     private boolean error = false;
 }
