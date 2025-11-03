@@ -1,5 +1,6 @@
 package com.jesse.sqlmonitor.route.route_function;
 
+import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.indicator_record.entity.IndicatorType;
 import com.jesse.sqlmonitor.indicator_record.service.MonitorLogService;
 import com.jesse.sqlmonitor.indicator_record.service.constants.QPSStatisticsType;
@@ -55,6 +56,7 @@ public class IndicatorStatisticsRouteFunctionConfiguration
                         name = "order",
                         description = "结果集的顺序（按时间排序），由多选框给出",
                         example     = "DESC",
+                        schema      = @Schema(implementation = QueryOrder.class),
                         required    = true
                     )
                 },
