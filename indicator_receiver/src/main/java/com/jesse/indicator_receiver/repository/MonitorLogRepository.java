@@ -90,9 +90,7 @@ public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
 
         return
         this.transactionalOperator
-            .transactional(
-                spec.fetch()
-                    .rowsUpdated())
+            .transactional(spec.fetch().rowsUpdated())
             .doOnSuccess((updatedRows) ->
                 log.info("Successfully insert {} rows of monitor log.", updatedRows))
             .doOnError((error) ->
