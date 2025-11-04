@@ -4,6 +4,7 @@ import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.monitor.MySQLIndicatorsRepository;
 import com.jesse.sqlmonitor.monitor.constants.GlobalStatusName;
+import com.jesse.sqlmonitor.monitor.rsocket.controller.SQLMonitorController;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
 import com.jesse.sqlmonitor.response_body.NetWorkTraffic;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +28,9 @@ class SQLMonitorApplicationTests
 
     @Autowired
     private MonitorLogRepository monitorLogRepository;
+
+    @Autowired
+    private SQLMonitorController sqlMonitorController;
 
     /** 测试：读取某个时间点之前的所有指定类型的监控日志记录。*/
     @Test
@@ -86,5 +90,15 @@ class SQLMonitorApplicationTests
                     );
                 }).block();
         }
+    }
+
+    @Test
+    public void getInnodbBufferCacheHitRateStreamTest()
+    {
+        this.sqlMonitorController
+            .getInnodbBufferCacheHitRateStream("5")
+            .doOnNext(System.out::println)
+            .take(10L)
+            .blockLast();
     }
 }
