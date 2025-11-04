@@ -18,7 +18,7 @@ import reactor.util.retry.Retry;
 
 import java.time.Duration;
 
-/** SQL 指标监视流服务实现。*/
+/** SQL 指标监视流控制器类。*/
 @Slf4j
 @Controller
 @RequiredArgsConstructor
