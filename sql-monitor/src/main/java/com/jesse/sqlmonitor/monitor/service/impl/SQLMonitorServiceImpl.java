@@ -64,6 +64,7 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
         }
     }
 
+    /** 获取数据库服务器的 IP 地址 + 端口号。*/
     private @NotNull String
     getDatabaseAddress()
     {
@@ -76,12 +77,9 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
     public Mono<ServerResponse>
     getDatabaseAddress(ServerRequest request)
     {
-        final String address
-            = properties.getHost() + ":" + properties.getPort();
-
         return
         ReactiveResponseBuilder
-            .OK(address, null)
+            .OK(this.getDatabaseAddress(), null)
             .onErrorResume(this::genericErrorHandle);
     }
 
@@ -95,7 +93,7 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
             .getQPS()
             .flatMap((qpsResult) -> {
                 // 对于 QPS 值为 0 的情况，就不往队列发送统计数据了
-                if (!qpsResult.getQps().equals(BigDecimal.ZERO))
+                if (qpsResult.isValid())
                 {
                     SentIndicator<QPSResult> qpsIndicator
                         = new SentIndicator<>(
@@ -132,7 +130,7 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
                 this.mySQLIndicatorsRepository
                     .getNetWorkTraffic(unit)
                     .flatMap((networkTraffic) -> {
-                        if (!networkTraffic.isZeroResult())
+                        if (networkTraffic.isValid())
                         {
                             SentIndicator<NetWorkTraffic> trafficIndicator
                                 = new SentIndicator<>(
