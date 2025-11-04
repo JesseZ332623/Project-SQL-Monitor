@@ -18,6 +18,14 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
+  rsocket:    # RSocket 配置项
+    server:
+      # 传输模式 websocket（用于和前端框架交互）
+      # tcp 用于和别的后端服务器交互
+      transport: websocket
+      # RSocket 根端点
+      mapping-path: /sql-indicator-stream
+
 app:
   r2dbc:
     master:                 # 被监测指标的数据库服务器
