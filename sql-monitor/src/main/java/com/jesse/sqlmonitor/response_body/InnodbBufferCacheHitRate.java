@@ -45,6 +45,11 @@ public class InnodbBufferCacheHitRate extends ResponseBase<InnodbBufferCacheHitR
     @Schema(description = "在过程中是否出错？")
     private boolean error = false;
 
+    public boolean isValid() {
+        return
+        cacheHitRate.equals(BigDecimal.ZERO) && (!resetDetected || !error);
+    }
+
     /** 构建零命中率结果。*/
     public static InnodbBufferCacheHitRate
     buildZeroRate()
