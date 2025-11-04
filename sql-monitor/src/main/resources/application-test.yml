@@ -3,20 +3,29 @@ server:
   port: 19198
   shutdown: graceful
 
-  ssl:
-    enabled: true
-    key-store: classpath:sslkey.p12
-    key-store-password: 1234567890
-    keyStoreType: PKCS12
-    keyAlias: sshkeys
+# 测试环境下禁用 SSL 加密
+#  ssl:
+#    enabled: true
+#    key-store: classpath:sslkey.p12
+#    key-store-password: 1234567890
+#    keyStoreType: PKCS12
+#    keyAlias: sshkeys
 
 spring:
   application:
-  name: sqlmonitor-db1
+  name: sqlmonitor-test
   main:
     web-application-type: reactive
   lifecycle:
     timeout-per-shutdown-phase: 30s
+
+  rsocket:    # RSocket 配置项
+    server:
+      # 传输模式 websocket（用于和前端框架交互）
+      # tcp 用于和别的后端服务器交互
+      transport: websocket
+      # RSocket 根端点
+      mapping-path: /sql-indicator-stream
 
 app:
   r2dbc:
