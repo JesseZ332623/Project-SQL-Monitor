@@ -48,6 +48,14 @@ public class QPSResult extends ResponseBase<QPSResult>
     @Builder.Default
     private boolean error = false;
 
+    /**
+     * 检查本结果是否是值得记录的有效结果。
+     * 只有 QPS 不是 0 且不是错误或者重置结果的 QPSResult 才是有效的。
+     */
+    public boolean isValid() {
+        return (!this.qps.equals(BigDecimal.ZERO) && (!this.resetDetected || !this.error));
+    }
+
     public static @NotNull
     QPSResult buildZeroQPS()
     {
