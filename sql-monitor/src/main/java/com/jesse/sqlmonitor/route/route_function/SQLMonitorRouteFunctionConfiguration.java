@@ -87,7 +87,7 @@ public class SQLMonitorRouteFunctionConfiguration
                         @Parameter(
                             name        = "sizeUnit",
                             description = "计量单位，可选值：B, KB, MB, GB",
-                            schema      = @Schema(implementation = SizeUnit.class ),
+                            schema      = @Schema(implementation = SizeUnit.class),
                             required    = true
                         )
                     },
