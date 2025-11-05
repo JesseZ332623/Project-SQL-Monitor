@@ -36,7 +36,10 @@ public class SQLMonitorController
                     .getInterval();
     }
 
-    /** 获取 QPS 指标流服务。*/
+    /**
+     * 获取 QPS 指标流服务。
+     * wss//address:port/sql-indicator-stream/qps/{interval}
+     */
     @Operation(
         tags        = { "指标流服务" },
         summary     = "获取 QPS 指标流服务",
@@ -66,6 +69,10 @@ public class SQLMonitorController
             });
     }
 
+    /**
+     * 获取数据库网络流量指标流服务。
+     * wss//address:port/sql-indicator-stream/network-traffic/{unit}/{interval}
+     */
     @Operation(
         tags        = { "指标流服务" },
         summary     = "获取数据库网络流量指标流",
@@ -99,6 +106,10 @@ public class SQLMonitorController
             });
     }
 
+    /**
+     * 获取数据库连接使用率指标流服务。
+     * wss://address:port/sql-indicator-stream/connection-usage/{interval}
+     */
     @Operation(
         tags        = { "指标流服务" },
         summary     = "获取数据库连接使用率指标流",
@@ -129,6 +140,10 @@ public class SQLMonitorController
             });
     }
 
+    /**
+     * 获取数据库 InnoDB 缓冲区命中率指标流服务。
+     * wss://address:port/sql-indicator-stream/cache-hit-rate/{interval}
+     */
     @Operation(
         tags        = { "指标流服务" },
         summary     = "获取数据库 InnoDB 缓冲区命中率指标流",
