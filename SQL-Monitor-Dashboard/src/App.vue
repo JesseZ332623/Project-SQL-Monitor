@@ -30,38 +30,45 @@
 				<span>Error fetching data: {{ error }}</span>
 			</div>
 
+			<div class="alert warning-alert" v-if="connectionStatus === 'connecting'">
+				<svg class="alert-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+					<path fill-rule="evenodd"
+						d="M8.22 1.754a.25.25 0 00-.44 0L1.698 13.132a.25.25 0 00.22.368h12.164a.25.25 0 00.22-.368L8.22 1.754zm-1.763-.707c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0114.082 15H1.918a1.75 1.75 0 01-1.543-2.575L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z">
+					</path>
+				</svg>
+				<span>Connecting to RSocket server...</span>
+			</div>
+
 			<div class="controls">
 				<div class="control-group">
-					<button class="btn btn-primary" @click="fetchData" :disabled="loading">
-						<svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-							<path fill-rule="evenodd"
-								d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z">
-							</path>
-						</svg>
-						Refresh
-					</button>
-					<button class="btn" :class="autoRefresh ? 'btn-danger' : 'btn-secondary'"
-						@click="toggleAutoRefresh">
+					<button class="btn btn-primary" @click="reconnect" :disabled="connectionStatus === 'connecting'">
 						<svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
 							<path fill-rule="evenodd"
 								d="M8 2.5a5.487 5.487 0 00-4.131 1.869l1.204 1.204A.25.25 0 014.896 6H1.25A.25.25 0 011 5.75V2.104a.25.25 0 01.427-.177l1.38 1.38A7.001 7.001 0 0114.95 7.16a.75.75 0 11-1.49.178A5.501 5.501 0 008 2.5zM1.705 8.005a.75.75 0 01.834.656 5.501 5.501 0 009.592 2.97l-1.204-1.204a.25.25 0 01.177-.427h3.646a.25.25 0 01.25.25v3.646a.25.25 0 01-.427.177l-1.38-1.38A7.001 7.001 0 011.05 8.84a.75.75 0 01.656-.834z">
 							</path>
 						</svg>
-						{{ autoRefresh ? 'Stop Auto-Refresh' : 'Start Auto-Refresh' }}
+						{{ connectionStatus === 'connected' ? 'Reconnect' : 'Connect' }}
+					</button>
+					<button class="btn" :class="connectionStatus === 'connected' ? 'btn-danger' : 'btn-secondary'"
+						@click="toggleConnection">
+						<svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+							<path fill-rule="evenodd"
+								d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z">
+							</path>
+						</svg>
+						{{ connectionStatus === 'connected' ? 'Disconnect' : 'Connect' }}
 					</button>
 				</div>
 				<div class="status-indicator">
-					<div class="status-dot" :class="{ active: !loading }"></div>
-					<span v-if="autoRefresh">Auto-refresh every </span>
-					<select v-if="autoRefresh" v-model.number="refreshInterval" class="btn">
-						<option v-for="n in [3, 5, 15, 30, 60]" :key="n" :value="n">{{ n }}</option>
-					</select>
-					<span v-if="autoRefresh"> seconds</span>
-					<span v-else>Manual refresh mode</span>
+					<div class="status-dot" :class="connectionStatus"></div>
+					<span class="connection-status">{{ connectionStatusText }}</span>
+					<span v-if="connectionStatus === 'connected'" class="subscription-count">
+						({{ Object.values(subscriptionIds).filter(Boolean).length }} active subscriptions)
+					</span>
 				</div>
 			</div>
 
-			<div class="dashboard">
+			<div class="dashboard" v-if="connectionStatus === 'connected'">
 				<!-- 图表区域改为两列布局 -->
 				<div class="charts-grid">
 					<div class="chart-section">
@@ -100,11 +107,8 @@
 								</div>
 							</div>
 							<div class="card-content">
-								<NetworkTrafficChart 
-									:chart-data="networkChartData" 
-									:loading="loading"
-									:current-unit="currentNetworkUnit"
-								/>
+								<NetworkTrafficChart :chart-data="networkChartData" :loading="loading"
+									:current-unit="currentNetworkUnit" />
 							</div>
 						</div>
 					</div>
@@ -159,24 +163,25 @@
 								<div class="metric-card">
 									<div class="metric-label">Connections Usage</div>
 									<div class="metric-value" :class="{ loading: loading && !connectionsData }">
-										{{ 
-											connectionsData 
+										{{
+											connectionsData
 												? connectionsData.currentConnections + ' / ' + connectionsData.maxConnections
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">
-										{{ 'Usage: ' +  (connectionsData ? connectionsData.connectUsagePercent.toFixed(2) + '%' : '--') }}
+										{{ 'Usage: ' + (connectionsData ? connectionsData.connectUsagePercent.toFixed(2)
+											+ '%' : '--') }}
 									</div>
 								</div>
 
 								<div class="metric-card">
 									<div class="metric-label">Network Receive</div>
 									<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
-										{{ 
-											netTrafficData 
+										{{
+											netTrafficData
 												? formatNetworkRate(netTrafficData.receivePerSec, netTrafficData.sizeUnit)
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">Real-time receive rate</div>
@@ -185,10 +190,10 @@
 								<div class="metric-card">
 									<div class="metric-label">Network Sent</div>
 									<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
-										{{ 
-											netTrafficData 
+										{{
+											netTrafficData
 												? formatNetworkRate(netTrafficData.sentPerSec, netTrafficData.sizeUnit)
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">Real-time send rate</div>
@@ -197,10 +202,10 @@
 								<div class="metric-card">
 									<div class="metric-label">Total Traffic</div>
 									<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
-										{{ 
-											netTrafficData 
+										{{
+											netTrafficData
 												? formatBytes(netTrafficData.totalBytesReceive + netTrafficData.totalBytesSent)
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">Cumulative network usage</div>
@@ -208,11 +213,12 @@
 
 								<div class="metric-card">
 									<div class="metric-label">InnoDB Buffer Cache Hit Rate</div>
-									<div class="metric-value" :class="{ loading: loading && !innodbBufferCacheHitRate }">
-										{{ 
+									<div class="metric-value"
+										:class="{ loading: loading && !innodbBufferCacheHitRate }">
+										{{
 											innodbBufferCacheHitRate
 												? (innodbBufferCacheHitRate.cacheHitRate * 100.00).toFixed(4) + ' %'
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">
@@ -238,21 +244,37 @@
 								</div>
 								<div class="status-item">
 									<span class="status-label">Error State:</span>
-									<span class="status-value"
-										:class="qpsData && qpsData.error ? 'error' : 'normal'">
+									<span class="status-value" :class="qpsData && qpsData.error ? 'error' : 'normal'">
 										{{ qpsData ? (qpsData.error ? 'Yes' : 'No') : '--' }}
 									</span>
 								</div>
 								<div class="status-item">
 									<span class="status-label">Auto Unit:</span>
-									<span class="status-value"
-										:class="autoUnitEnabled ? 'normal' : 'warning'">
+									<span class="status-value" :class="autoUnitEnabled ? 'normal' : 'warning'">
 										{{ autoUnitEnabled ? 'Enabled' : 'Disabled' }}
+									</span>
+								</div>
+								<div class="status-item">
+									<span class="status-label">Connection Status:</span>
+									<span class="status-value" :class="connectionStatus === 'connected' ? 'normal' : 'error'">
+										{{ connectionStatusText }}
 									</span>
 								</div>
 							</div>
 						</div>
 					</div>
+				</div>
+			</div>
+
+			<div class="no-connection" v-else-if="connectionStatus === 'disconnected'">
+				<div class="no-connection-content">
+					<svg class="no-connection-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+						<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+						<line x1="12" y1="9" x2="12" y2="13"></line>
+						<line x1="12" y1="17" x2="12.01" y2="17"></line>
+					</svg>
+					<h3>Not Connected</h3>
+					<p>Click the Connect button to start receiving real-time metrics.</p>
 				</div>
 			</div>
 
@@ -267,11 +289,7 @@
 import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue'
 import QPSChart from './components/QPSChart.vue'
 import NetworkTrafficChart from './components/NetworkTrafficChart.vue'
-import { 
-	fetchServerTime, fetchBaseAddress, 
-	fetchQPSData, fetchConnectionsUsage, 
-	fetchNetworkTraffic, fetchInnodbBufferCacheHitRate 
-} from './services/api'
+import { SQLMonitorClient } from './services/SQLMonitorClient'
 
 export default {
 	name: 'App',
@@ -281,28 +299,45 @@ export default {
 	},
 	setup() {
 		const serverRunningTime = ref(null)
-		const baseAddress     = ref(null)
-		const qpsData         = ref(null)
+		const baseAddress = ref('ws://localhost:19198/sql-indicator-stream') // 使用 RSocket 地址
+		const qpsData = ref(null)
 		const connectionsData = ref(null)
-		const netTrafficData  = ref(null)
-		const loading         = ref(false)
-		const error           = ref(null)
-		const autoRefresh     = ref(true)
-		const lastUpdate      = ref(null)
+		const netTrafficData = ref(null)
+		const loading = ref(false)
+		const error = ref(null)
+		const lastUpdate = ref(null)
 		const refreshInterval = ref(3)
-		const selectedUnit    = ref('KB')  // 默认单位
-		const autoUnitEnabled = ref(false) // 自动单位切换
-		
+		const selectedUnit = ref('KB')
+		const autoUnitEnabled = ref(false)
+
 		// InnoDB Buffer Cache Hit Rate
 		const innodbBufferCacheHitRate = ref(null)
-		
-		let refreshTimer = null
-		
-		// 立刻初始化一次数据库地址 + 端口
-	 	fetchBaseAddress()
-			.then((response) => baseAddress.value = response.data)
 
-		// 计算当前网络单位（支持自动切换）
+		// RSocket 客户端实例
+		const rsocketClient = ref(null)
+
+		// 连接状态
+		const connectionStatus = ref('disconnected') // 'disconnected', 'connecting', 'connected', 'error'
+
+		// 订阅 ID 存储
+		const subscriptionIds = reactive({
+			qps: null,
+			network: null,
+			connection: null,
+			cache: null
+		})
+
+		// 计算属性
+		const connectionStatusText = computed(() => {
+			const statusMap = {
+				disconnected: 'Disconnected',
+				connecting: 'Connecting...',
+				connected: 'Connected',
+				error: 'Connection Error'
+			}
+			return statusMap[connectionStatus.value] || 'Unknown'
+		})
+
 		const currentNetworkUnit = computed(() => {
 			if (!autoUnitEnabled.value) {
 				return selectedUnit.value
@@ -314,7 +349,7 @@ export default {
 
 			// 自动选择最合适的单位
 			const maxRate = Math.max(
-				netTrafficData.value.receivePerSec, 
+				netTrafficData.value.receivePerSec,
 				netTrafficData.value.sentPerSec
 			)
 
@@ -401,121 +436,238 @@ export default {
 
 		const onUnitChange = () => {
 			autoUnitEnabled.value = false
-			fetchData()
+			// 重新订阅网络流量指标
+			if (subscriptionIds.network) {
+				rsocketClient.value.unsubscribe(subscriptionIds.network)
+				subscribeNetworkTraffic()
+			}
 		}
 
-		const fetchData = async () => {
-			loading.value = true
-			error.value = null
-
+		// 初始化 RSocket 连接
+		const initializeRSocket = async () => {
 			try {
-				const unitToUse = autoUnitEnabled.value ? currentNetworkUnit.value : selectedUnit.value
-				
-				const [
-					qpsResponse, connResponse, 
-					netTrafficResponse, serverRunningTimeResponse, 
-					innodbBufferCacheHitRateResponse
-				] = await Promise.all([
-					fetchQPSData(),
-					fetchConnectionsUsage(),
-					fetchNetworkTraffic(unitToUse),
-					fetchServerTime(),
-					fetchInnodbBufferCacheHitRate()
-				])
+				connectionStatus.value = 'connecting'
+				loading.value = true
+				error.value = null
 
-				qpsData.value                  = qpsResponse.data
-				connectionsData.value          = connResponse.data
-				netTrafficData.value           = netTrafficResponse.data
-				serverRunningTime.value        = serverRunningTimeResponse.data
-				innodbBufferCacheHitRate.value = innodbBufferCacheHitRateResponse.data;
+				rsocketClient.value = new SQLMonitorClient(baseAddress.value)
+				const success = await rsocketClient.value.initialize()
 
-				// 更新图表数据
-				const now = new Date()
-				const timeLabel = now.toLocaleTimeString()
-
-				// 更新 QPS 图表
-				updateChartData(qpsChartData, [qpsResponse.data.qps], timeLabel)
-				
-				// 更新网络流量图表
-				updateChartData(
-					networkChartData, 
-					[
-						netTrafficResponse.data.receivePerSec, 
-						netTrafficResponse.data.sentPerSec
-					], 
-					timeLabel
-				)
-
-				lastUpdate.value = now.toLocaleString()
-
+				if (success) {
+					console.log('RSocket 连接成功')
+					connectionStatus.value = 'connected'
+					startSubscriptions()
+					loading.value = false
+					return true
+				} else {
+					throw new Error('RSocket 连接失败')
+				}
 			} catch (err) {
+				console.error('RSocket 初始化失败:', err)
 				error.value = err.message
-				console.error('Error fetching data:', err)
-			} finally {
+				connectionStatus.value = 'error'
 				loading.value = false
+				return false
 			}
 		}
 
-		const toggleAutoRefresh = () => {
-			autoRefresh.value = !autoRefresh.value
-			if (autoRefresh.value) {
-				startAutoRefresh()
+		// 开始所有订阅
+		const startSubscriptions = () => {
+			subscribeQPS()
+			subscribeNetworkTraffic()
+			subscribeConnectionUsage()
+			subscribeCacheHitRate()
+		}
+
+		// 停止所有订阅
+		const stopSubscriptions = () => {
+			Object.values(subscriptionIds).forEach(id => {
+				if (id) {
+					rsocketClient.value.unsubscribe(id)
+				}
+			})
+
+			// 重置订阅 ID
+			Object.keys(subscriptionIds).forEach(key => {
+				subscriptionIds[key] = null
+			})
+		}
+
+		// 订阅 QPS 指标
+		const subscribeQPS = () => {
+			subscriptionIds.qps = rsocketClient.value.subscribeQPS(
+				refreshInterval.value.toString(),
+				(data) => {
+					qpsData.value = data
+					updateQPSChart(data)
+					updateLastUpdate()
+				},
+				(err) => {
+					console.error('QPS 订阅错误:', err)
+					error.value = `QPS 数据错误: ${err.message}`
+				},
+				() => {
+					console.log('QPS 流结束')
+					subscriptionIds.qps = null
+				}
+			)
+		}
+
+		// 订阅网络流量指标
+		const subscribeNetworkTraffic = () => {
+			const unitToUse = autoUnitEnabled.value ? currentNetworkUnit.value : selectedUnit.value
+
+			subscriptionIds.network = rsocketClient.value.subscribeNetworkTraffic(
+				unitToUse,
+				refreshInterval.value.toString(),
+				(data) => {
+					netTrafficData.value = data
+					updateNetworkChart(data)
+					updateLastUpdate()
+				},
+				(err) => {
+					console.error('网络流量订阅错误:', err)
+					error.value = `网络流量数据错误: ${err.message}`
+				},
+				() => {
+					console.log('网络流量流结束')
+					subscriptionIds.network = null
+				}
+			)
+		}
+
+		// 订阅连接使用率指标
+		const subscribeConnectionUsage = () => {
+			subscriptionIds.connection = rsocketClient.value.subscribeConnectionUsage(
+				refreshInterval.value.toString(),
+				(data) => {
+					connectionsData.value = data
+					updateLastUpdate()
+				},
+				(err) => {
+					console.error('连接使用率订阅错误:', err)
+					error.value = `连接使用率数据错误: ${err.message}`
+				},
+				() => {
+					console.log('连接使用率流结束')
+					subscriptionIds.connection = null
+				}
+			)
+		}
+
+		// 订阅缓存命中率指标
+		const subscribeCacheHitRate = () => {
+			subscriptionIds.cache = rsocketClient.value.subscribeCacheHitRate(
+				refreshInterval.value.toString(),
+				(data) => {
+					innodbBufferCacheHitRate.value = data
+					updateLastUpdate()
+				},
+				(err) => {
+					console.error('缓存命中率订阅错误:', err)
+					error.value = `缓存命中率数据错误: ${err.message}`
+				},
+				() => {
+					console.log('缓存命中率流结束')
+					subscriptionIds.cache = null
+				}
+			)
+		}
+
+		// 更新 QPS 图表
+		const updateQPSChart = (data) => {
+			const now = new Date()
+			const timeLabel = now.toLocaleTimeString()
+			updateChartData(qpsChartData, [data.qps], timeLabel)
+		}
+
+		// 更新网络流量图表
+		const updateNetworkChart = (data) => {
+			const now = new Date()
+			const timeLabel = now.toLocaleTimeString()
+			updateChartData(
+				networkChartData,
+				[data.receivePerSec, data.sentPerSec],
+				timeLabel
+			)
+		}
+
+		// 更新最后更新时间
+		const updateLastUpdate = () => {
+			lastUpdate.value = new Date().toLocaleString()
+		}
+
+		// 连接/断开连接
+		const toggleConnection = () => {
+			if (connectionStatus.value === 'connected') {
+				disconnect()
 			} else {
-				stopAutoRefresh()
+				connect()
 			}
 		}
 
-		const startAutoRefresh = () => {
-			stopAutoRefresh() // 先清除现有的定时器
-
-			console.log('Starting auto-refresh with interval:', refreshInterval.value, 'seconds')
-			
-			// 立即执行一次数据获取
-			// fetchData()
-			
-			// 设置定时器，无论页面是否可见都会执行
-			refreshTimer = setInterval(() => {
-				console.log('Auto-refresh triggered')
-				fetchData()
-			}, refreshInterval.value * 1000)
+		// 连接
+		const connect = () => {
+			initializeRSocket()
 		}
 
-		const stopAutoRefresh = () => {
-			if (refreshTimer) {
-				clearInterval(refreshTimer)
-				refreshTimer = null
-				console.log('Auto-refresh stopped')
+		// 断开连接
+		const disconnect = () => {
+			if (rsocketClient.value) {
+				stopSubscriptions()
+				rsocketClient.value.disconnect()
 			}
+			connectionStatus.value = 'disconnected'
+		}
+
+		// 重新连接
+		const reconnect = () => {
+			disconnect()
+			setTimeout(() => {
+				connect()
+			}, 1000)
 		}
 
 		// 监听刷新间隔变化
 		watch(refreshInterval, (newInterval) => {
-			if (autoRefresh.value) {
-				console.log('Refresh interval changed to', newInterval, 'seconds, restarting auto-refresh.')
-				startAutoRefresh()
+			if (rsocketClient.value && connectionStatus.value === 'connected') {
+				// 间隔变化时重新订阅所有指标
+				console.log('刷新间隔变化，重新订阅所有指标:', newInterval)
+				stopSubscriptions()
+				startSubscriptions()
 			}
 		})
 
 		// 监听单位变化
 		watch(currentNetworkUnit, (newUnit) => {
-			if (autoUnitEnabled.value) {
-				console.log('Auto unit changed to:', newUnit)
+			if (autoUnitEnabled.value && rsocketClient.value && connectionStatus.value === 'connected') {
+				console.log('自动单位变化，重新订阅网络流量:', newUnit)
+				if (subscriptionIds.network) {
+					rsocketClient.value.unsubscribe(subscriptionIds.network)
+					subscribeNetworkTraffic()
+				}
+			}
+		})
+
+		// 监听自动单位切换
+		watch(autoUnitEnabled, (newValue) => {
+			if (newValue && rsocketClient.value && connectionStatus.value === 'connected') {
+				// 启用自动单位时重新订阅网络流量
+				if (subscriptionIds.network) {
+					rsocketClient.value.unsubscribe(subscriptionIds.network)
+					subscribeNetworkTraffic()
+				}
 			}
 		})
 
 		onMounted(() => {
-			// 初始数据获取
-			fetchData()
-
-			// 如果启用了自动刷新，则启动定时器
-			if (autoRefresh.value) {
-				startAutoRefresh()
-			}
+			// 初始连接
+			connect()
 		})
 
 		onUnmounted(() => {
-			// 组件卸载时清除定时器
-			stopAutoRefresh()
+			// 清理资源
+			disconnect()
 		})
 
 		return {
@@ -529,14 +681,16 @@ export default {
 			networkChartData,
 			loading,
 			error,
-			autoRefresh,
 			lastUpdate,
 			refreshInterval,
 			selectedUnit,
 			currentNetworkUnit,
 			autoUnitEnabled,
-			fetchData,
-			toggleAutoRefresh,
+			connectionStatus,
+			connectionStatusText,
+			subscriptionIds,
+			toggleConnection,
+			reconnect,
 			onUnitChange,
 			formatNumber,
 			formatBytes,
@@ -547,6 +701,59 @@ export default {
 </script>
 
 <style>
+/* 新增样式 */
+.warning-alert {
+	border-color: rgba(210, 153, 34, 0.4);
+	background-color: rgba(210, 153, 34, 0.1);
+	color: var(--accent-warning);
+}
+
+.connection-status {
+	font-weight: 500;
+}
+
+.subscription-count {
+	font-size: 12px;
+	color: var(--text-tertiary);
+}
+
+.status-dot.connected {
+	background-color: var(--accent-primary);
+	animation: pulse 2s infinite;
+}
+
+.status-dot.connecting {
+	background-color: var(--accent-warning);
+	animation: pulse 1s infinite;
+}
+
+.status-dot.disconnected,
+.status-dot.error {
+	background-color: var(--accent-danger);
+}
+
+.no-connection {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 400px;
+	padding: 40px;
+}
+
+.no-connection-content {
+	text-align: center;
+	color: var(--text-secondary);
+}
+
+.no-connection-icon {
+	color: var(--text-tertiary);
+	margin-bottom: 16px;
+}
+
+.no-connection-content h3 {
+	margin-bottom: 8px;
+	color: var(--text-primary);
+}
 
 /* 图表网格布局 */
 .charts-grid {
@@ -788,9 +995,11 @@ body {
 	0% {
 		opacity: 1;
 	}
+
 	50% {
 		opacity: 0.5;
 	}
+
 	100% {
 		opacity: 1;
 	}
@@ -883,6 +1092,7 @@ body {
 	0% {
 		background-position: 200% 0;
 	}
+
 	100% {
 		background-position: -200% 0;
 	}
