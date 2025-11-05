@@ -222,7 +222,8 @@ public class IndicatorReceiverImpl implements IndicatorReceive
 
         /*
          * 将这一批指标日志插入数据库，
-         * 如果期间出现错误，这一批次的所有消息都将不确认并重新入队。
+         * 如果期间出现错误，这一批次的所有消息都将不确认并重新入队，
+         * 同时由于数据库插入操作整体是事务性的，这次操作也会回滚。
          *
          * delivery.nack(multiple, requeue); 有两个标志位，语义如下：
          *
