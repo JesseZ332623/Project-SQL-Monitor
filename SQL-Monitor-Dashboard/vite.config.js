@@ -12,10 +12,10 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0',
       port: 3000,
-      open: true, // 自动打开浏览器
+      open: false, // 自动打开浏览器
       proxy: {
         '/api': {
-          target: env.VITE_API_BASE_URL || 'http://localhost:11451',
+          target: env.VITE_API_BASE_URL || 'https://localhost:19198',
           changeOrigin: true
         }
       }
