@@ -1,6 +1,5 @@
 package com.jesse.indicator_receiver;
 
-import com.jesse.indicator_receiver.utils.SystemIPv4Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,12 +12,18 @@ import java.net.UnknownHostException;
 @SpringBootTest
 class IndicatorReceiverApplicationTests
 {
+    /** 获取本机 IP 地址。*/
     @Test
-    public void getLocalIPByIPConfig() throws UnknownHostException {
-//        System.out.println(
-//            SystemIPv4Getter.getLocalIPByIPConfig()
-//        );
-
-        System.out.println(InetAddress.getLocalHost().getHostAddress());
+    public void getLocalIPByIPConfig()
+    {
+        try
+        {
+            System.out.println(
+                InetAddress.getLocalHost().getHostAddress()
+            );
+        }
+        catch (UnknownHostException e) {
+            log.error("{}", e.getMessage());
+        }
     }
 }
