@@ -9,7 +9,10 @@ import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** 时间配置属性值 -> {@link Duration} 转换器。*/
+/**
+ * 时间配置属性值 -> {@link Duration} 转换器。
+ * Spring 自带时间配置属性值的转换，所以这个工具类保留但是不使用。
+ */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 final public class DurationPropertiesConverter
 {
