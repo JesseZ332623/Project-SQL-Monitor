@@ -9,6 +9,7 @@ import com.jesse.indicator_receiver.properties.IndicatorReceiverProperties;
 import com.jesse.indicator_receiver.repository.MonitorLogRepository;
 import com.jesse.indicator_receiver.response_body.SentIndicator;
 import com.jesse.indicator_receiver.service.IndicatorReceive;
+import com.jesse.indicator_receiver.utils.IPv4Converter;
 import com.rabbitmq.client.Delivery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -161,7 +162,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                     = MonitorLog.builder()
                     .logId(IdUtil.getSnowflakeNextId())
                     .datetime(sentIndicatorInstance.getLocalDateTime())
-                    .serverIP(ipToLong(ipaddress))
+                    .serverIP(IPv4Converter.ipToLong(ipaddress))
                     .indicator(indicatorJSON)
                     .indicatorType(indicatorTypeName)
                     .build();
@@ -201,7 +202,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
 
         // 若这一批载荷中没有任何有效的消息，就不麻烦数据库了。
         if (monitorLogs.isEmpty()) {
-            return Mono.empty();
+            return Mono.just(0L);
         }
 
         // 若在插入数据库前服务被关闭，
@@ -217,7 +218,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                 ((AcknowledgableDelivery) delivery).nack(false, true)
             );
 
-            return Mono.empty();
+            return Mono.just(0L);
         }
 
         /*
@@ -242,7 +243,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                     ((AcknowledgableDelivery) delivery).ack(false));
 
                 log.info(
-                    "Successfully processed and acknowledged {} indicators",
+                    "Successfully processed and acknowledged {} indicators.",
                     successfulDeliveries.size()
                 );
             })
