@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.jesse.indicator_receiver.utils.IPv4Converter.ipToLong;
 import static com.jesse.indicator_receiver.utils.GenericUtils.extractClassName;
 
 /** 指标数据接收器实现。*/
