@@ -17,8 +17,9 @@ final public class GenericUtils
     }
 
     /**
-     * 从 com.jesse.sqlmonitor.response_body.InnodbBufferCacheHitRate
-     * 提取 InnodbBufferCacheHitRate 的字串作为类名。
+     * 从完全限定类名中提取类名，后续用于表示一个指标类型。
+     * 示例如下：
+     * extractClassName("com.jesse.sqlmonitor.response_body.InnodbBufferCacheHitRate") = "InnodbBufferCacheHitRate"
      */
     public static @NotNull String
     extractClassName(String className)
