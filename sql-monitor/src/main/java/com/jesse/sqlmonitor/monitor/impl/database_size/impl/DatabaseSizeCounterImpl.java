@@ -1,7 +1,7 @@
-package com.jesse.sqlmonitor.monitor.impl.base_size.impl;
+package com.jesse.sqlmonitor.monitor.impl.database_size.impl;
 
 import com.jesse.sqlmonitor.constants.QueryOrder;
-import com.jesse.sqlmonitor.monitor.impl.base_size.DatabaseSizeCounter;
+import com.jesse.sqlmonitor.monitor.impl.database_size.DatabaseSizeCounter;
 import com.jesse.sqlmonitor.response_body.DatabaseSize;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
