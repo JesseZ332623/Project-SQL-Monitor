@@ -3,12 +3,13 @@ server:
   port: 19198
   shutdown: graceful
 
-  ssl:
-    enabled: true
-    key-store: classpath:sslkey.p12
-    key-store-password: 1234567890
-    keyStoreType: PKCS12
-    keyAlias: sshkeys
+# 测试环境不需要 SSL
+#  ssl:
+#    enabled: true
+#    key-store: classpath:sslkey.p12
+#    key-store-password: 1234567890
+#    keyStoreType: PKCS12
+#    keyAlias: sshkeys
 
 spring:
   application:
@@ -62,6 +63,29 @@ app:
             enable: true
           auth: true
           connectiontimeout: 5000
+
+  redis:
+    host: localhost
+    port: 6379
+    password: 1234567890
+
+  redis-lock:
+    enable: true
+    schedulers:
+      # 最大线程数（默认 100 线程）
+      max-threads: 100
+      # 任务队列容量（默认 1000）
+      task-queue-capacity: 1024
+      # 调度线程名（默认 redis-lock）
+      thread-name: redis-lock
+      # 空闲线程存活时间（默认 60 秒）
+      ttl-seconds: 60
+      # 是否开启守护线程？（对于分布式锁操作来说是必须的）
+      daemon: true
+    distributed-lock:
+      key-prefix: sql-monitor-lock
+    fair-semaphore:
+      key-prefix: sql-monitor-semaphore
 
 springdoc:
   api-docs:
