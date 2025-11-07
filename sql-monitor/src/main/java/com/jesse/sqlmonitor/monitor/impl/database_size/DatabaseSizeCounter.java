@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.monitor.impl.base_size;
+package com.jesse.sqlmonitor.monitor.impl.database_size;
 
 import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.response_body.DatabaseSize;
