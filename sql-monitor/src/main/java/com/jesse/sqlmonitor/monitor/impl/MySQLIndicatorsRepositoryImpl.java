@@ -1,6 +1,7 @@
 package com.jesse.sqlmonitor.monitor.impl;
 
-import com.jesse.sqlmonitor.monitor.impl.base_size.DatabaseSizeCounter;
+import com.jesse.sqlmonitor.monitor.impl.connection_usage.ConnectionUsageCounter;
+import com.jesse.sqlmonitor.monitor.impl.database_size.DatabaseSizeCounter;
 import com.jesse.sqlmonitor.monitor.impl.innodb_cache_hit.InnoDBCacheHitCounter;
 import com.jesse.sqlmonitor.monitor.impl.network_traffic.NetWorkTrafficCounter;
 import com.jesse.sqlmonitor.monitor.impl.qps.QPSCounter;
@@ -13,13 +14,12 @@ import com.jesse.sqlmonitor.response_body.QPSResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
-import static com.jesse.sqlmonitor.utils.SQLMonitorUtils.queryRow;
+import static com.jesse.sqlmonitor.monitor.constants.IndicatorKeyNames.*;
 
 /** MySQL 指标数据查询仓储类实现。*/
 @Slf4j
@@ -27,9 +27,6 @@ import static com.jesse.sqlmonitor.utils.SQLMonitorUtils.queryRow;
 @RequiredArgsConstructor
 public class MySQLIndicatorsRepositoryImpl implements MySQLIndicatorsRepository
 {
-    /** 数据库客户端实例的引用。*/
-    private final DatabaseClient databaseClient;
-
     /** 全局状态查询器。*/
     private final GlobalStatusQuery globalStatusQuery;
 
@@ -45,20 +42,20 @@ public class MySQLIndicatorsRepositoryImpl implements MySQLIndicatorsRepository
     /** InnoDB 缓存命中率计算器。*/
     private final InnoDBCacheHitCounter innoDBCacheHitCounter;
 
-    /** 获取每秒查询频率（QPS）。*/
-    @Override
-    public Mono<QPSResult> getQPS() {
-        return qpsCounter.calculateQPS();
-    }
+    /** 数据库连接使用率计算器。*/
+    private final ConnectionUsageCounter connectionUsageCounter;
 
-    /** 获取服务器接收 / 发送数据量相关信息。*/
+    /** 指标数据缓存器。*/
+    private final IndicatorCacher indicatorCacher;
+
+    /** 查询所有数据库大小（支持按数据库大小排序）。*/
     @Override
-    public Mono<NetWorkTraffic>
-    getNetWorkTraffic(SizeUnit unit)
+    public Mono<Map<String, DatabaseSize>>
+    getDatabaseSize(String schemaName, QueryOrder queryOrder)
     {
         return
-        this.netWorkTrafficCounter
-            .calculateNetWorkTraffic(unit);
+        this.databaseSizeCounter
+            .getDatabaseSizeInfo(schemaName, queryOrder);
     }
 
     /** 查询本数据库指定全局状态。*/
@@ -71,50 +68,43 @@ public class MySQLIndicatorsRepositoryImpl implements MySQLIndicatorsRepository
             .getGlobalStatus(statusName);
     }
 
+    /** 获取每秒查询频率（QPS）。*/
+    @Override
+    public Mono<QPSResult> getQPS()
+    {
+        return
+        this.indicatorCacher
+            .getIndicatorCacheWithLock(
+                QPSResultKey,
+                this.qpsCounter.calculateQPS(), QPSResult.class
+            );
+    }
+
+    /** 获取服务器接收 / 发送数据量相关信息。*/
+    @Override
+    public Mono<NetWorkTraffic>
+    getNetWorkTraffic(SizeUnit unit)
+    {
+        return
+        this.indicatorCacher
+            .getIndicatorCacheWithLock(
+                NetWorkTrafficKey,
+                this.netWorkTrafficCounter.calculateNetWorkTraffic(unit),
+                NetWorkTraffic.class
+            );
+    }
+
     /** 查询连接使用率。*/
     @Override
     public Mono<ConnectionUsage> getConnectionUsage()
     {
-        final String querySQL = """
-            SELECT
-                VARIABLE_VALUE as max_connections,
-                (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'THREADS_CONNECTED') as current_connections,
-                (SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = 'THREADS_CONNECTED') / VARIABLE_VALUE * 100 as connection_usage_percent
-            FROM
-                performance_schema.global_variables
-            WHERE
-                VARIABLE_NAME = 'MAX_CONNECTIONS'
-            """;
-
         return
-        this.databaseClient
-            .sql(querySQL)
-            .map((row, metadata) -> {
-                final int maxConnections
-                    = Integer.parseInt(queryRow(row, "max_connections", String.class));
-                final int currentConnections
-                    = Integer.parseInt(queryRow(row, "current_connections", String.class));
-                final double usagePercent
-                    = queryRow(row, "connection_usage_percent", Double.class);
-
-                return
-                ConnectionUsage.builder()
-                    .maxConnections(maxConnections)
-                    .currentConnections(currentConnections)
-                    .connectUsagePercent(usagePercent)
-                    .build();
-            })
-            .one();
-    }
-
-    /** 查询所有数据库大小（支持按数据库大小排序）。*/
-    @Override
-    public Mono<Map<String, DatabaseSize>>
-    getDatabaseSize(String schemaName, QueryOrder queryOrder)
-    {
-        return
-        this.databaseSizeCounter
-            .getDatabaseSizeInfo(schemaName, queryOrder);
+        this.indicatorCacher
+            .getIndicatorCacheWithLock(
+                ConnectionUsageKey,
+                this.connectionUsageCounter.getConnectionUsage(),
+                ConnectionUsage.class
+            );
     }
 
     /** 查询 InnoDB 缓存命中率。*/
@@ -123,7 +113,11 @@ public class MySQLIndicatorsRepositoryImpl implements MySQLIndicatorsRepository
     getInnodbBufferCacheHitRate()
     {
         return
-        this.innoDBCacheHitCounter
-            .calculateBufferCacheHitRate();
+        this.indicatorCacher
+            .getIndicatorCacheWithLock(
+                InnodbBufferCacheHitRateKey,
+                this.innoDBCacheHitCounter.calculateBufferCacheHitRate(),
+                InnodbBufferCacheHitRate.class
+            );
     }
 }
