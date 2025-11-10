@@ -44,6 +44,7 @@ class SQLMonitorApplicationTests
             .block();
     }
 
+    /** 测试：查询指定 IP 指定时间点到现在的指标增长数。*/
     @Test
     public void getIndicatorIncrementByDurationTest()
     {
@@ -55,6 +56,7 @@ class SQLMonitorApplicationTests
             .block();
     }
 
+    /** 测试：查询并计算指定 IP 指定时间段内的 数据库网络流量 平均值（单位：Kb/s）。*/
     @Test
     public void getAverageNetworkTrafficTest()
     {
@@ -65,6 +67,7 @@ class SQLMonitorApplicationTests
             .block();
     }
 
+    /** 测试：查询数据库的全局状态。*/
     @Test
     public void getGlobalStatusTest()
     {
