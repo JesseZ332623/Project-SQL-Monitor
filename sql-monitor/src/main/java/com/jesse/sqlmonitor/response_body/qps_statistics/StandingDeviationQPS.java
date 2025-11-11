@@ -21,6 +21,9 @@ import lombok.*;
 )
 public class StandingDeviationQPS extends ResponseBase<StandingDeviationQPS>
 {
+    private final static
+    StandingDeviationQPS EMPTY_STDDEV_QPS = new StandingDeviationQPS();
+
     @Schema(description = "QPS 标准差", example = "66.63315972948297")
     private double stddev;
 
@@ -29,4 +32,12 @@ public class StandingDeviationQPS extends ResponseBase<StandingDeviationQPS>
 
     @Schema(description = "数据点采样数", example = "2722")
     private long dataPoints;
+
+    /**
+     * 本指标响应数据是否有效？（所有子类必须实现）
+     */
+    @Override
+    public boolean isValid() {
+        return !this.equals(EMPTY_STDDEV_QPS);
+    }
 }
