@@ -6,21 +6,16 @@ import com.jesse.sqlmonitor.monitor.MySQLIndicatorsRepository;
 import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.monitor.constants.SizeUnit;
 import com.jesse.sqlmonitor.response_body.*;
-import com.jesse.sqlmonitor.response_body.QPSResult;
 import com.jesse.sqlmonitor.monitor.service.SQLMonitorService;
-import com.jesse.sqlmonitor.indicator_record.service.IndicatorSender;
 import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 
-import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.LocalDateTime;
 
 import static com.jesse.sqlmonitor.utils.SQLMonitorUtils.*;
 import static io.github.jessez332623.reactive_response_builder.utils.URLParamPrase.praseRequestParam;
@@ -31,11 +26,8 @@ import static io.github.jessez332623.reactive_response_builder.utils.URLParamPra
 @RequiredArgsConstructor
 public class SQLMonitorServiceImpl implements SQLMonitorService
 {
-    /** 数据库连接属性。*/
+    /** 主数据库连接属性。*/
     private final R2dbcMasterProperties properties;
-
-    /** 指标数据发送器接口。*/
-    private final IndicatorSender indicatorSender;
 
     /** MySQL 指标数据查询仓储类接口。*/
     private final
@@ -64,24 +56,14 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
         }
     }
 
-    private @NotNull String
-    getDatabaseAddress()
-    {
-        return
-        properties.getHost() + ":" + properties.getPort();
-    }
-
     /** 获取数据库的地址和端口号。*/
     @Override
     public Mono<ServerResponse>
     getDatabaseAddress(ServerRequest request)
     {
-        final String address
-            = properties.getHost() + ":" + properties.getPort();
-
         return
         ReactiveResponseBuilder
-            .OK(address, null)
+            .OK(properties.getHost() + ":" + properties.getPort(), null)
             .onErrorResume(this::genericErrorHandle);
     }
 
@@ -93,26 +75,9 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
         return
         this.mySQLIndicatorsRepository
             .getQPS()
-            .flatMap((qpsResult) -> {
-                // 对于 QPS 值为 0 的情况，就不往队列发送统计数据了
-                if (!qpsResult.getQps().equals(BigDecimal.ZERO))
-                {
-                    SentIndicator<QPSResult> qpsIndicator
-                        = new SentIndicator<>(
-                        LocalDateTime.now(), getDatabaseAddress(), qpsResult
-                    );
-
-                    return
-                    this.indicatorSender
-                        .sendIndicator(qpsIndicator)
-                        .then(ReactiveResponseBuilder.OK(qpsResult, null));
-                }
-                else
-                {
-                    return
-                    ReactiveResponseBuilder.OK(qpsResult, null);
-                }
-            }).onErrorResume(this::genericErrorHandle);
+            .flatMap((qpsResult) ->
+                ReactiveResponseBuilder.OK(qpsResult, null))
+            .onErrorResume(this::genericErrorHandle);
     }
 
     /** 获取服务器接收 / 发送数据量相关信息的服务的接口。*/
@@ -123,35 +88,15 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
         return
         praseRequestParam(request, "sizeUnit")
             .map((param) -> {
-                if (isEmptyParam(param)) {
-                    return SizeUnit.KB;
-                }
+                if (isEmptyParam(param)) { return SizeUnit.KB; }
                 return SizeUnit.valueOf(param);
             })
             .flatMap((unit) ->
                 this.mySQLIndicatorsRepository
                     .getNetWorkTraffic(unit)
-                    .flatMap((networkTraffic) -> {
-                        if (!networkTraffic.isZeroResult())
-                        {
-                            SentIndicator<NetWorkTraffic> trafficIndicator
-                                = new SentIndicator<>(
-                                    LocalDateTime.now(),
-                                    getDatabaseAddress(),
-                                    networkTraffic
-                            );
-
-                            return
-                            this.indicatorSender
-                                .sendIndicator(trafficIndicator)
-                                .then(ReactiveResponseBuilder.OK(networkTraffic, null));
-                        }
-                        else
-                        {
-                            return
-                            ReactiveResponseBuilder.OK(networkTraffic, null);
-                        }
-                    })
+                    .flatMap((networkTraffic) ->
+                        ReactiveResponseBuilder.OK(networkTraffic, null)
+                    )
             )
             .onErrorResume(this::genericErrorHandle);
     }
@@ -178,20 +123,9 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
         return
         this.mySQLIndicatorsRepository
             .getConnectionUsage()
-            .flatMap((connectionUsage) -> {
-                SentIndicator<ConnectionUsage>
-                    connectionUsageIndicator = new SentIndicator<>(
-                        LocalDateTime.now(),
-                        getDatabaseAddress(),
-                        connectionUsage
-                    );
-
-
-                return
-                this.indicatorSender
-                    .sendIndicator(connectionUsageIndicator)
-                    .then(ReactiveResponseBuilder.OK(connectionUsage, null));
-            })
+            .flatMap((connectionUsage) ->
+               ReactiveResponseBuilder.OK(connectionUsage, null)
+            )
             .onErrorResume(this::genericErrorHandle);
     }
 
@@ -230,26 +164,9 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
         return
         this.mySQLIndicatorsRepository
             .getInnodbBufferCacheHitRate()
-            .flatMap((innodbBufferCacheHitRate) -> {
-                if (!innodbBufferCacheHitRate.getCacheHitRate().equals(BigDecimal.ZERO))
-                {
-                    SentIndicator<InnodbBufferCacheHitRate> cacheHitRateIndicator
-                        = new SentIndicator<>(
-                        LocalDateTime.now(), getDatabaseAddress(),
-                        innodbBufferCacheHitRate
-                    );
-
-                    return
-                    this.indicatorSender
-                        .sendIndicator(cacheHitRateIndicator)
-                        .then(ReactiveResponseBuilder.OK(innodbBufferCacheHitRate, null));
-                }
-                else
-                {
-                    return
-                    ReactiveResponseBuilder.OK(innodbBufferCacheHitRate, null);
-                }
-            }).onErrorResume(this::genericErrorHandle);
+            .flatMap((innodbBufferCacheHitRate) ->
+                    ReactiveResponseBuilder.OK(innodbBufferCacheHitRate, null))
+            .onErrorResume(this::genericErrorHandle);
     }
 
     /** 查询服务器运行时间服务的接口。*/
@@ -264,18 +181,16 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
                 final Duration runDuration
                     = Duration.ofSeconds((Long) status.get("Uptime"));
 
-                long days    = runDuration.toDays();
-                long hours   = runDuration.toHoursPart();
-                long minutes = runDuration.toMinutesPart();
-                long seconds = runDuration.toSecondsPart();
+                long[] runtimeArray = new long[4];
 
-                return
-                days  + " day "   +
-                hours + " hour "  +
-                minutes + " min " +
-                seconds + " sec";
-            }).flatMap((timeString) ->
-                ReactiveResponseBuilder.OK(timeString, null)
+                runtimeArray[0] = runDuration.toDays();
+                runtimeArray[1] = runDuration.toHoursPart();
+                runtimeArray[2] = runDuration.toMinutesPart();
+                runtimeArray[3] = runDuration.toSecondsPart();
+
+                return runtimeArray;
+            }).flatMap((runtimeArray) ->
+                ReactiveResponseBuilder.OK(runtimeArray, null)
             );
     }
 }

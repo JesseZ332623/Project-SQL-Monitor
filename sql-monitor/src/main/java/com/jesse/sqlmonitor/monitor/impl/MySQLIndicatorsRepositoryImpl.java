@@ -1,5 +1,6 @@
 package com.jesse.sqlmonitor.monitor.impl;
 
+import com.jesse.sqlmonitor.monitor.cacher.IndicatorCacher;
 import com.jesse.sqlmonitor.monitor.impl.connection_usage.ConnectionUsageCounter;
 import com.jesse.sqlmonitor.monitor.impl.database_size.DatabaseSizeCounter;
 import com.jesse.sqlmonitor.monitor.impl.innodb_cache_hit.InnoDBCacheHitCounter;

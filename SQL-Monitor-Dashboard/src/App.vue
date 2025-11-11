@@ -426,8 +426,11 @@ export default {
 				qpsData.value                  = qpsResponse.data
 				connectionsData.value          = connResponse.data
 				netTrafficData.value           = netTrafficResponse.data
-				serverRunningTime.value        = serverRunningTimeResponse.data
-				innodbBufferCacheHitRate.value = innodbBufferCacheHitRateResponse.data;
+				innodbBufferCacheHitRate.value = innodbBufferCacheHitRateResponse.data
+
+				const runtimeArray = serverRunningTimeResponse.data;
+				serverRunningTime.value 
+					= `${runtimeArray[0]} days ${runtimeArray[1]} hours ${runtimeArray[2]} minutes ${runtimeArray[3]} seconds`
 
 				// 更新图表数据
 				const now = new Date()

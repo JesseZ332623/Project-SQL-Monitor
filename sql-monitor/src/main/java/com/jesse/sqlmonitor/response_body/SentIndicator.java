@@ -5,7 +5,8 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/** 携带数据库地址 + 时间戳 + 指标数据的响应
+/**
+ * 携带数据库地址 + 时间戳 + 指标数据的响应
  *（通过 {@link reactor.rabbitmq.Sender}）发送出去。
  */
 @Getter
@@ -19,4 +20,10 @@ public class SentIndicator<T extends ResponseBase<T>>
     private LocalDateTime localDateTime;
     private String        address;
     private T             indicator;
+
+    /** 本指标响应数据是否有效？（所有子类必须实现）*/
+    @Override
+    public boolean isValid() {
+        return indicator.isValid();
+    }
 }

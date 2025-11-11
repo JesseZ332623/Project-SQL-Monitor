@@ -2,12 +2,15 @@ package com.jesse.sqlmonitor.utils;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
-import static com.jesse.sqlmonitor.utils.SystemIPv4Getter.getLocalIPByIPConfig;
+import static com.jesse.sqlmonitor.utils.LocalIPGetter.getLocalIP;
 
-/** 本机 IP 地址获取器（仅限 Windows）。*/
+
+/** IPv4 <=> UINT32 转换器。*/
+@Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 final public class IPv4Converter
 {
@@ -17,7 +20,7 @@ final public class IPv4Converter
         // 如果配置中填了 localhost，
         // 我们便直接调用 ipconfig 拿到本机 IP（Linux 不适用）
         if (ip.equals("localhost")) {
-            ip = getLocalIPByIPConfig();
+            ip = getLocalIP();
         }
 
         String[] parts = ip.split("\\.");

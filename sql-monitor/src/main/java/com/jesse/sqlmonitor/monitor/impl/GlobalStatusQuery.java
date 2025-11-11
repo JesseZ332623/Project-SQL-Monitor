@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -55,6 +56,7 @@ public class GlobalStatusQuery
 
                 return queryResult;
             })
-            .doOnError((e) -> log.error("{}", e.getMessage(), e));
+            .doOnError((e) -> log.error("{}", e.getMessage(), e))
+            .subscribeOn(Schedulers.boundedElastic());
     }
 }

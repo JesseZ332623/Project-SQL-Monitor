@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import static com.jesse.sqlmonitor.utils.SQLMonitorUtils.queryRow;
 
@@ -34,23 +35,24 @@ public class ConnectionUsageCounterImpl
             """;
 
         return
-            this.databaseClient
-                .sql(querySQL)
-                .map((row, metadata) -> {
-                    final int maxConnections
-                        = Integer.parseInt(queryRow(row, "max_connections", String.class));
-                    final int currentConnections
-                        = Integer.parseInt(queryRow(row, "current_connections", String.class));
-                    final double usagePercent
-                        = queryRow(row, "connection_usage_percent", Double.class);
+        this.databaseClient
+            .sql(querySQL)
+            .map((row, metadata) -> {
+                final int maxConnections
+                    = Integer.parseInt(queryRow(row, "max_connections", String.class));
+                final int currentConnections
+                    = Integer.parseInt(queryRow(row, "current_connections", String.class));
+                final double usagePercent
+                    = queryRow(row, "connection_usage_percent", Double.class);
 
-                    return
-                        ConnectionUsage.builder()
-                            .maxConnections(maxConnections)
-                            .currentConnections(currentConnections)
-                            .connectUsagePercent(usagePercent)
-                            .build();
-                })
-                .one();
+                return
+                ConnectionUsage.builder()
+                    .maxConnections(maxConnections)
+                    .currentConnections(currentConnections)
+                    .connectUsagePercent(usagePercent)
+                    .build();
+            })
+            .one()
+            .subscribeOn(Schedulers.boundedElastic());
     }
 }

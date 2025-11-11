@@ -67,7 +67,14 @@ app:
   redis:
     host: localhost
     port: 6379
+    username: Jesse
     password: 1234567890
+
+  redis-cache:
+    # 所有指标缓存数据的前缀命名空间。
+    key-prefix: "sql-monitor-cache-test:"
+    # 缓存的有效期（为前端的最短查询间隔 - 500 毫秒的冗余）
+    ttl: 2500ms
 
   redis-lock:
     enable: true
@@ -115,3 +122,9 @@ logging:
           r2dbc: DEBUG
         web:
           reactive: WARN
+
+ # Lettuce 客户端调试信息
+#    io:
+#      lettuce:
+#        core: DEBUG
+#        core.RedisHandshake: TRACE

@@ -27,6 +27,9 @@ import java.math.BigDecimal;
 )
 public class InnodbBufferCacheHitRate extends ResponseBase<InnodbBufferCacheHitRate>
 {
+    private final static
+    InnodbBufferCacheHitRate EMPTY_CACHE_HIT_RATE = buildZeroRate();
+
     @Schema(description = "InnoDB 缓存命中率具体值")
     private BigDecimal cacheHitRate;
 
@@ -44,6 +47,11 @@ public class InnodbBufferCacheHitRate extends ResponseBase<InnodbBufferCacheHitR
     @lombok.Builder.Default
     @Schema(description = "在过程中是否出错？")
     private boolean error = false;
+
+    @Override
+    public boolean isValid() {
+        return !this.equals(EMPTY_CACHE_HIT_RATE);
+    }
 
     /** 构建零命中率结果。*/
     public static InnodbBufferCacheHitRate

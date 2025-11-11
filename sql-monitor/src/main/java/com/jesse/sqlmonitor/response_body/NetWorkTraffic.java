@@ -32,6 +32,9 @@ import java.math.BigDecimal;
 )
 public class NetWorkTraffic extends ResponseBase<NetWorkTraffic>
 {
+    private final static
+    NetWorkTraffic EMPTY_TRAFFIC = buildZeroRate();
+
     @Schema(description = "[服务器发送给客户端] 的全部字节数")
     private long totalBytesSent;
 
@@ -50,32 +53,32 @@ public class NetWorkTraffic extends ResponseBase<NetWorkTraffic>
     @Schema(description = "本次流量统计的计量单位")
     private SizeUnit sizeUnit;
 
+    @lombok.Builder.Default
     @Schema(description = "指标是否被外部重置？")
     private boolean resetDetected = false;
 
+    @lombok.Builder.Default
     @Schema(description = "在统计网络流量的过程中出错？")
     private boolean error = false;
 
-    /** 是否是一个零结果？ */
-    public boolean isZeroResult()
-    {
-        return
-        this.receivePerSec.equals(BigDecimal.ZERO) &&
-        this.sentPerSec.equals(BigDecimal.ZERO);
+    /** 本指标响应数据是否有效？（所有子类必须实现）*/
+    @Override
+    public boolean isValid() {
+        return !this.equals(EMPTY_TRAFFIC);
     }
 
     /** 构建零速率结果。*/
     public static NetWorkTraffic
-    buildZeroRate(@NotNull TrafficStateSnapshot currentState, SizeUnit unit)
+    buildZeroRate()
     {
         return
         NetWorkTraffic.builder()
-            .totalBytesSent(currentState.getTotalBytesSent())
-            .totalBytesReceive(currentState.getTotalBytesReceive())
+            .totalBytesSent(0L)
+            .totalBytesReceive(0L)
             .sentPerSec(BigDecimal.ZERO)
             .receivePerSec(BigDecimal.ZERO)
             .queryDiff(0L)
-            .sizeUnit(unit)
+            .sizeUnit(null)
             .resetDetected(false)
             .build();
     }

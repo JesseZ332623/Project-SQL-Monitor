@@ -1,6 +1,5 @@
 package com.jesse.sqlmonitor.properties;
 
-import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.ToString;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -15,10 +14,6 @@ public class RedisProperties
 {
     private String host;
     private int    port;
+    private String username;
     private String password;
-
-    @PostConstruct
-    private void display() {
-        System.out.println(this);
-    }
 }

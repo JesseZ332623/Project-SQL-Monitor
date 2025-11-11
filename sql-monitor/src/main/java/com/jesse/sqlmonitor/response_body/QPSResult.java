@@ -28,6 +28,9 @@ import java.math.BigDecimal;
 )
 public class QPSResult extends ResponseBase<QPSResult>
 {
+    private final static
+    QPSResult EMPTY_QPS = buildZeroQPS();
+
     @Schema(description = "QPS 具体值")
     private BigDecimal qps;
 
@@ -35,10 +38,10 @@ public class QPSResult extends ResponseBase<QPSResult>
     private long currentQueries;
 
     @Schema(description = "与上一次获取的总查询数的差值")
-    private Long queryDiff;
+    private long queryDiff;
 
     @Schema(description = "与上一次获取的总查询数的时间间隔（单位：毫秒）")
-    private Long timeDiffMs;
+    private long timeDiffMs;
 
     @Schema(description = "总查询数是否被外部重置？")
     @Builder.Default
@@ -47,6 +50,11 @@ public class QPSResult extends ResponseBase<QPSResult>
     @Schema(description = "在统计 QPS 的过程中出错？")
     @Builder.Default
     private boolean error = false;
+
+    @Override
+    public boolean isValid() {
+        return !this.equals(EMPTY_QPS);
+    }
 
     public static @NotNull
     QPSResult buildZeroQPS()

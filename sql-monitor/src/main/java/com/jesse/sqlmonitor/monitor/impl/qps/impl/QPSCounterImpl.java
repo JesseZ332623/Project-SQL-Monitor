@@ -136,7 +136,7 @@ public class QPSCounterImpl implements QPSCounter
                 );
             }
 
-            if (retries > 0 )
+            if (retries > 0)
             {
                 // 可以考虑调用该方法优化自旋循环
                 //（虽然在低频调用下根本用不到就是了）
@@ -161,7 +161,7 @@ public class QPSCounterImpl implements QPSCounter
         this.fetchQueries()
             .map(this::calculateAndUpdate)
             .onErrorResume(this::errorHandler)
-            .subscribeOn(Schedulers.boundedElastic());
+            .subscribeOn(Schedulers.parallel());
     }
 
     @Value(staticConstructor = "of")
