@@ -17,9 +17,17 @@ import lombok.*;
 )
 public class ExtremeQPS extends ResponseBase<ExtremeQPS>
 {
+    private final static
+    ExtremeQPS EMPTY_EXTREME_QPS = new ExtremeQPS();
+
     @Schema(description = "最大 QPS", examples = "971.32377459")
     double max;
 
     @Schema(description = "最小 QPS", examples = "0.0000000")
     double min;
+
+    @Override
+    public boolean isValid() {
+        return !this.equals(EMPTY_EXTREME_QPS);
+    }
 }
