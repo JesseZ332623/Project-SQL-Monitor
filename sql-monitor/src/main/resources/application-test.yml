@@ -69,6 +69,12 @@ app:
     port: 6379
     password: 1234567890
 
+  redis-cache:
+    # 所有指标缓存数据的前缀命名空间。
+    key-prefix: "sql-monitor-cache-test:"
+    # 缓存的有效期（为前端的最短查询间隔 - 500 毫秒的冗余）
+    ttl: 2500ms
+
   redis-lock:
     enable: true
     schedulers:
