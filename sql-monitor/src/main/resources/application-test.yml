@@ -67,6 +67,7 @@ app:
   redis:
     host: localhost
     port: 6379
+    username: Jesse
     password: 1234567890
 
   redis-cache:
@@ -121,3 +122,9 @@ logging:
           r2dbc: DEBUG
         web:
           reactive: WARN
+
+ # Lettuce 客户端调试信息
+#    io:
+#      lettuce:
+#        core: DEBUG
+#        core.RedisHandshake: TRACE
