@@ -184,7 +184,7 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
         this.fetchBufferPoolIndicator()
             .map(this::calculateAndUpdate)
             .onErrorResume(this::errorHandler)
-            .subscribeOn(Schedulers.boundedElastic());
+            .subscribeOn(Schedulers.parallel());
     }
 
     @Value(staticConstructor = "of")
