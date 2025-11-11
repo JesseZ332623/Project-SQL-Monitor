@@ -1,5 +1,6 @@
 package com.jesse.sqlmonitor.route.route_function;
 
+import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.monitor.constants.SizeUnit;
 import com.jesse.sqlmonitor.response_body.*;
 import com.jesse.sqlmonitor.response_body.QPSResult;
@@ -169,8 +170,21 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = DATABASE_SIZE_QUERY,
                 operation = @Operation(
                     operationId = "getAllDatabaseSize",
-                    summary     = "获取本数据库所有库的大小",
-                    tags        = {"数据库所有库大小获取"},
+                    summary     = "获取数据库指定库和库下所有表的大小",
+                    tags        = {"数据库指定库和库下所有表的大小获取"},
+                    parameters  = {
+                        @Parameter(
+                            name        = "schemaName",
+                            description = "数据库名",
+                            required    = true
+                        ),
+                        @Parameter(
+                            name        = "order",
+                            description = "库下所有表的大小排序",
+                            schema      = @Schema(implementation = QueryOrder.class),
+                            required    = true
+                        )
+                    },
                     responses   = {
                         @ApiResponse(
                             responseCode = "200",
@@ -215,10 +229,9 @@ public class SQLMonitorRouteFunctionConfiguration
                     responses = {
                         @ApiResponse(
                             responseCode = "200",
-                            description  = "成功",
+                            description  = "一个由各部分时间组成的数组，单位从天到秒",
                             content      = @Content(
-                                mediaType = APPLICATION_JSON_VALUE,
-                                schema    = @Schema(implementation = String.class)
+                                examples = @ExampleObject(value = "[34, 8, 36, 38]")
                             )
                         ),
                         @ApiResponse(
