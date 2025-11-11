@@ -29,7 +29,7 @@ public class RedisConfig
 {
     private final RedisProperties redisProperties;
 
-    /** Redis 响应式连接工厂配置类。 */
+    /** Redis 响应式连接工厂配置类。*/
     @Bean
     @Primary
     public ReactiveRedisConnectionFactory
@@ -38,6 +38,7 @@ public class RedisConfig
         // 1. 创建独立 Redis 配置
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
         config.setHostName(this.redisProperties.getHost());       // Redis 地址
+        config.setUsername(this.redisProperties.getUsername());   // Redis 用户名
         config.setPort(this.redisProperties.getPort());           // Redis 端口
 
         // 密码
@@ -53,6 +54,7 @@ public class RedisConfig
             .clientOptions(
                 ClientOptions.builder()
                     .autoReconnect(true)
+                    .suspendReconnectOnProtocolFailure(false)
                     .socketOptions(
                         SocketOptions.builder()
                             .connectTimeout(Duration.ofSeconds(5L)) // 连接超时
