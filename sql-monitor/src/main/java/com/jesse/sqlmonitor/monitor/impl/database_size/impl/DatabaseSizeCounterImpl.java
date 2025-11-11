@@ -9,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
@@ -122,6 +123,7 @@ public class DatabaseSizeCounterImpl implements DatabaseSizeCounter
     getDatabaseSizeInfo(String schemaName, QueryOrder queryOrder)
     {
         return
-        this.getSchemaSizeByName(schemaName, queryOrder);
+        this.getSchemaSizeByName(schemaName, queryOrder)
+            .subscribeOn(Schedulers.boundedElastic());
     }
 }
