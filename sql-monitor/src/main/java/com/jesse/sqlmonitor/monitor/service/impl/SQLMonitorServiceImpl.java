@@ -181,18 +181,16 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
                 final Duration runDuration
                     = Duration.ofSeconds((Long) status.get("Uptime"));
 
-                long days    = runDuration.toDays();
-                long hours   = runDuration.toHoursPart();
-                long minutes = runDuration.toMinutesPart();
-                long seconds = runDuration.toSecondsPart();
+                long[] runtimeArray = new long[4];
 
-                return
-                days  + " day "   +
-                hours + " hour "  +
-                minutes + " min " +
-                seconds + " sec";
-            }).flatMap((timeString) ->
-                ReactiveResponseBuilder.OK(timeString, null)
+                runtimeArray[0] = runDuration.toDays();
+                runtimeArray[1] = runDuration.toHoursPart();
+                runtimeArray[2] = runDuration.toMinutesPart();
+                runtimeArray[3] = runDuration.toSecondsPart();
+
+                return runtimeArray;
+            }).flatMap((runtimeArray) ->
+                ReactiveResponseBuilder.OK(runtimeArray, null)
             );
     }
 }
