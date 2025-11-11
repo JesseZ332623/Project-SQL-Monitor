@@ -161,7 +161,7 @@ public class QPSCounterImpl implements QPSCounter
         this.fetchQueries()
             .map(this::calculateAndUpdate)
             .onErrorResume(this::errorHandler)
-            .subscribeOn(Schedulers.boundedElastic());
+            .subscribeOn(Schedulers.parallel());
     }
 
     @Value(staticConstructor = "of")
