@@ -83,7 +83,7 @@ public class NetWorkTrafficCounterImpl implements NetWorkTrafficCounter
                 this.snapshotInitCount.getAndIncrement();
 
                 return
-                NetWorkTraffic.buildZeroRate(currentState, unit);
+                NetWorkTraffic.buildZeroRate();
             }
 
             do
@@ -122,6 +122,6 @@ public class NetWorkTrafficCounterImpl implements NetWorkTrafficCounter
             .flatMap((currentState) ->
                 this.calculateTrafficRate(currentState, unit))
             .onErrorResume(this::errorHandler)
-            .subscribeOn(Schedulers.boundedElastic());
+            .subscribeOn(Schedulers.parallel());
     }
 }
