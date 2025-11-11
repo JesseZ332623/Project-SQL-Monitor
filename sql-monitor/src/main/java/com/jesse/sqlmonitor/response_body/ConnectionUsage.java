@@ -21,6 +21,10 @@ import lombok.*;
 )
 public class ConnectionUsage extends ResponseBase<ConnectionUsage>
 {
+    /** 一个空的连接使用率对象，一般用于哈希值的比较。*/
+    private static final
+    ConnectionUsage EMPTY_USAGE = new ConnectionUsage();
+
     @Schema(
         description  = "数据库允许的最大连接数",
         example      = "8000"
@@ -38,4 +42,12 @@ public class ConnectionUsage extends ResponseBase<ConnectionUsage>
         example      = "0.3750"
     )
     private double connectUsagePercent;
+
+    /**
+     * 本指标响应数据是否有效？（所有子类必须实现）
+     */
+    @Override
+    public boolean isValid() {
+        return !this.equals(EMPTY_USAGE);
+    }
 }
