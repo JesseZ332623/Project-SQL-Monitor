@@ -51,7 +51,7 @@ public class IndicatorSenderImpl implements IndicatorSender
             this.sender
                 .send(Mono.just(message))
                 .then())
-        .timeout(Duration.ofSeconds(1L))
+        .timeout(Duration.ofSeconds(5L))
         .onErrorResume((exception) ->
             Mono.error(
                 new RecordIndicatorFailed(
