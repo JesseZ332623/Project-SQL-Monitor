@@ -62,9 +62,12 @@ app:
       # 是否开启守护线程？（对于分布式锁操作来说是必须的）
       daemon: true
     distributed-lock:
-      key-prefix: sql-monitor-lock
+      # 分布式锁前缀稍复杂
+      #（示例：sql-monitor-cache-test:172.16.100.201:sql-monitor-lock）
+      key-prefix: "${app.redis-cache.key-prefix}${app.r2dbc.master.host}:sql-monitor-lock"
+      #（示例：sql-monitor-cache-test:172.16.100.201:sql-monitor-semaphore）
     fair-semaphore:
-      key-prefix: sql-monitor-semaphore
+      key-prefix: "${app.redis-cache.key-prefix}${app.r2dbc.master.host}:sql-monitor-semaphore"
 
   rabbitmq:
     host: localhost
