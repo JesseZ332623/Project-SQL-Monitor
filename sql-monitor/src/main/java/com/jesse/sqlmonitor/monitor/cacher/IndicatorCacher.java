@@ -16,7 +16,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -55,18 +54,22 @@ public class IndicatorCacher
     private final
     ReactiveRedisTemplate<String, Object> redisTemplate;
 
-    /** 拼接指标缓存数据键。*/
-    @Contract(pure = true)
-    private @NotNull String
-    getCacheKey(@NotNull IndicatorKeyNames keyNames) {
-        return INDICATOR_KEY_PREFIX + keyNames.getKeyName();
-    }
-
     /** 获取主数据的 IP + PORT 字符串。*/
     private @NotNull String
     getMasterBaseAddress() {
         return
         this.properties.getHost() + ":" + this.properties.getPort();
+    }
+
+    /** 拼接指标缓存数据键。*/
+    @Contract(pure = true)
+    private @NotNull String
+    getCacheKey(@NotNull IndicatorKeyNames keyNames)
+    {
+        return
+        INDICATOR_KEY_PREFIX      +
+        this.properties.getHost() + ":" +
+        keyNames.getKeyName();
     }
 
     /** 更新指标数据至 Redis 缓存。*/
@@ -136,29 +139,25 @@ public class IndicatorCacher
         final String cacheKey = this.getCacheKey(keyNames);
 
         return
-        Mono.defer(() -> {
-            // log.info("Cache indicator data to key: {}", cacheKey);
+        CacheDataConverter
+            .makeCacheDataFromIndicator(indicator, type, this.objectMapper)
+            .flatMap((indicatorMap) ->
+                Mono.when(
+                    this.saveIndicatorMapToCache(cacheKey, indicatorMap),
+                    this.sendIndicatorToTaskQueue(indicator, type)
+                )
+            )
+            .thenReturn(indicator)
+            // 若 Redis 因为某些原因出错了，
+            // 这一次的缓存操作算做失败，直接返回指标数据给下游即可
+           .onErrorResume((exception) -> {
+               log.error(
+                   "Cache indicator data to redis failed, key: {}, Caused by: {}",
+                   this.getCacheKey(keyNames), exception.getMessage()
+               );
 
-            return
-            CacheDataConverter
-                .makeCacheDataFromIndicator(indicator, type, this.objectMapper)
-                .flatMap((indicatorMap) ->
-                    Mono.when(
-                        this.saveIndicatorMapToCache(cacheKey, indicatorMap),
-                        this.sendIndicatorToTaskQueue(indicator, type)
-                    ))
-                .thenReturn(indicator);
-        })
-        // 若 Redis 因为某些原因出错了，
-        // 这一次的缓存操作算做失败，直接返回指标数据给下游即可
-       .onErrorResume((exception) -> {
-           log.error(
-               "Cache indicator data to redis failed, key: {}, Caused by: {}",
-               this.getCacheKey(keyNames), exception.getMessage()
-           );
-
-           return Mono.just(indicator);
-       });
+               return Mono.just(indicator);
+           });
     }
 
     /**
@@ -171,7 +170,7 @@ public class IndicatorCacher
      * @return 指标数据本身，供下游构造响应体使用
      */
     public <T extends ResponseBase<T>>
-    @NotNull Mono<ResponseBase<T>>
+    @NotNull Mono<T>
     getIndicatorCache(
         @NotNull IndicatorKeyNames keyNames,
         Class<T> type
@@ -180,40 +179,30 @@ public class IndicatorCacher
         final String cacheKey = this.getCacheKey(keyNames);
 
         return
-        Mono.defer(() -> {
-            // log.info("Try to get indicator data (key: {}) from cache.", cacheKey);
+        this.redisTemplate
+            .opsForHash()
+            .entries(cacheKey)
+            .collectMap((entry) ->
+                (String) entry.getKey(), Map.Entry::getValue)
+            .timeout(Duration.ofSeconds(5L))
+            .flatMap((indicatorMap) -> {
+                // 若从缓存中没拿到数据，直接返回 Mono.empty() 即可。
+                if (indicatorMap.isEmpty()) {
+                    return Mono.empty();
+                }
 
-            return
-            this.redisTemplate
-                .opsForHash()
-                .entries(cacheKey)
-                .collectMap((entry) -> (String) entry.getKey(), Map.Entry::getValue)
-                .timeout(Duration.ofSeconds(5L))
-                .flatMap((indicatorMap) -> {
-                    // 若从缓存中没拿到数据，直接返回 Mono.empty() 即可。
-                    if (indicatorMap.isEmpty())
-                    {
-//                        log.warn(
-//                            "Indicator data (key: {}) not in the cache, retrieve data from the database.",
-//                            cacheKey
-//                        );
-
-                        return Mono.empty();
-                    }
-
-                    return
-                    CacheDataConverter.restoreIndicatorMapToInstance(
-                        indicatorMap, type, this.objectMapper
-                    );
-                })
-                .doOnError(exception ->
-                    log.error(
-                        "Get indicator (Key: {}) from cache failed! Caused by: {}",
-                        cacheKey, exception.getMessage()
-                    )
+                return
+                CacheDataConverter.restoreIndicatorMapToInstance(
+                    indicatorMap, type, this.objectMapper
+                );
+            })
+            .doOnError(exception ->
+                log.error(
+                    "Get indicator (Key: {}) from cache failed! Caused by: {}",
+                    cacheKey, exception.getMessage()
                 )
-                .onErrorResume(exception -> Mono.empty());
-        });
+            )
+            .onErrorResume(exception -> Mono.empty());
     }
 
     /**
@@ -277,9 +266,6 @@ public class IndicatorCacher
                 );
 
                 return indicatorSupplier;
-            })
-            // I/O 密集型操作，得放到无界弹性线程池去执行，
-            // 可别让宝贵的事件循环线程干这个活。
-            .subscribeOn(Schedulers.boundedElastic());
+            });
     }
 }
