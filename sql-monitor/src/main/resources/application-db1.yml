@@ -77,6 +77,7 @@ app:
 
   redis-lock:
     enable: true
+    operation-timeout: 3s
     schedulers:
       # 最大线程数（默认 100 线程）
       max-threads: 100
@@ -89,7 +90,6 @@ app:
       # 是否开启守护线程？（对于分布式锁操作来说是必须的）
       daemon: true
     distributed-lock:
-      # 分布式锁前缀稍复杂
       #（示例：sql-monitor-cache-test:172.16.100.200:sql-monitor-lock）
       key-prefix: "${app.redis-cache.key-prefix}${app.r2dbc.master.host}:sql-monitor-lock"
       #（示例：sql-monitor-cache-test:172.16.100.200:sql-monitor-semaphore）
@@ -124,3 +124,12 @@ logging:
           r2dbc: DEBUG
         web:
           reactive: WARN
+
+    io:
+      github:
+        jessez332623:
+          redis_lock: DEBUG
+
+    com:
+      jesse:
+        sqlmonitor: DEBUG
