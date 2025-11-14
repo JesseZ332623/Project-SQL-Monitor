@@ -33,7 +33,7 @@ final public class CacheDataConverter
     @SuppressWarnings("unchecked")
     public static <T extends ResponseBase<T>>
     @NotNull Mono<T>
-    safeCast(@NotNull ResponseBase<?> indicator, @NotNull Class<T> type)
+    safeIndicatorTypeCast(@NotNull ResponseBase<?> indicator, @NotNull Class<T> type)
     {
         if (type.isInstance(indicator)) {
             return Mono.just((T) indicator);
@@ -68,7 +68,7 @@ final public class CacheDataConverter
     {
 
         return
-        CacheDataConverter.safeCast(indicatorBase, type)
+        CacheDataConverter.safeIndicatorTypeCast(indicatorBase, type)
             .map((indicator) ->
                 objectMapper.convertValue(indicator, LinkedHashMap.class));
     }
@@ -108,7 +108,10 @@ final public class CacheDataConverter
             indicatorMap.put(property, type.getSimpleName());
         }
 
+        // 注意要用 fromCallable() 操作而不是简单的 just()
         return
-        Mono.just(objectMapper.convertValue(indicatorMap, type));
+        Mono.fromCallable(
+            () -> objectMapper.convertValue(indicatorMap, type)
+        );
     }
 }

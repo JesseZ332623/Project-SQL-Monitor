@@ -97,7 +97,7 @@ public class IndicatorCacher
     )
     {
         return
-        CacheDataConverter.safeCast(indicatorBase, type)
+        CacheDataConverter.safeIndicatorTypeCast(indicatorBase, type)
             .flatMap((indicator) -> {
                 // 检查这个指标是否有效（头几次指标数据不纳入统计）
                 if (indicator.isValid())
@@ -148,7 +148,7 @@ public class IndicatorCacher
                 )
             )
             .thenReturn(indicator)
-            // 若 Redis 因为某些原因出错了，
+            // 若因为某些原因出错了，
             // 这一次的缓存操作算做失败，直接返回指标数据给下游即可
            .onErrorResume((exception) -> {
                log.error(
@@ -196,13 +196,14 @@ public class IndicatorCacher
                     indicatorMap, type, this.objectMapper
                 );
             })
-            .doOnError(exception ->
+            .onErrorResume(exception -> {
                 log.error(
                     "Get indicator (Key: {}) from cache failed! Caused by: {}",
                     cacheKey, exception.getMessage()
-                )
-            )
-            .onErrorResume(exception -> Mono.empty());
+                );
+
+                return Mono.empty();
+            });
     }
 
     /**
@@ -235,7 +236,7 @@ public class IndicatorCacher
         return
         this.getIndicatorCache(keyNames, indicatorType) // 先尝试从缓存获取数据
             .flatMap((indicator) ->
-                CacheDataConverter.safeCast(indicator, indicatorType))
+                CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
             .switchIfEmpty(             // 如果缓存内部没有数据
                 Mono.defer(() ->
                     this.distributedLock.withLock(  // 加分布式锁，给 5 秒的时间获取锁，锁期限为 2.5 秒
@@ -244,7 +245,7 @@ public class IndicatorCacher
                         (lockName) ->      // 在进入数据库前再检查一次缓存防止击穿
                             this.getIndicatorCache(keyNames, indicatorType)
                                 .flatMap((indicator) ->
-                                    CacheDataConverter.safeCast(indicator, indicatorType))
+                                    CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
                                 .switchIfEmpty(
                                     // 第二次检查仍然没有数据，
                                     // 最终去数据库获取并计算指标数据然后更新缓存并同时发往消息队列
