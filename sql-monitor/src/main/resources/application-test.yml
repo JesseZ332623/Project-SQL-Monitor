@@ -78,6 +78,7 @@ app:
 
   redis-lock:
     enable: true
+    operation-timeout: 3s
     schedulers:
       # 最大线程数（默认 100 线程）
       max-threads: 100
@@ -126,7 +127,16 @@ logging:
         web:
           reactive: WARN
 
- # Lettuce 客户端调试信息
+    io:
+      github:
+        jessez332623:
+          redis_lock: DEBUG
+
+    com:
+      jesse:
+        sqlmonitor: DEBUG
+
+# Lettuce 客户端调试信息
 #    io:
 #      lettuce:
 #        core: DEBUG
