@@ -238,9 +238,9 @@ public class IndicatorCacher
                 CacheDataConverter.safeCast(indicator, indicatorType))
             .switchIfEmpty(             // 如果缓存内部没有数据
                 Mono.defer(() ->
-                    this.distributedLock.withLock(  // 加分布式锁，给 5 秒的时间获取锁，锁期限为 2 秒
+                    this.distributedLock.withLock(  // 加分布式锁，给 5 秒的时间获取锁，锁期限为 2.5 秒
                         keyNames.getKeyName(),
-                        5L, 2L,
+                        Duration.ofSeconds(5L), Duration.ofMillis(2500L),
                         (lockName) ->      // 在进入数据库前再检查一次缓存防止击穿
                             this.getIndicatorCache(keyNames, indicatorType)
                                 .flatMap((indicator) ->
