@@ -242,7 +242,7 @@ public class IndicatorCacher
                     this.distributedLock.withLock(  // 加分布式锁，给 5 秒的时间获取锁，锁期限为 2.5 秒
                         keyNames.getKeyName(),
                         Duration.ofSeconds(5L), Duration.ofMillis(2500L),
-                        (lockName) ->      // 在进入数据库前再检查一次缓存防止击穿
+                        (identifier) ->      // 在进入数据库前再检查一次缓存防止击穿
                             this.getIndicatorCache(keyNames, indicatorType)
                                 .flatMap((indicator) ->
                                     CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
