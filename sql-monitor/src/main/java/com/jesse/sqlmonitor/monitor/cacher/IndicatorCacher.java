@@ -1,18 +1,20 @@
 package com.jesse.sqlmonitor.monitor.cacher;
 
+import cn.hutool.core.util.IdUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jesse.sqlmonitor.indicator_record.service.IndicatorSender;
 import com.jesse.sqlmonitor.monitor.constants.IndicatorKeyNames;
 import com.jesse.sqlmonitor.monitor.impl.qps.QPSCounter;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
+import com.jesse.sqlmonitor.properties.RedisCacheProperties;
 import com.jesse.sqlmonitor.response_body.SentIndicator;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
-import io.github.jessez332623.redis_lock.distributed_lock.RedisDistributedLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.annotation.Value;
+import org.redisson.api.RLockReactive;
+import org.redisson.api.RedissonReactiveClient;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -20,6 +22,9 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import static java.lang.String.format;
 
 /** 指标数据缓存器实现。*/
 @Slf4j
@@ -27,28 +32,20 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class IndicatorCacher
 {
-    /** 所有指标缓存数据的前缀命名空间。*/
-    @Value("${app.redis-cache.key-prefix}")
-    private String INDICATOR_KEY_PREFIX;
-
-    /**
-     * 缓存的有效期（为前端的最短查询间隔 - 500 毫秒的冗余）
-     * 确保正确的触发缓存更新，避免读到旧数据。
-     */
-    @Value("${app.redis-cache.ttl}")
-    private Duration CACHE_TTL;
-
     /** Jackson 对象映射器。*/
     private final ObjectMapper objectMapper;
 
     /** 主数据库连接属性。*/
     private final R2dbcMasterProperties properties;
 
+    /** Redis 缓存相关属性。*/
+    private final RedisCacheProperties redisCacheProperties;
+
     /** 指标数据发送器接口。*/
     private final IndicatorSender indicatorSender;
 
-    /** Redis 分布式锁实例。*/
-    private final RedisDistributedLock distributedLock;
+    /** Redisson 响应式客户端实例。*/
+    private final RedissonReactiveClient redissonReactiveClient;
 
     /** 响应式通用 Redis 模板。*/
     private final
@@ -67,9 +64,17 @@ public class IndicatorCacher
     getCacheKey(@NotNull IndicatorKeyNames keyNames)
     {
         return
-        INDICATOR_KEY_PREFIX      +
+        redisCacheProperties.getKeyPrefix() +
         this.properties.getHost() + ":" +
         keyNames.getKeyName();
+    }
+
+    /** 获取分布式锁键。  */
+    private @NotNull String
+    getLockKey(@NotNull IndicatorKeyNames keyNames)
+    {
+        return
+        this.properties.getHost() + "-" + keyNames.getKeyName();
     }
 
     /** 更新指标数据至 Redis 缓存。*/
@@ -83,7 +88,13 @@ public class IndicatorCacher
         this.redisTemplate
             .opsForHash()
             .putAll(cacheKey, indicatorMap)
-            .then(this.redisTemplate.expire(cacheKey, CACHE_TTL))
+            .then(
+                this.redisTemplate
+                    .expire(
+                        cacheKey,
+                        this.redisCacheProperties.getTtl()
+                    )
+            )
             .timeout(Duration.ofSeconds(3L))
             .then();
     }
@@ -213,10 +224,11 @@ public class IndicatorCacher
      *
      * <p>这里还是得补充说明一下选择双重检查策略的原因：</p>
      * <p>
-     *     假设有 4 个线程先后进入本方法，在缓存中都没找到数据（第一次检查），
-     *     第一个线程会加锁并再检查一次缓存后进入数据库拿到数据后更新缓存，
-     *     后续的线程依次加锁后则都会再次检查缓存中是否有数据（第二次检查），
-     *     因此，在同一时刻下，只会有一个线程进入数据库，其他线程要么被阻塞，要么已经从缓存中拿到了数据。
+     *     假设部署在不同服务器的应用共计有 4 个请求先后进入本方法，在缓存中都没找到数据（第一次检查），
+     *     第一个请求会加锁并再检查一次缓存后进入数据库拿到数据后更新缓存，
+     *     后续的请求依次加锁后则都会再次检查缓存中是否有数据（第二次检查），
+     *     因此，在同一时刻下，只会有一个请求真正进入数据库，
+     *     其他请求要么被阻塞，要么已经从缓存中拿到了数据（这样就极大的缓解了分布式环境下的数据库压力）。
      * </p>
      *
      * @param keyNames          指标数据键名
@@ -239,27 +251,61 @@ public class IndicatorCacher
                 CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
             .switchIfEmpty(             // 如果缓存内部没有数据
                 Mono.defer(() ->
-                    this.distributedLock.withLock(  // 加分布式锁，给 5 秒的时间获取锁，锁期限为 2.5 秒
-                        keyNames.getKeyName(),
-                        Duration.ofSeconds(5L), Duration.ofMillis(2500L),
-                        (identifier) ->      // 在进入数据库前再检查一次缓存防止击穿
-                            this.getIndicatorCache(keyNames, indicatorType)
-                                .flatMap((indicator) ->
-                                    CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
-                                .switchIfEmpty(
-                                    // 第二次检查仍然没有数据，
-                                    // 最终去数据库获取并计算指标数据然后更新缓存并同时发往消息队列
-                                    indicatorSupplier
-                                        .flatMap((indicator) ->
-                                            this.cacheIndicatorData(keyNames, indicator, indicatorType)
-                                                .thenReturn(indicator)
-                                        )
-                                )
-                    )
+                        Mono.zip(
+                            Mono.fromCallable(() ->
+                                this.redissonReactiveClient
+                                    .getLock(this.getLockKey(keyNames))),
+                            Mono.fromCallable(IdUtil::getSnowflakeNextId)
+                        )
+                        .flatMap((tuple) -> {
+                            final RLockReactive lock = tuple.getT1();   // 获取锁实例
+                            // 获取线程号（响应式环境下线程号不可靠，这里使用随机 ID 在上下文传递）
+                            final long      threadId = tuple.getT2();
+                            final long      waitTime = 5000L; // 等待锁期限
+                            final long     leaseTime = -1L;   // 锁期限（这里使用看门狗策略续期）
+
+                            return
+                            Mono.usingWhen(
+                                lock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS, threadId),
+                                (isLocked) -> {
+                                    if (isLocked)
+                                    {
+                                        return
+                                        this.getIndicatorCache(keyNames, indicatorType)
+                                            .flatMap((indicator) ->
+                                                CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
+                                            .switchIfEmpty(
+                                                // 第二次检查仍然没有数据，
+                                                // 最终去数据库获取并计算指标数据然后更新缓存并同时发往消息队列
+                                                indicatorSupplier
+                                                    .flatMap((indicator) ->
+                                                        this.cacheIndicatorData(keyNames, indicator, indicatorType)
+                                                            .thenReturn(indicator)
+                                                    )
+                                            );
+                                    }
+                                    else
+                                    {
+                                        /* 指定时间内没有获取锁，抛出异常降级处理。*/
+                                        return
+                                        Mono.error(
+                                            new java.util.concurrent.TimeoutException(
+                                                format(
+                                                    "Acquire lock of %s timeout! (wait time: %s)",
+                                                    keyNames, waitTime
+                                                )
+                                            )
+                                        );
+                                    }
+                                },
+                                (ignore) ->
+                                    lock.unlock(threadId) // 释放锁
+                            );
+                        })
                 )
             )
             .onErrorResume((exception) -> {
-                // 若 Redis 操作失败或者发生其他错误，
+                // 若 Redis 缓存、锁操作失败或者发生其他错误，
                 // 则视为缓存获取失败，直接返回从数据库获取指标数据的响应式流即可（优雅降级）
                 log.warn(
                     "Cache lookup failed for key: {}, fallback to database",
