@@ -57,14 +57,14 @@
 
 	<dependencies>
         <dependency>
-            <groupId>io.lettuce</groupId>
-            <artifactId>lettuce-core</artifactId>
-            <version>7.0.0.RELEASE</version> <!-- 当前最新版本 -->
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.52.0</version>
         </dependency>
         <dependency>
-            <groupId>io.github.jessez332623</groupId>
-            <artifactId>redis_lock</artifactId>
-            <version>1.1.0-RELEASE</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+            <version>3.5.7</version>
         </dependency>
         <dependency>
             <groupId>io.github.jessez332623</groupId>
