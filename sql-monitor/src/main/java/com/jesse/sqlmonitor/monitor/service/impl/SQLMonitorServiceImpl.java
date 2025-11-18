@@ -33,6 +33,10 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
     private final
     MySQLIndicatorsRepository mySQLIndicatorsRepository;
 
+    /** 在遇到未知错误时的通用异常实例。*/
+    private final static
+    RuntimeException unknowException = new RuntimeException("Unknow exception");
+
     /** 本服务类通用的错误处理方法。*/
     private Mono<ServerResponse>
     genericErrorHandle(Throwable throwable)
@@ -50,7 +54,7 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
             case null, default -> {
                 return
                 ReactiveResponseBuilder.INTERNAL_SERVER_ERROR(
-                    new RuntimeException("Unknown exception").getMessage(), null
+                    unknowException.getMessage(), null
                 );
             }
         }
