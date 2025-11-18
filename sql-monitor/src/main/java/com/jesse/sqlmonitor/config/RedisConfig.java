@@ -6,6 +6,9 @@ import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
 import io.lettuce.core.TimeoutOptions;
 import lombok.RequiredArgsConstructor;
+import org.redisson.Redisson;
+import org.redisson.api.RedissonReactiveClient;
+import org.redisson.config.Config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -111,5 +114,33 @@ public class RedisConfig
 
         /* 根据上述配置构建 ReactiveRedisTemplate。 */
         return new ReactiveRedisTemplate<>(factory, context);
+    }
+
+    /** Redisson 响应式客户端实例配置。*/
+    @Bean
+    @Primary
+    public RedissonReactiveClient redissonReactiveClient()
+    {
+        Config singleServerConfig = new Config();
+
+        // 组合服务器地址
+        final String redisAddress
+            = "redis://"                      +
+              this.redisProperties.getHost()  + ":" +
+              this.redisProperties.getPort();
+
+        singleServerConfig
+            .useSingleServer()
+            .setAddress(redisAddress)
+            .setUsername(this.redisProperties.getUsername())
+            .setPassword(this.redisProperties.getPassword())
+            .setTimeout(5000)
+            .setConnectionPoolSize(64)
+            .setConnectionMinimumIdleSize(32)
+            .setRetryAttempts(3)
+            .setKeepAlive(true);
+
+        return
+        Redisson.create(singleServerConfig).reactive();
     }
 }
