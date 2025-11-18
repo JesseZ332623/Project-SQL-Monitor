@@ -69,7 +69,7 @@ public class IndicatorCacher
         keyNames.getKeyName();
     }
 
-    /** 获取分布式锁键。  */
+    /** 获取分布式锁键。*/
     private @NotNull String
     getLockKey(@NotNull IndicatorKeyNames keyNames)
     {
