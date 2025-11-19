@@ -250,65 +250,60 @@ public class IndicatorCacher
             .flatMap((indicator) ->
                 CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
             .switchIfEmpty(             // 如果缓存内部没有数据
-                Mono.defer(() ->
-                        Mono.zip(
-                            Mono.fromCallable(() ->
-                                this.redissonReactiveClient
-                                    .getLock(this.getLockKey(keyNames))),
-                            Mono.fromCallable(IdUtil::getSnowflakeNextId)
-                        )
-                        .flatMap((tuple) -> {
-                            final RLockReactive lock = tuple.getT1();   // 获取锁实例
-                            // 获取线程号（响应式环境下线程号不可靠，这里使用随机 ID 在上下文传递）
-                            final long      threadId = tuple.getT2();
-                            final long      waitTime = 5000L; // 等待锁期限
-                            final long     leaseTime = -1L;   // 锁期限（这里使用看门狗策略续期）
+                Mono.defer(() -> {
+                    // 获取锁实例
+                    final RLockReactive lock
+                        = this.redissonReactiveClient
+                              .getLock(this.getLockKey(keyNames));
+                    // 获取线程号（响应式环境下线程号不可靠，这里使用随机 ID 在上下文传递）
+                    final long threadId  = IdUtil.getSnowflakeNextId();
+                    final long waitTime  = 5000L; // 等待锁期限
+                    final long leaseTime = -1L;   // 锁期限（这里使用看门狗策略续期）
 
-                            return
-                            Mono.usingWhen(
-                                lock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS, threadId),
-                                (isLocked) -> {
-                                    if (isLocked)
-                                    {
-                                        return
-                                        this.getIndicatorCache(keyNames, indicatorType)
-                                            .flatMap((indicator) ->
-                                                CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
-                                            .switchIfEmpty(
-                                                // 第二次检查仍然没有数据，
-                                                // 最终去数据库获取并计算指标数据然后更新缓存并同时发往消息队列
-                                                indicatorSupplier
-                                                    .flatMap((indicator) ->
-                                                        this.cacheIndicatorData(keyNames, indicator, indicatorType)
-                                                            .thenReturn(indicator)
-                                                    )
-                                            );
-                                    }
-                                    else
-                                    {
-                                        /* 指定时间内没有获取锁，抛出异常降级处理。*/
-                                        return
-                                        Mono.error(
-                                            new java.util.concurrent.TimeoutException(
-                                                format(
-                                                    "Acquire lock of %s timeout! (wait time: %s)",
-                                                    keyNames, waitTime
-                                                )
-                                            )
-                                        );
-                                    }
-                                },
-                                (ignore) ->
-                                    lock.unlock(threadId) // 释放锁
-                            );
-                        })
-                )
+                    return
+                    Mono.usingWhen(
+                        lock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS, threadId),
+                        (isLocked) -> {
+                            if (isLocked)
+                            {
+                               return
+                               this.getIndicatorCache(keyNames, indicatorType)
+                                   .flatMap((indicator) ->
+                                       CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
+                                   .switchIfEmpty(
+                                       // 第二次检查仍然没有数据，
+                                       // 最终去数据库获取并计算指标数据然后更新缓存并同时发往消息队列
+                                       indicatorSupplier
+                                           .flatMap((indicator) ->
+                                               this.cacheIndicatorData(keyNames, indicator, indicatorType)
+                                                   .thenReturn(indicator)
+                                           )
+                                   );
+                            }
+                            else
+                            {
+                               /* 指定时间内没有获取锁，抛出异常降级处理。*/
+                               return
+                               Mono.error(
+                                   new java.util.concurrent.TimeoutException(
+                                       format(
+                                           "Acquire lock of %s timeout! (wait time: %s)",
+                                           keyNames, waitTime
+                                       )
+                                   )
+                               );
+                           }
+                       },
+                        (ignore) ->
+                            lock.unlock(threadId) // 释放锁
+                    );
+                })
             )
             .onErrorResume((exception) -> {
                 // 若 Redis 缓存、锁操作失败或者发生其他错误，
                 // 则视为缓存获取失败，直接返回从数据库获取指标数据的响应式流即可（优雅降级）
                 log.warn(
-                    "Cache lookup failed for key: {}, fallback to database",
+                    "Cache lookup failed for key: {}, fallback to database.",
                     this.getCacheKey(keyNames)
                 );
 
