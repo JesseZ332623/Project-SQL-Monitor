@@ -2,36 +2,45 @@ package com.jesse.sqlmonitor.utils;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
-import static com.jesse.sqlmonitor.utils.LocalIPGetter.getLocalIP;
-
+import java.util.regex.Pattern;
 
 /** IPv4 <=> UINT32 转换器。*/
-@Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 final public class IPv4Converter
 {
+    /** 严格匹配 IPV4 的正则表达式 Pattern。*/
+    private final static
+    Pattern IPV4_PATTERN
+        = Pattern.compile(
+            "^(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)(\\.(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)){3}$"
+        );
+
+    /** 检查一个 IPv4 字符串是否合法 */
+    private static boolean isValidIpv4(@NotNull String ip) {
+        return IPV4_PATTERN.matcher(ip).matches();
+    }
+
     /** IPV4 String -> UINT32 */
     public static Long ipToLong(@NotNull String ip)
     {
         // 如果配置中填了 localhost，
-        // 我们便直接调用 ipconfig 拿到本机 IP（Linux 不适用）
+        // 我们便直接调用 ipconfig 拿到本机 IP
         if (ip.equals("localhost")) {
-            ip = getLocalIP();
+            ip = LocalIPGetter.getLocalIP();
         }
 
-        String[] parts = ip.split("\\.");
-
-        if (parts.length != 4)
+        if (!isValidIpv4(ip))
         {
             throw new
             IllegalArgumentException(
                 String.format("Invalid IPv4 address: %s", ip)
             );
         }
+
+        String[] parts = ip.split("\\.");
 
         long result = 0;
 
