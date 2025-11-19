@@ -1,6 +1,5 @@
 package com.jesse.indicator_receiver.properties;
 
-// import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.ToString;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -18,10 +17,4 @@ public class RabbitMQProperties
     private String user;
     private String password;
     private String virtualHost;
-    private int    connectTimeout;
-
-//    @PostConstruct
-//    private void showProperties() {
-//        System.out.println(this);
-//    }
 }
