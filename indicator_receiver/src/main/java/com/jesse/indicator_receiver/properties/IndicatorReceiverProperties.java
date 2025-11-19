@@ -1,6 +1,5 @@
 package com.jesse.indicator_receiver.properties;
 
-import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.ToString;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -26,9 +25,4 @@ public class IndicatorReceiverProperties
 
     /** 取消订阅前的延迟时间。*/
     private Duration shutdownDelay;
-
-    @PostConstruct
-    public void display() {
-        System.out.println(this);
-    }
 }
