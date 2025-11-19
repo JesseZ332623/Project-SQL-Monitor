@@ -17,4 +17,5 @@ public class RabbitMQProperties
     private String user;
     private String password;
     private String virtualHost;
+    private int    connectTimeout;
 }
