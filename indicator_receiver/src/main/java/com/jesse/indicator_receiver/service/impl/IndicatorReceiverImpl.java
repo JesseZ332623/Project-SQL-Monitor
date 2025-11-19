@@ -27,8 +27,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.jesse.indicator_receiver.utils.GenericUtils.extractClassName;
-
 /** 指标数据接收器实现。*/
 @Slf4j
 @Component
@@ -64,6 +62,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
         this.isRunning.set(flag);
     }
 
+    /** 将无效的消息扔进死信队列，并报告原因。*/
     public void
     rejectToDLQ(@NotNull AcknowledgableDelivery delivery, String reason)
     {
@@ -103,7 +102,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                 sentIndicatorInstance
                     = this.mapper.readValue(sentIndicator, SentIndicator.class);
 
-                // 对于消息载荷实例中指标数据为空的情况，不确认且不重新归队
+                // 对于消息载荷实例中指标数据为空的情况，不确认且移入死信队列
                 if (Objects.isNull(sentIndicatorInstance.getIndicator()))
                 {
                     log.warn(
@@ -134,7 +133,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                     exception.getMessage()
                 );
 
-                // 不确认且不重新入队
+                // 不确认且移入死信队列
                 this.rejectToDLQ(delivery, "INVALID_MESSAGE");
                 return;
             }
@@ -145,11 +144,9 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                 // 获取指标的类型信息
                 IndicatorType indicatorTypeName
                     = IndicatorType.valueOf(
-                        extractClassName(
-                            sentIndicatorInstance.getIndicator()
-                                .getClass()
-                                .getTypeName()
-                    )
+                        sentIndicatorInstance.getIndicator()
+                            .getClass()
+                            .getSimpleName()
                 );
 
                 // 分割数据库的 IP 地址
@@ -159,12 +156,12 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                 // 构造指标日志实体
                 MonitorLog monitorLog
                     = MonitorLog.builder()
-                    .logId(IdUtil.getSnowflakeNextId())
-                    .datetime(sentIndicatorInstance.getLocalDateTime())
-                    .serverIP(IPv4Converter.ipToLong(ipaddress))
-                    .indicator(indicatorJSON)
-                    .indicatorType(indicatorTypeName)
-                    .build();
+                        .logId(IdUtil.getSnowflakeNextId())
+                        .datetime(sentIndicatorInstance.getLocalDateTime())
+                        .serverIP(IPv4Converter.ipToLong(ipaddress))
+                        .indicator(indicatorJSON)
+                        .indicatorType(indicatorTypeName)
+                        .build();
 
                 monitorLogs.add(monitorLog);        // 保存日志
                 successfulDeliveries.add(delivery); // 保存成功的 delivery
