@@ -8,8 +8,9 @@ import com.jesse.indicator_receiver.entity.MonitorLog;
 import com.jesse.indicator_receiver.properties.IndicatorReceiverProperties;
 import com.jesse.indicator_receiver.repository.MonitorLogRepository;
 import com.jesse.indicator_receiver.response_body.SentIndicator;
-import com.jesse.indicator_receiver.service.IndicatorReceive;
+import com.jesse.indicator_receiver.service.IndicatorReceiver;
 import com.jesse.indicator_receiver.utils.IPv4Converter;
+import com.jesse.indicator_receiver.utils.exception.InvalidIPv4Exception;
 import com.rabbitmq.client.Delivery;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class IndicatorReceiverImpl implements IndicatorReceive
+public class IndicatorReceiverImpl implements IndicatorReceiver
 {
     /** 来自配置文件的指标接收器相关属性。*/
     private final
@@ -153,7 +154,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                 String ipaddress
                     = sentIndicatorInstance.getAddress().split(":")[0];
 
-                // 构造指标日志实体
+                // 构造监控指标实体
                 MonitorLog monitorLog
                     = MonitorLog.builder()
                         .logId(IdUtil.getSnowflakeNextId())
@@ -168,7 +169,15 @@ public class IndicatorReceiverImpl implements IndicatorReceive
             }
             catch (Throwable exception)
             {
-                // 对于业务逻辑处理失败的消息载荷，
+                if (exception instanceof InvalidIPv4Exception)
+                {
+                    // 对于 IP 地址非法的消息，
+                    // 由于没法做统计，也移入死信队列
+                    log.error("{}", exception.getMessage());
+                    this.rejectToDLQ(delivery, "INVALID_IPV4_ADDRESS");
+                }
+
+                // 对于其他业务逻辑处理失败的消息载荷，
                 // 可能是暂时性错误不确认并重新归队
                 log.error(
                     "Business logic processing failed, message will be redelivered. " +
@@ -184,7 +193,7 @@ public class IndicatorReceiverImpl implements IndicatorReceive
     }
 
     /**
-     * 将 {@link this#parseDeliveries(List)} 返回的指标列表数据存入数据库，
+     * 将 {@link IndicatorReceiverImpl#parseDeliveries(List)} 返回的指标列表数据存入数据库，
      * 并视情况确认这个批次的所有消息。
      */
     private Mono<Long>
@@ -248,11 +257,11 @@ public class IndicatorReceiverImpl implements IndicatorReceive
                     ((AcknowledgableDelivery) delivery).nack(false, true));
 
                 log.error(
-                    "Database insert failed, indicators will be redelivered: {}",
+                    "Database insert failed, indicators will be redelivered, Caused by: {}",
                     error.getMessage()
                 );
             })
-            .onErrorResume((ignore) -> Mono.empty());
+            .onErrorResume((ignore) -> Mono.just(0L));
     }
 
     /** 从队列中消费指标数据，存入数据库。*/
