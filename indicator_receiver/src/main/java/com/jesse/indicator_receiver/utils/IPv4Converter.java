@@ -1,5 +1,6 @@
 package com.jesse.indicator_receiver.utils;
 
+import com.jesse.indicator_receiver.utils.exception.InvalidIPv4Exception;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.Contract;
@@ -35,7 +36,7 @@ final public class IPv4Converter
         if (!isValidIpv4(ip))
         {
             throw new
-            IllegalArgumentException(
+            InvalidIPv4Exception(
                 String.format("Invalid IPv4 address: %s", ip)
             );
         }

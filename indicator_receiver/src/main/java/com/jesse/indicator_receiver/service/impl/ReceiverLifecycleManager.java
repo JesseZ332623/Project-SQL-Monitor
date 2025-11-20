@@ -1,7 +1,7 @@
 package com.jesse.indicator_receiver.service.impl;
 
 import com.jesse.indicator_receiver.properties.IndicatorReceiverProperties;
-import com.jesse.indicator_receiver.service.IndicatorReceive;
+import com.jesse.indicator_receiver.service.IndicatorReceiver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.SmartLifecycle;
@@ -37,7 +37,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
     IndicatorReceiverProperties properties;
 
     /** 指标数据接收器。*/
-    private final IndicatorReceive indicatorReceive;
+    private final IndicatorReceiver indicatorReceiver;
 
     /**
      * 在手动 启动/关闭 接收器时需要上锁保证状态一致，
@@ -61,7 +61,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
                 }
 
                 log.info("Starting RabbitMQ indicator receiver...");
-                this.indicatorReceive.setRunningFlag(true);
+                this.indicatorReceiver.setRunningFlag(true);
                 this.startIndicatorConsumer();
             }
         }).then();
@@ -86,7 +86,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
                     this.properties.getShutdownDelay()
                 );
 
-                this.indicatorReceive.setRunningFlag(false);
+                this.indicatorReceiver.setRunningFlag(false);
 
                 Mono.delay(this.properties.getShutdownDelay())
                     .then(Mono.fromRunnable(this::stopIndicatorConsumer))
@@ -106,7 +106,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
             {
                 log.info("Auto-Starting RabbitMQ indicator receiver...");
 
-                this.indicatorReceive.setRunningFlag(true);
+                this.indicatorReceiver.setRunningFlag(true);
                 this.startIndicatorConsumer();
             }
         }
@@ -126,7 +126,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
                     this.properties.getShutdownDelay()
                 );
 
-                this.indicatorReceive.setRunningFlag(false);
+                this.indicatorReceiver.setRunningFlag(false);
 
                 // 等待可能正在处理的插入操作完成
                 try {
@@ -184,7 +184,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
     public void startIndicatorConsumer()
     {
         this.indicatorReceiverDisposable.set(
-            this.indicatorReceive.receiveIndicator()
+            this.indicatorReceiver.receiveIndicator()
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(
                     null,
