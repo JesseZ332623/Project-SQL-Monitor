@@ -95,7 +95,7 @@ final public class LocalIPGetter
 
             // 如果没有候选 IP，尝试直接调用
             return
-                InetAddress.getLocalHost().getHostAddress();
+            InetAddress.getLocalHost().getHostAddress();
         }
         catch (Exception exception)
         {
