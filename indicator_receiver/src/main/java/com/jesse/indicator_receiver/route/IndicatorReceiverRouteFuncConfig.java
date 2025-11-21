@@ -19,7 +19,7 @@ import static com.jesse.indicator_receiver.route.IndicatorReceiverEndpoints.*;
 @Configuration
 public class IndicatorReceiverRouteFuncConfig
 {
-    @Bean
+    @Bean(name = "indicatorReceiverRouteFunc")
     @RouterOperations({
         @RouterOperation(
             path      = RUN_STATUS,

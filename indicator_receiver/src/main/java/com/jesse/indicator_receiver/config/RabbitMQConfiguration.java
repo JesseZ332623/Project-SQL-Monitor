@@ -38,20 +38,6 @@ public class RabbitMQConfiguration
         return factory;
     }
 
-    /** RabbitMQ 发送器配置。*/
-    @Bean
-    public Sender
-    sender(
-        @Qualifier("RabbitMQConnectionFactory")
-        ConnectionFactory factory
-    )
-    {
-        return
-        RabbitFlux.createSender(
-            new SenderOptions().connectionFactory(factory)
-        );
-    }
-
     /** RabbitMQ 接收器配置。*/
     @Bean
     public Receiver

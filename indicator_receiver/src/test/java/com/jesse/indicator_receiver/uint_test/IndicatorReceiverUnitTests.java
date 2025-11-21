@@ -1,4 +1,4 @@
-package com.jesse.indicator_receiver;
+package com.jesse.indicator_receiver.uint_test;
 
 import cn.hutool.core.util.IdUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -36,7 +36,7 @@ import java.util.List;
 /** 指标接收器 {@link IndicatorReceiverImpl} 单元测试类。*/
 @Slf4j
 @ExtendWith(MockitoExtension.class)
-class IndicatorReceiverTests
+class IndicatorReceiverUnitTests
 {
     /** 模拟的 指标接收器相关属性。*/
     @Mock

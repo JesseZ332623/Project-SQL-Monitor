@@ -16,7 +16,7 @@ import java.util.List;
 /** 监控日志实体仓储类。*/
 @Slf4j
 @Repository
-public class MonitorLogRepository // extends R2dbcRepository<MonitorLog, Long>
+public class MonitorLogRepository
 {
     /** 数据库客户端实例。*/
     private final DatabaseClient databaseClient;

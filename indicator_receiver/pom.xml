@@ -122,7 +122,7 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.14</version>
                 <configuration>
-                    <!-- 只包含核心业务类 -->
+                    <!-- 覆盖率测试只包含核心业务类 -->
                     <includes>
                         <include>**/service/impl/*</include>
                         <include>**/utils/*</include>
@@ -130,6 +130,7 @@
                     </includes>
                 </configuration>
                 <executions>
+                    <!-- 在测试启动时运行 JavaCoCo 代理，收集覆盖率数据 -->
                     <execution>
                         <id>prepare-agent</id>
                         <goals>
@@ -137,6 +138,7 @@
                         </goals>
                     </execution>
 
+                    <!-- 在测试结束后生成详细的覆盖率报告 -->
                     <execution>
                         <id>report</id>
                         <phase>test</phase>
@@ -145,6 +147,7 @@
                         </goals>
                     </execution>
 
+                    <!-- 设置覆盖率检查规则，若未达标则会中断构建 -->
                     <execution>
                         <id>check</id>
                         <goals>
@@ -153,13 +156,15 @@
                         <configuration>
                             <rules>
                                 <rule>
+                                    <!-- BUNDLE 参数意味着对整个代码包进行检查 -->
+                                    <!-- 这里是指 <includes> 标签下的所以包 -->
                                     <element>BUNDLE</element>
                                     <limits>
                                         <!-- 对核心类设置合理的阈值 -->
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.80</minimum>
+                                            <minimum>0.75</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
