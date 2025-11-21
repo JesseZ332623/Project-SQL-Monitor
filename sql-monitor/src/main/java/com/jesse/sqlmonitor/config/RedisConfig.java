@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonReactiveClient;
 import org.redisson.config.Config;
-import org.redisson.config.ConstantDelay;
+import org.redisson.config.FullJitterDelay;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -148,7 +148,15 @@ public class RedisConfig
             .setPassword(this.redisProperties.getPassword())
             .setTimeout(10000)
             .setRetryAttempts(5)
-            .setRetryDelay(new ConstantDelay(Duration.ofSeconds(2L)))
+            /*
+             * FullJitterDelay（全抖动）
+             * 核心思想：“指数退避 + 全抖动”（Exponential Back - off + Full Jitter）。
+             *
+             * 初始延迟为 baseDelay（如 100ms）；
+             * 随着重试次数增加，当前延迟值按指数增长（例如第1次 100ms，第2次 200ms，第3次 400ms…，直到达到 maxDelay 上限）；
+             * 每次重试的实际延迟是 [0, 当前延迟值) 内的随机值（“全抖动”指随机范围覆盖整个当前延迟区间）。
+             */
+            .setRetryDelay(new FullJitterDelay(Duration.ofSeconds(2L), Duration.ofSeconds(8L)))
             .setConnectionPoolSize(128)
             .setConnectionMinimumIdleSize(32)
             .setSubscriptionConnectionPoolSize(50)
