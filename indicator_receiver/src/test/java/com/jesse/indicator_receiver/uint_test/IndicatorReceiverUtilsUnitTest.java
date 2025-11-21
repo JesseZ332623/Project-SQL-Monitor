@@ -1,4 +1,4 @@
-package com.jesse.indicator_receiver;
+package com.jesse.indicator_receiver.uint_test;
 
 import cn.hutool.core.util.RandomUtil;
 import com.jesse.indicator_receiver.utils.IPv4Converter;
@@ -9,10 +9,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-/** 工具类方法综合测试。*/
+/** 工具类方法综合单元测试。*/
 @Slf4j
 @ExtendWith(MockitoExtension.class)
-public class IndicatorReceiverUtilsTest
+public class IndicatorReceiverUtilsUnitTest
 {
     @Test
     public void getLocalIPTest() {
