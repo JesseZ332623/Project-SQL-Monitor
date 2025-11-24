@@ -3,15 +3,24 @@ package com.jesse.sqlmonitor.utils;
 import io.r2dbc.spi.Row;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /** 项目全局工具类。*/
 @NoArgsConstructor(access  = AccessLevel.PRIVATE)
 final public class SQLMonitorUtils
 {
+    /**
+     * 合法的数据库名正则表达式，
+     * 允许包含字母、数字、下划线、连字符，但不能不以数字开头。
+     */
+    private static final
+    Pattern LEGAL_SCHEMA_REGEX = Pattern.compile("^[a-zA-Z0-9_-]+$");
+
     /** 尝试对全局状态值做数值转换，失败则使用字符串类型。*/
     public static @Nullable
     Object tryGetNumericValue(String valueStr)
@@ -105,16 +114,20 @@ final public class SQLMonitorUtils
     }
 
     /** 验证是否为合法的数据库名。*/
-    public static String
-    isNotValidSchemaName(String schemaName)
+    @Contract("_ -> param1")
+    public static @NotNull String
+    isNotValidSchemaName(@NotNull String schemaName)
     {
+        String trimSchemaName = schemaName.trim();
+
         // 只允许字母、数字、下划线
-        if (schemaName != null && !schemaName.matches("^[a-zA-Z0-9_]+$"))
+        if (!LEGAL_SCHEMA_REGEX.matcher(trimSchemaName).matches())
         {
             throw new
             IllegalArgumentException(
                 String.format(
-                    "Schema name: [%s] is invalid! Only (letter / number / underline) allowed!",
+                    "Schema name: [%s] is invalid! " +
+                    "Only letters, numbers, underscore, hyphen allowed, and cannot start with a number!",
                     schemaName
                 )
             );
