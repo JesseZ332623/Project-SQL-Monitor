@@ -1,7 +1,7 @@
-package com.jesse.sqlmonitor;
+package com.jesse.sqlmonitor.component_test;
 
 import cn.hutool.core.util.IdUtil;
-import com.jesse.sqlmonitor.dto.RandomJokeDTO;
+import com.jesse.sqlmonitor.component_test.dto.RandomJokeDTO;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.redisson.Redisson;
