@@ -8,9 +8,10 @@ import com.jesse.sqlmonitor.response_body.QPSResult;
 import org.jetbrains.annotations.NotNull;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
 
-/** MySQL 指标数据查询仓储类接口。*/
+/** MySQL 指标数据查询仓储类接口类。*/
 public interface MySQLIndicatorsRepository
 {
     /** 获取每秒查询频率（QPS）。*/
@@ -25,6 +26,10 @@ public interface MySQLIndicatorsRepository
 
     /** 查询连接使用率。*/
     Mono<ConnectionUsage> getConnectionUsage();
+
+    /** 查询所有数据库名（可选是否包括系统数据库）。*/
+    Mono<List<String>>
+    getAllSchemaName(boolean includeSysShema);
 
     /** 查询指定数据库和它的所有表大小（支持按数据表大小排序）。*/
     Mono<Map<String, DatabaseSize>>
