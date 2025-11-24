@@ -21,6 +21,9 @@ public class SQLMonitorEndPoints
     String CONNECTION_USAGE_QUERY = ROOT + "/connection-usage";
 
     public static final
+    String ALL_SCHEMA_NAME_QUERY = ROOT + "/all-schema-name";
+
+    public static final
     String DATABASE_SIZE_QUERY = ROOT + "/database-size";
 
     public static final
