@@ -193,10 +193,10 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.14</version>
                 <configuration>
-                    <excludes>
-                        <!-- 排除不需要检查覆盖率的类 -->
-                        <!-- 暂定 -->
-                    </excludes>
+                    <includes>
+                        <include>**/indicator_record/*</include>
+                        <include>**/monitor/*</include>
+                    </includes>
                 </configuration>
                 <executions>
                     <execution>
