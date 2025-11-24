@@ -3,6 +3,7 @@ package com.jesse.sqlmonitor.monitor.snapshot;
 import lombok.*;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Duration;
 import java.time.Instant;
 
 /** 所有 Snapshot 的基类。*/
@@ -23,9 +24,10 @@ public abstract class SnapshotBase<T extends SnapshotBase<T>>
 
     /** 计算前后两次快照的时间差（单位：毫秒）。*/
     public long
-    getTimeDiffMills(@NotNull T current)
+    getTimeDiffMills(@NotNull T snapshoot)
     {
         return
-        current.getTimestamp().toEpochMilli() - this.timestamp.toEpochMilli();
+        Duration.between(this.getTimestamp(), snapshoot.getTimestamp())
+                .toMillis();
     }
 }
