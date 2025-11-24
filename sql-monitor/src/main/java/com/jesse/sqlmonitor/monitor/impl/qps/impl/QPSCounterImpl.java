@@ -97,8 +97,10 @@ public class QPSCounterImpl implements QPSCounter
         this.globalStatusQuery
             .getGlobalStatus(GlobalStatusName.QUERIES)
             .map((status) ->
-                (Long) status.get(GlobalStatusName.QUERIES.getStatusName()))
-            .map(QueriesSnapshot::of);
+                QueriesSnapshot.of(
+                    (Long) status.get(GlobalStatusName.QUERIES.getStatusName())
+                )
+            );
     }
 
     /**
