@@ -1,7 +1,9 @@
 package com.jesse.sqlmonitor.endpoints_test;
 
 import com.jesse.sqlmonitor.monitor.constants.GlobalStatusName;
+import com.jesse.sqlmonitor.monitor.constants.MonitorConstants;
 import com.jesse.sqlmonitor.monitor.impl.GlobalStatusQuery;
+import com.jesse.sqlmonitor.monitor.service.SQLMonitorService;
 import com.jesse.sqlmonitor.route.endpoints_config.SQLMonitorEndPoints;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
@@ -9,11 +11,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.reactive.function.server.RouterFunction;
+import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
+import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -30,6 +36,10 @@ public class MonitorEndPointsTest
 
     private static WebTestClient webTestClient;
 
+    /** 指标测试请求次数 = 忽略次数 + 1 */
+    private final static int
+    INDICATOR_TESTS = MonitorConstants.IGNORE_SNAPSHOTS + 1;
+
     public MonitorEndPointsTest(
         @Qualifier("sqlMonitorRouteFunction")
         RouterFunction<ServerResponse> routerFunction
@@ -37,10 +47,15 @@ public class MonitorEndPointsTest
     {
         webTestClient
             = WebTestClient.bindToRouterFunction(routerFunction)
+                           .configureClient()
+                           .responseTimeout(Duration.ofMinutes(1L))
                            .build();
     }
 
-    /** 测试获取数据库的地址和端口号。*/
+    /**
+     * 测试 {@link SQLMonitorService#getDatabaseAddress(ServerRequest)}
+     * 获取数据库的地址和端口号。
+     */
     @Test
     public void getDatabaseAddressTest()
     {
@@ -55,55 +70,82 @@ public class MonitorEndPointsTest
                 System.out.println(getPrettyFormatJSON(json)));
     }
 
-    /** 测试获取本数据库 QPS。*/
+    /**
+     * 测试 {@link SQLMonitorService#getQPS(ServerRequest)}
+     * 获取本数据库 QPS。
+     */
     @Test
     public void getQPSTest()
     {
-        webTestClient
-            .get()
-            .uri(SQLMonitorEndPoints.QPS_QUERY)
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectStatus().isOk()
-            .expectBody(String.class)
-            .value((json) ->
-                System.out.println(getPrettyFormatJSON(json)));
+        for (int index = 0; index < INDICATOR_TESTS; ++index)
+        {
+            webTestClient
+                .get()
+                .uri(SQLMonitorEndPoints.QPS_QUERY)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value((json) ->
+                    System.out.println(getPrettyFormatJSON(json)));
+
+            Mono.delay(Duration.ofSeconds(3L)).block();
+        }
     }
 
-    /** 测试获取服务器接收 / 发送数据量相关信息的服务的接口。*/
+    /**
+     * 测试 {@link SQLMonitorService#getNetWorkTraffic(ServerRequest)}
+     * 获取服务器接收 / 发送数据量相关信息的服务的接口。
+     */
     @Test
     public void getNetWorkTrafficTest()
     {
-        webTestClient
-            .get()
-            .uri((uriBuilder) ->
-                uriBuilder.path(SQLMonitorEndPoints.NETWORK_TRAFFIC_QUERY)
-                          .queryParam("sizeUnit", "KB")
-                          .build())
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectStatus().isOk()
-            .expectBody(String.class)
-            .value((json) ->
-                System.out.println(getPrettyFormatJSON(json)));
+        for (int index = 0; index < INDICATOR_TESTS; ++index)
+        {
+            webTestClient
+                .get()
+                .uri((uriBuilder) ->
+                    uriBuilder.path(SQLMonitorEndPoints.NETWORK_TRAFFIC_QUERY)
+                        .queryParam("sizeUnit", "KB")
+                        .build())
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value((json) ->
+                    System.out.println(getPrettyFormatJSON(json)));
+
+            Mono.delay(Duration.ofSeconds(3L)).block();
+        }
     }
 
-    /** 获取数据库连接使用率相关数据的接口。*/
+    /**
+     * 测试 {@link SQLMonitorService#getConnectionUsage(ServerRequest)}
+     * 获取数据库连接使用率相关数据的接口。
+     */
     @Test
     public void getConnectionUsageTest()
     {
-        webTestClient
-            .get()
-            .uri(SQLMonitorEndPoints.CONNECTION_USAGE_QUERY)
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectStatus().isOk()
-            .expectBody(String.class)
-            .value((json) ->
-                System.out.println(getPrettyFormatJSON(json)));
+        for (int index = 0; index < INDICATOR_TESTS; ++index)
+        {
+            webTestClient
+                .get()
+                .uri(SQLMonitorEndPoints.CONNECTION_USAGE_QUERY)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value((json) ->
+                    System.out.println(getPrettyFormatJSON(json)));
+
+            Mono.delay(Duration.ofSeconds(3L)).block();
+        }
     }
 
-    /** 测试查询本数据库指定全局状态的接口。*/
+    /**
+     * 测试 {@link SQLMonitorService#getGlobalStatus(ServerRequest)}
+     * 查询本数据库指定全局状态的接口。
+     */
     @Test
     public void getGlobalStatusTest()
     {
@@ -128,7 +170,33 @@ public class MonitorEndPointsTest
         }
     }
 
-    /** 测试查询数据库大小服务的接口。*/
+    /**
+     * 测试 {@link SQLMonitorService#getDatabaseSize(ServerRequest)}
+     * 查询数据库大小服务的接口在参数错误下失败的情况 。
+     */
+    @Test
+    public void getDatabaseSizeFailedTest()
+    {
+        webTestClient
+            .get()
+            .uri((uriBuilder) ->
+                uriBuilder.path(SQLMonitorEndPoints.DATABASE_SIZE_QUERY)
+                    .queryParam("schemaName", "0_o")
+                    .queryParam("order", "DESC")
+                    .build()
+            )
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
+            .expectBody(String.class)
+            .value((json) ->
+                System.out.println(getPrettyFormatJSON(json)));
+    }
+
+    /**
+     * 测试 {@link SQLMonitorService#getDatabaseSize(ServerRequest)}
+     * 查询数据库大小服务的接口。
+     */
     @Test
     public void getDatabaseSizeTest()
     {
@@ -165,7 +233,10 @@ public class MonitorEndPointsTest
         }
     }
 
-    /** 测试查询服务器运行时间服务的接口。*/
+    /**
+     * 测试 {@link SQLMonitorService#getServerUpTime(ServerRequest)}
+     * 查询服务器运行时间服务的接口。
+     */
     @Test
     public void getServerUpTimeTest()
     {
@@ -180,17 +251,26 @@ public class MonitorEndPointsTest
                 System.out.println(getPrettyFormatJSON(json)));
     }
 
+    /**
+     * 测试 {@link SQLMonitorService#getInnodbBufferCacheHitRate(ServerRequest)}
+     * 查询 InnoDB 缓存命中率服务的接口。
+     */
     @Test
     public void getInnodbBufferCacheHitRateTest()
     {
-        webTestClient
-            .get()
-            .uri(SQLMonitorEndPoints.INNODB_BUFFER_CACHE_HIT_RATE_QUERY)
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectStatus().isOk()
-            .expectBody(String.class)
-            .value((json) ->
-                System.out.println(getPrettyFormatJSON(json)));
+        for (int index = 0; index < INDICATOR_TESTS; ++index)
+        {
+            webTestClient
+                .get()
+                .uri(SQLMonitorEndPoints.INNODB_BUFFER_CACHE_HIT_RATE_QUERY)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value((json) ->
+                    System.out.println(getPrettyFormatJSON(json)));
+
+            Mono.delay(Duration.ofSeconds(3L)).block();
+        }
     }
 }
