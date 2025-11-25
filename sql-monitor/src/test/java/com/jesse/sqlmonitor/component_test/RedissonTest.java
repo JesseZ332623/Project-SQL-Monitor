@@ -1,7 +1,7 @@
-package com.jesse.sqlmonitor;
+package com.jesse.sqlmonitor.component_test;
 
 import cn.hutool.core.util.IdUtil;
-import com.jesse.sqlmonitor.dto.RandomJokeDTO;
+import com.jesse.sqlmonitor.component_test.dto.RandomJokeDTO;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.redisson.Redisson;
@@ -48,6 +48,19 @@ public class RedissonTest
 
     private RedissonReactiveClient redissonReactiveClient = null;
 
+    /** 挂上了代理的 HTTP 客户端实例。*/
+    private final
+    WebClient webClient
+        = WebClient.builder()
+        .clientConnector(new ReactorClientHttpConnector(
+            HttpClient.create()
+                .proxy((proxy) ->
+                    proxy.type(ProxyProvider.Proxy.SOCKS5)
+                        .host("localhost")
+                        .port(10808)
+                )
+        )).build();
+
     public RedissonReactiveClient
     getRedissonReactiveClient()
     {
@@ -72,19 +85,6 @@ public class RedissonTest
 
         return this.redissonReactiveClient;
     }
-
-    /** 挂上了代理的 HTTP 客户端实例。*/
-    private final
-    WebClient webClient
-        = WebClient.builder()
-            .clientConnector(new ReactorClientHttpConnector(
-                HttpClient.create()
-                    .proxy((proxy) ->
-                        proxy.type(ProxyProvider.Proxy.SOCKS5)
-                            .host("localhost")
-                            .port(10808)
-                    )
-            )).build();
 
     private @NotNull Mono<String> getDatabaseTime()
     {
@@ -128,7 +128,7 @@ public class RedissonTest
         final long contextThreadId = IdUtil.getSnowflakeNextId();
 
         Flux.interval(Duration.ZERO, Duration.ofMillis(1500L))
-            .take(10L)
+            .take(5L)
             .concatMap((sequence) ->
                 Mono.fromRunnable(() -> System.out.println("No. " + sequence))
                     .then(

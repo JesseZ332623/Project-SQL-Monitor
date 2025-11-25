@@ -76,28 +76,6 @@ app:
     # 缓存的有效期（为前端的最短查询间隔 - 500 毫秒的冗余）
     ttl: 2500ms
 
-  redis-lock:
-    enable: true
-    operation-timeout: 3s
-    schedulers:
-      # 最大线程数（默认 100 线程）
-      max-threads: 100
-      # 任务队列容量（默认 1000）
-      task-queue-capacity: 1024
-      # 调度线程名（默认 redis-lock）
-      thread-name: redis-lock
-      # 空闲线程存活时间（默认 60 秒）
-      ttl-seconds: 60
-      # 是否开启守护线程？（对于分布式锁操作来说是必须的）
-      daemon: true
-    distributed-lock:
-      # 分布式锁前缀稍复杂
-      #（示例：sql-monitor-cache-test:172.16.100.200:sql-monitor-lock）
-      key-prefix: "${app.redis-cache.key-prefix}${app.r2dbc.master.host}:sql-monitor-lock"
-      #（示例：sql-monitor-cache-test:172.16.100.200:sql-monitor-semaphore）
-    fair-semaphore:
-      key-prefix: "${app.redis-cache.key-prefix}${app.r2dbc.master.host}:sql-monitor-semaphore"
-
 springdoc:
   api-docs:
     path: /api-docs
@@ -135,9 +113,3 @@ logging:
     com:
       jesse:
         sqlmonitor: DEBUG
-
-# Lettuce 客户端调试信息
-#    io:
-#      lettuce:
-#        core: DEBUG
-#        core.RedisHandshake: TRACE

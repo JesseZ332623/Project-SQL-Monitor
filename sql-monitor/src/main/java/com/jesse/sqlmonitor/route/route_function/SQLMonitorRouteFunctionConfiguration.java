@@ -29,7 +29,7 @@ import static org.springframework.web.reactive.function.server.RequestPredicates
 @Configuration
 public class SQLMonitorRouteFunctionConfiguration
 {
-    @Bean
+    @Bean(name = "sqlMonitorRouteFunction")
     @RouterOperations(
         {
             @RouterOperation(
@@ -167,9 +167,33 @@ public class SQLMonitorRouteFunctionConfiguration
                 )
             ),
             @RouterOperation(
+                path = ALL_SCHEMA_NAME_QUERY,
+                operation = @Operation(
+                    operationId = "getAllSchemaName",
+                    summary     = "获取所有的数据库名",
+                    parameters = {
+                        @Parameter(
+                            name        = "includeSysShema",
+                            description = "是否包含系统数据库？",
+                            required    = true
+                        )
+                    },
+                    responses = {
+                        @ApiResponse(
+                            responseCode = "200",
+                            description  = "数据库名列表"
+                        ),
+                        @ApiResponse(
+                            responseCode = "500",
+                            description  = "数据库断连或其他未知错误"
+                        )
+                    }
+                )
+            ),
+            @RouterOperation(
                 path = DATABASE_SIZE_QUERY,
                 operation = @Operation(
-                    operationId = "getAllDatabaseSize",
+                    operationId = "getDatabaseSize",
                     summary     = "获取数据库指定库和库下所有表的大小",
                     tags        = {"数据库指定库和库下所有表的大小获取"},
                     parameters  = {
@@ -253,6 +277,7 @@ public class SQLMonitorRouteFunctionConfiguration
             .GET(NETWORK_TRAFFIC_QUERY,   accept(APPLICATION_JSON), sqlMonitorService::getNetWorkTraffic)
             .GET(GLOBAL_STATUS_QUERY,     accept(APPLICATION_JSON), sqlMonitorService::getGlobalStatus)
             .GET(CONNECTION_USAGE_QUERY,  accept(APPLICATION_JSON), sqlMonitorService::getConnectionUsage)
+            .GET(ALL_SCHEMA_NAME_QUERY,   accept(APPLICATION_JSON), sqlMonitorService::getAllSchemaName)
             .GET(DATABASE_SIZE_QUERY,     accept(APPLICATION_JSON), sqlMonitorService::getDatabaseSize)
             .GET(INNODB_BUFFER_CACHE_HIT_RATE_QUERY, accept(APPLICATION_JSON), sqlMonitorService::getInnodbBufferCacheHitRate)
             .GET(SERVER_UPTIME_QUERY, accept(APPLICATION_JSON), sqlMonitorService::getServerUpTime)

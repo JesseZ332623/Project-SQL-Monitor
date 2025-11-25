@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
@@ -122,17 +123,20 @@ public class MonitorLogServiceImpl implements MonitorLogService
             final LocalDateTime until = parseDatetime(params.getT3());
             final QueryOrder order    = QueryOrder.valueOf(params.getT4().toUpperCase(Locale.ROOT));
 
-           return
-           this.monitorLogRepository
-               .fetchIndicator(type, serverIP, until, order)
-               .collectList();
+            return
+            this.monitorLogRepository
+                .fetchIndicator(type, serverIP, until, order)
+                .collectList()
+                .flatMap((indicators) ->
+                    ReactiveResponseBuilder.OK(
+                        indicators,
+                        String.format(
+                            "Searched %d %s indicators from server %s until %s.",
+                            indicators.size(), type.getSimpleName(), serverIP, until
+                        )
+                    )
+                );
         })
-        .flatMap((indicators) ->
-            ReactiveResponseBuilder.OK(
-                indicators,
-                String.format("Search %d indicators.", indicators.size())
-            )
-        )
         .onErrorResume(this::errorHandle);
     }
 
@@ -151,25 +155,39 @@ public class MonitorLogServiceImpl implements MonitorLogService
             final String serverIP     = params.getT2();
             final LocalDateTime until = parseDatetime(params.getT3());
 
+            String customerMessage
+                = String.format(
+                    "To Calculate type of %s statistics data from server %s until %s.",
+                    statisticsType.name(), serverIP, until
+            );
+
             return
             switch (statisticsType)
             {
                 case AVERAGE ->
                     this.monitorLogRepository
-                        .getAverageQPS(serverIP, until);
+                        .getAverageQPS(serverIP, until)
+                        .map((average) ->
+                            Tuples.of(average, customerMessage));
                 case MEDIAN_VALUE ->
                     this.monitorLogRepository
-                        .getMedianQPS(serverIP, until);
+                        .getMedianQPS(serverIP, until)
+                        .map((medium) ->
+                            Tuples.of(medium, customerMessage));
                 case EXTREME_VALUE ->
                     this.monitorLogRepository
-                        .getExtremeQPS(serverIP, until);
+                        .getExtremeQPS(serverIP, until)
+                        .map((extreme) ->
+                            Tuples.of(extreme, customerMessage));
                 case STANDARD_DEVIATION ->
                     this.monitorLogRepository
-                        .getStandingDeviationQPS(serverIP, until);
-                };
-            })
-        .flatMap((averageValue) ->
-            ReactiveResponseBuilder.OK(averageValue, null))
+                        .getStandingDeviationQPS(serverIP, until)
+                        .map((stddev) ->
+                            Tuples.of(stddev, customerMessage));
+            };
+        })
+        .flatMap((statisticsRes) ->
+            ReactiveResponseBuilder.OK(statisticsRes.getT1(), statisticsRes.getT2()))
         .onErrorResume(this::errorHandle);
     }
 }

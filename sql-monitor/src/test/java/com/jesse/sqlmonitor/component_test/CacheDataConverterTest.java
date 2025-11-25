@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor;
+package com.jesse.sqlmonitor.component_test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jesse.sqlmonitor.monitor.cacher.CacheDataConverter;

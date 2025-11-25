@@ -18,6 +18,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Map;
 
 import static com.jesse.sqlmonitor.monitor.constants.IndicatorKeyNames.*;
@@ -49,7 +50,17 @@ public class MySQLIndicatorsRepositoryImpl implements MySQLIndicatorsRepository
     /** 指标数据缓存器。*/
     private final IndicatorCacher indicatorCacher;
 
-    /** 查询所有数据库大小（支持按数据库大小排序）。*/
+    /** 查询所有数据库名（可选是否包括系统数据库）。*/
+    @Override
+    public Mono<List<String>>
+    getAllSchemaName(boolean includeSysShema)
+    {
+        return
+        this.globalStatusQuery
+            .getAllSchemaName(includeSysShema);
+    }
+
+    /** 查询指定数据库和它的所有表大小（支持按数据表大小排序）。*/
     @Override
     public Mono<Map<String, DatabaseSize>>
     getDatabaseSize(String schemaName, QueryOrder queryOrder)

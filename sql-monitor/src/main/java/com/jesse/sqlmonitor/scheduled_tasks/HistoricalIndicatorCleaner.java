@@ -185,7 +185,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
     /**
      * 清理上一个星期之前的本监视数据库下的所有历史指标数据，
      * 确保数据库中只保留一个星期之内的数据库，维持数据的规模。
-     *（定时任务自动调用）
+     *（Http 请求手动调用）
      */
     public @NotNull Mono<CleanUpResult>
     cleanIndicatorUtilLastWeekManually()
@@ -198,7 +198,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                 return
                 Mono.error(
                     new ScheduledTasksException(
-                        "The task cleanIndicatorUtilLastWeek() already executing, skip..."
+                        "(Http-request) The task cleanIndicatorUtilLastWeekManually() already executing, skip..."
                     )
                 );
             }

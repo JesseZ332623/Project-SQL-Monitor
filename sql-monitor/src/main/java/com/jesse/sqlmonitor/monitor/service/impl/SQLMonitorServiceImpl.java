@@ -133,6 +133,20 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
             .onErrorResume(this::genericErrorHandle);
     }
 
+    /** 获取所有数据库名的服务接口。*/
+    public Mono<ServerResponse>
+    getAllSchemaName(ServerRequest request)
+    {
+        return
+        praseRequestParam(request, "includeSysShema")
+            .flatMap((isInclude) ->
+                this.mySQLIndicatorsRepository
+                    .getAllSchemaName(Boolean.parseBoolean(isInclude)))
+            .flatMap((schemaNames) ->
+                ReactiveResponseBuilder.OK(schemaNames, null))
+            .onErrorResume(this::genericErrorHandle);
+    }
+
     /** 查询数据库大小服务的接口。*/
     @Override
     public Mono<ServerResponse>
@@ -181,7 +195,7 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
         return
         this.mySQLIndicatorsRepository
             .getGlobalStatus(GlobalStatusName.UPTIME)
-            .map((status) -> {
+            .flatMap((status) -> {
                 final Duration runDuration
                     = Duration.ofSeconds((Long) status.get("Uptime"));
 
@@ -192,9 +206,8 @@ public class SQLMonitorServiceImpl implements SQLMonitorService
                 runtimeArray[2] = runDuration.toMinutesPart();
                 runtimeArray[3] = runDuration.toSecondsPart();
 
-                return runtimeArray;
-            }).flatMap((runtimeArray) ->
-                ReactiveResponseBuilder.OK(runtimeArray, null)
-            );
+                return
+                ReactiveResponseBuilder.OK(runtimeArray, null);
+            }).onErrorResume(this::genericErrorHandle);
     }
 }

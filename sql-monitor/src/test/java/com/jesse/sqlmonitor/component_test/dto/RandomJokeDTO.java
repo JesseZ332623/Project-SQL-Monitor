@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.dto;
+package com.jesse.sqlmonitor.component_test.dto;
 
 import lombok.*;
 

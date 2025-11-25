@@ -12,6 +12,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -124,6 +125,7 @@ public class DatabaseSizeCounterImpl implements DatabaseSizeCounter
     {
         return
         this.getSchemaSizeByName(schemaName, queryOrder)
+            .timeout(Duration.ofMinutes(1L))
             .subscribeOn(Schedulers.boundedElastic());
     }
 }

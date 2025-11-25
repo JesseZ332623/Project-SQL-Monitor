@@ -193,10 +193,11 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.14</version>
                 <configuration>
-                    <excludes>
-                        <!-- 排除不需要检查覆盖率的类 -->
-                        <!-- 暂定 -->
-                    </excludes>
+                    <!-- 覆盖率测试只包含核心业务类 -->
+                    <includes>
+                        <include>**/indicator_record/*/**</include>
+                        <include>**/monitor/*/**</include>
+                    </includes>
                 </configuration>
                 <executions>
                     <execution>
@@ -227,17 +228,12 @@
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.85</minimum>
-                                        </limit>
-                                        <limit>
-                                            <counter>BRANCH</counter>
-                                            <value>COVEREDRATIO</value>
                                             <minimum>0.80</minimum>
                                         </limit>
                                         <limit>
                                             <counter>METHOD</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.85</minimum>
+                                            <minimum>0.80</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

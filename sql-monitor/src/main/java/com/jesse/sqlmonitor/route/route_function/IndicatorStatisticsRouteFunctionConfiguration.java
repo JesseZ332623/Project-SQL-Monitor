@@ -6,8 +6,6 @@ import com.jesse.sqlmonitor.indicator_record.service.MonitorLogService;
 import com.jesse.sqlmonitor.indicator_record.service.constants.QPSStatisticsType;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.jetbrains.annotations.NotNull;
@@ -25,7 +23,7 @@ import static com.jesse.sqlmonitor.route.endpoints_config.IndicatorQueryEndpoint
 @Configuration
 public class IndicatorStatisticsRouteFunctionConfiguration
 {
-    @Bean
+    @Bean(name = "indicatorStatisticsRouteFunction")
     @RouterOperations({
         @RouterOperation(
             path = MONITOR_LOG_QUERY,

@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor;
+package com.jesse.sqlmonitor.component_test;
 
 import com.jesse.sqlmonitor.monitor.cacher.IndicatorCacher;
 import com.jesse.sqlmonitor.monitor.constants.IndicatorKeyNames;
@@ -14,6 +14,10 @@ public class IndicatorCacherTest
     @Autowired
     private IndicatorCacher indicatorCacher;
 
+    /**
+     * 将指标数据转化成 Map 发往 Redis，
+     * 再从 Redis 读出转化回指标数据并输出，确保整个流程正常。
+     */
     @Test
     public void indicatorCacherTest()
     {
@@ -21,7 +25,8 @@ public class IndicatorCacherTest
             .cacheIndicatorData(
                 IndicatorKeyNames.QPSResultKey,
                 QPSResult.buildZeroQPS(),
-                QPSResult.class)
+                QPSResult.class
+            )
             .then(
                 this.indicatorCacher
                     .getIndicatorCache(IndicatorKeyNames.QPSResultKey, QPSResult.class)
