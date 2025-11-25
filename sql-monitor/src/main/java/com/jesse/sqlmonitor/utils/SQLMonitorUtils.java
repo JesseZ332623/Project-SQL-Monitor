@@ -19,7 +19,7 @@ final public class SQLMonitorUtils
      * 允许包含字母、数字、下划线、连字符，但不能不以数字开头。
      */
     private static final
-    Pattern LEGAL_SCHEMA_REGEX = Pattern.compile("^[a-zA-Z0-9_-]+$");
+    Pattern LEGAL_SCHEMA_REGEX = Pattern.compile("^[a-zA-Z_$][a-zA-Z0-9_$-]{0,63}$");
 
     /** 尝试对全局状态值做数值转换，失败则使用字符串类型。*/
     public static @Nullable
@@ -120,13 +120,12 @@ final public class SQLMonitorUtils
     {
         String trimSchemaName = schemaName.trim();
 
-        // 只允许字母、数字、下划线
         if (!LEGAL_SCHEMA_REGEX.matcher(trimSchemaName).matches())
         {
             throw new
             IllegalArgumentException(
                 String.format(
-                    "Schema name: [%s] is invalid! " +
+                    "Format of schema name: [%s] is invalid! " +
                     "Only letters, numbers, underscore, hyphen allowed, and cannot start with a number!",
                     schemaName
                 )
