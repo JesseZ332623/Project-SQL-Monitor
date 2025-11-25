@@ -157,7 +157,7 @@
                             <rules>
                                 <rule>
                                     <!-- BUNDLE 参数意味着对整个代码包进行检查 -->
-                                    <!-- 这里是指 <includes> 标签下的所以包 -->
+                                    <!-- 这里是指 <includes> 标签下的所有包 -->
                                     <element>BUNDLE</element>
                                     <limits>
                                         <!-- 对核心类设置合理的阈值 -->
