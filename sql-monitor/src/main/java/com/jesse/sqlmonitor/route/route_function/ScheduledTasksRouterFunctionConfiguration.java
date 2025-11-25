@@ -22,7 +22,7 @@ import static com.jesse.sqlmonitor.route.endpoints_config.ScheduledTasksEndpoint
 public class ScheduledTasksRouterFunctionConfiguration
 {
 
-    @Bean
+    @Bean(name = "scheduledTasksRouterFunction")
     @RouterOperations({
         @RouterOperation(
             path = SEND_INDICATOR_REPORT,
