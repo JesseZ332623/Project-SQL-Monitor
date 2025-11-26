@@ -26,7 +26,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 
-/** Redis 配置类。*/
+/** Redis 客户端配置类。*/
 @Configuration
 @RequiredArgsConstructor
 public class RedisConfig
@@ -59,7 +59,7 @@ public class RedisConfig
             .clientOptions(
                 ClientOptions.builder()
                     .autoReconnect(true)
-                    // 重连时不取消命令
+                    // 客户端检查到 “协议错误” 时，不再执行重连操作。
                     .suspendReconnectOnProtocolFailure(true)
                     .disconnectedBehavior(
                         // 断开连接时拒绝接收命令
