@@ -12,6 +12,8 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
+import java.time.Duration;
+
 import static com.jesse.sqlmonitor.utils.PrettyJSONPrinter.getPrettyFormatJSON;
 
 /** 手动执行定时任务端点 {@link ScheduledTasksEndpoints} 测试。*/
@@ -28,6 +30,8 @@ public class ScheduledTasksEndpointsTest
     {
         webTestClient
             = WebTestClient.bindToRouterFunction(routerFunction)
+                           .configureClient()
+                           .responseTimeout(Duration.ofSeconds(10L))
                            .build();
     }
 
