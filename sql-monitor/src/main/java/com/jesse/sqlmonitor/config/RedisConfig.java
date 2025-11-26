@@ -66,18 +66,18 @@ public class RedisConfig
                     )
                     .socketOptions(
                         SocketOptions.builder()
-                            .connectTimeout(Duration.ofSeconds(15L)) // 连接超时
+                            .connectTimeout(Duration.ofSeconds(2L)) // 连接超时
                             .keepAlive(true) // 自动管理 TCP 连接存活
                             .build()
                     )
                     .timeoutOptions(
                         TimeoutOptions.builder()
-                            .fixedTimeout(Duration.ofSeconds(30L)) // 操作超时
+                            .fixedTimeout(Duration.ofSeconds(1L)) // 操作超时
                             .build()
                     ).build()
             )
-            .commandTimeout(Duration.ofSeconds(30L))  // 命令超时时间
-            .shutdownTimeout(Duration.ofSeconds(10L))  // 关闭超时时间
+            .commandTimeout(Duration.ofSeconds(1L))  // 命令超时时间
+            .shutdownTimeout(Duration.ofSeconds(5L))  // 关闭超时时间
             .build();
 
         // 3. 创建连接工厂
@@ -146,8 +146,8 @@ public class RedisConfig
             .setAddress(redisAddress)
             .setUsername(this.redisProperties.getUsername())
             .setPassword(this.redisProperties.getPassword())
-            .setTimeout(10000)
-            .setRetryAttempts(5)
+            .setTimeout(3000)
+            .setRetryAttempts(2)
             /*
              * FullJitterDelay（全抖动）
              * 核心思想：“指数退避 + 全抖动”（Exponential Back - off + Full Jitter）。
@@ -156,7 +156,7 @@ public class RedisConfig
              * 随着重试次数增加，当前延迟值按指数增长（例如第1次 100ms，第2次 200ms，第3次 400ms…，直到达到 maxDelay 上限）；
              * 每次重试的实际延迟是 [0, 当前延迟值) 内的随机值（“全抖动”指随机范围覆盖整个当前延迟区间）。
              */
-            .setRetryDelay(new FullJitterDelay(Duration.ofSeconds(2L), Duration.ofSeconds(8L)))
+            .setRetryDelay(new FullJitterDelay(Duration.ofMillis(500L), Duration.ofSeconds(8L)))
             .setConnectionPoolSize(128)
             .setConnectionMinimumIdleSize(32)
             .setSubscriptionConnectionPoolSize(50)
