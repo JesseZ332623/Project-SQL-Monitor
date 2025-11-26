@@ -59,7 +59,8 @@ public class RedisConfig
             .clientOptions(
                 ClientOptions.builder()
                     .autoReconnect(true)
-                    .suspendReconnectOnProtocolFailure(false) // 重连时不取消命令
+                    // 重连时不取消命令
+                    .suspendReconnectOnProtocolFailure(true)
                     .disconnectedBehavior(
                         // 断开连接时拒绝接收命令
                         ClientOptions.DisconnectedBehavior.REJECT_COMMANDS
