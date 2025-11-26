@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.monitor.cacher;
+package com.jesse.sqlmonitor.monitor.cacher.util;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;

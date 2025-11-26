@@ -1,7 +1,7 @@
 package com.jesse.sqlmonitor.component_test;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jesse.sqlmonitor.monitor.cacher.CacheDataConverter;
+import com.jesse.sqlmonitor.monitor.cacher.util.CacheDataConverter;
 import com.jesse.sqlmonitor.response_body.ConnectionUsage;
 import com.jesse.sqlmonitor.response_body.QPSResult;
 import org.junit.jupiter.api.Test;

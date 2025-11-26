@@ -22,4 +22,10 @@ public class RedisCacheProperties
      * 确保正确的触发缓存更新，避免读到旧数据。
      */
     private Duration ttl;
+
+    /** 缓存操作（读/写）统一超时时间。*/
+    private Duration cacheOperatorTimeout;
+
+    /** 获取分布式锁超时时间。*/
+    private Duration lockWaitTimeout;
 }

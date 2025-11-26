@@ -47,6 +47,16 @@ app:
     key-prefix: "sql-monitor-cache:"
     # 缓存的有效期（为前端的最短查询间隔 - 500 毫秒的冗余）
     ttl: 2500ms
+    # 缓存操作（读/写）统一超时时间
+    cache-operator-timeout: 300ms
+    # 获取分布式锁超时时间
+    lock-wait-timeout: 1s
+
+  redis-health-check:
+    # 健康检查间隔
+    check-interval: 1s
+    # PING 操作的超时时间
+    ping-timeout: 1s
 
   rabbitmq:
     host: localhost
