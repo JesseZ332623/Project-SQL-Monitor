@@ -3,6 +3,9 @@ package com.jesse.sqlmonitor.monitor.cacher;
 import cn.hutool.core.util.IdUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jesse.sqlmonitor.indicator_record.service.IndicatorSender;
+import com.jesse.sqlmonitor.monitor.cacher.warm_up.health.RedisHealthChecker;
+import com.jesse.sqlmonitor.monitor.cacher.util.CacheDataConverter;
+import com.jesse.sqlmonitor.monitor.cacher.warm_up.CacherWarmUpEventPublisher;
 import com.jesse.sqlmonitor.monitor.constants.IndicatorKeyNames;
 import com.jesse.sqlmonitor.monitor.impl.qps.QPSCounter;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
@@ -19,9 +22,9 @@ import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static java.lang.String.format;
@@ -38,7 +41,7 @@ public class IndicatorCacher
     /** 主数据库连接属性。*/
     private final R2dbcMasterProperties properties;
 
-    /** Redis 缓存相关属性。*/
+    /** Redis 缓存操作相关属性。*/
     private final RedisCacheProperties redisCacheProperties;
 
     /** 指标数据发送器接口。*/
@@ -50,6 +53,14 @@ public class IndicatorCacher
     /** 响应式通用 Redis 模板。*/
     private final
     ReactiveRedisTemplate<String, Object> redisTemplate;
+
+    /** 缓存预热事件发布器。*/
+    private final
+    CacherWarmUpEventPublisher cacherWarmUpEventPublisher;
+
+    /** Redis 健康状态检查器。*/
+    private final
+    RedisHealthChecker redisHealthChecker;
 
     /** 获取主数据的 IP + PORT 字符串。*/
     private @NotNull String
@@ -95,7 +106,7 @@ public class IndicatorCacher
                         this.redisCacheProperties.getTtl()
                     )
             )
-            .timeout(Duration.ofSeconds(3L))
+            .timeout(this.redisCacheProperties.getCacheOperatorTimeout())
             .then();
     }
 
@@ -156,8 +167,10 @@ public class IndicatorCacher
                 Mono.when(
                     this.saveIndicatorMapToCache(cacheKey, indicatorMap),
                     this.sendIndicatorToTaskQueue(indicator, type)
-                )
-            )
+                ))
+            // 更新缓存操作成功后，需要标记这一类的缓存数据预热成功
+            .doOnSuccess((ignore) ->
+                this.cacherWarmUpEventPublisher.markAsWarnUp(keyNames))
             .thenReturn(indicator)
             // 若因为某些原因出错了，
             // 这一次的缓存操作算做失败，直接返回指标数据给下游即可
@@ -173,7 +186,7 @@ public class IndicatorCacher
 
     /**
      * 尝试从 Redis 缓存中读取指标数据，
-     * 如果读取不到则返回 {@link Mono#empty()}。
+     * 如果读取不到则返回 {@link Mono#empty()} 。
      *
      * @param keyNames  指标数据键名
      * @param type      指标数据实际类型
@@ -193,9 +206,9 @@ public class IndicatorCacher
         this.redisTemplate
             .opsForHash()
             .entries(cacheKey)
+            .timeout(this.redisCacheProperties.getCacheOperatorTimeout())
             .collectMap((entry) ->
                 (String) entry.getKey(), Map.Entry::getValue)
-            .timeout(Duration.ofSeconds(5L))
             .flatMap((indicatorMap) -> {
                 // 若从缓存中没拿到数据，直接返回 Mono.empty() 即可。
                 if (indicatorMap.isEmpty()) {
@@ -207,10 +220,14 @@ public class IndicatorCacher
                     indicatorMap, type, this.objectMapper
                 );
             })
-            .onErrorResume(exception -> {
-                log.error(
-                    "Get indicator (Key: {}) from cache failed! Caused by: {}",
-                    cacheKey, exception.getMessage()
+            .onErrorResume((exception) -> {
+                // 若从 Redis 缓存中获取失败（比如 Redis 服务重启、宕机等情况）
+                // 则直接视为缓存获取失败，后续的所有操作（加锁、更新缓存等）就没有意义了，
+                // 因此可以直接返回从数据库获取指标数据的响应式流，
+                // 确保前端的请求不被堆积（优雅降级）
+                log.warn(
+                    "Get indicator {} from cache failed! Caused by {}. fallback to database.",
+                    this.getCacheKey(keyNames), exception.getMessage()
                 );
 
                 return Mono.empty();
@@ -245,6 +262,27 @@ public class IndicatorCacher
         Class<T> indicatorType
     )
     {
+        // 先检查 Redis 的健康状态
+        if (!this.redisHealthChecker.isHealthy()) {
+            return indicatorSupplier;
+        }
+
+        // 再检查 Redis 的预热情况
+        if (!this.cacherWarmUpEventPublisher.isWarmUp(keyNames))
+        {
+            // 先从数据库取数据然后再更新到缓存，
+            // 直接返回数据库查询结果给上层调用者
+            // 避免 Redis 重新上线后被大量堆积的请求冲击
+            // 直到缓存数据被预热后，在放行至正常逻辑
+            return
+            indicatorSupplier.doOnSuccess((data) -> {
+                if (Objects.nonNull(data)) {
+                    this.cacherWarmUpEventPublisher
+                        .publishWarnUpEvent(keyNames, data, indicatorType);
+                }
+            });
+        }
+
         return
         this.getIndicatorCache(keyNames, indicatorType) // 先尝试从缓存获取数据
             .flatMap((indicator) ->
@@ -255,10 +293,13 @@ public class IndicatorCacher
                     final RLockReactive lock
                         = this.redissonReactiveClient
                               .getLock(this.getLockKey(keyNames));
-                    // 获取线程号（响应式环境下线程号不可靠，这里使用随机 ID 在上下文传递）
+                    // 获取线程号
+                    //（响应式环境下线程号不可靠，这里使用雪花算法生成的 ID 在上下文传递）
                     final long threadId  = IdUtil.getSnowflakeNextId();
-                    final long waitTime  = 5000L; // 等待锁期限
                     final long leaseTime = -1L;   // 锁期限（这里使用看门狗策略续期）
+                    final long waitTime
+                        = this.redisCacheProperties
+                              .getLockWaitTimeout().toSeconds();
 
                     return
                     Mono.usingWhen(
@@ -300,13 +341,8 @@ public class IndicatorCacher
                 })
             )
             .onErrorResume((exception) -> {
-                // 若 Redis 缓存、锁操作失败或者发生其他错误，
-                // 则视为缓存获取失败，直接返回从数据库获取指标数据的响应式流即可（优雅降级）
-                log.warn(
-                    "Cache lookup failed for key: {}, fallback to database.",
-                    this.getCacheKey(keyNames)
-                );
-
+               // 若 Redis 缓存、锁操作失败、队列发送失败或者发生其他错误，
+               // 则视为缓存获取失败，直接返回从数据库获取指标数据的响应式流即可（优雅降级）
                 return indicatorSupplier;
             });
     }
