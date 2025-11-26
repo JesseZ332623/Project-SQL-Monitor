@@ -430,7 +430,7 @@ export default {
 
 				const runtimeArray = serverRunningTimeResponse.data;
 				serverRunningTime.value 
-					= `${runtimeArray[0]} days ${runtimeArray[1]} hours ${runtimeArray[2]} minutes ${runtimeArray[3]} seconds`
+					= `${runtimeArray[0]} days ${runtimeArray[1]} hours ${runtimeArray[2]} min ${runtimeArray[3]} sec`
 
 				// 更新图表数据
 				const now = new Date()
@@ -474,7 +474,7 @@ export default {
 			console.log('Starting auto-refresh with interval:', refreshInterval.value, 'seconds')
 			
 			// 立即执行一次数据获取
-			// fetchData()
+			fetchData()
 			
 			// 设置定时器，无论页面是否可见都会执行
 			refreshTimer = setInterval(() => {
