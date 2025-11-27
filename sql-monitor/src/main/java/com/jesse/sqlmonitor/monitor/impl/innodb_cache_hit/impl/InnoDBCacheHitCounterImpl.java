@@ -20,7 +20,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.jesse.sqlmonitor.monitor.constants.MonitorConstants.*;
 
-/** InnDB 缓存命中率计算器实现。*/
+/** InnoDB 缓存命中率计算器实现。*/
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -158,6 +158,10 @@ public class InnoDBCacheHitCounterImpl implements InnoDBCacheHitCounter
                 return
                 InnodbBufferCacheHitRate
                     .buildResult(hitRate);
+            }
+
+            if (retries > 0) {
+                Thread.onSpinWait();
             }
 
             ++retries;
