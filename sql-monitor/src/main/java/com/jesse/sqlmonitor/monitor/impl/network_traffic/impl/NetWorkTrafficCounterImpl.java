@@ -100,13 +100,17 @@ public class NetWorkTrafficCounterImpl implements NetWorkTrafficCounter
                     );
                 }
 
+                if (retries > 0) {
+                    Thread.onSpinWait();
+                }
+
                 ++retries;
             }
             while (retries < MAX_RETRIES);
 
             // 如果连着尝试 10 回都发现不一致，
             // 说明竞争过于激烈了，输出警告日志并返回降级值
-            log.warn("Failed to update QPS after {} retries.", MAX_RETRIES);
+            log.warn("Failed to update network traffic after {} retries.", MAX_RETRIES);
 
             return NetWorkTraffic.onError();
         });
