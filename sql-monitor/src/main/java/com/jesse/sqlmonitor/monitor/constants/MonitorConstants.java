@@ -9,7 +9,7 @@ final public class MonitorConstants
 
     /** 两次查询间隔的最小时间（单位：毫秒）*/
     public static final
-    long MIN_TIME_DIFF_MS = 500L;
+    long MIN_TIME_DIFF_MS = 1000L;
 
     /** 前几回的快照结果需要忽略。*/
     public static final
