@@ -20,28 +20,68 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.jesse.sqlmonitor.monitor.constants.MonitorConstants.*;
 
-/** MySQL QPS 计算器实现。*/
+/** MySQL QPS 指标计算器实现。*/
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class QPSCounterImpl implements QPSCounter
 {
+    /** 加权平均平滑因子（代表历史数据的权重）。*/
+    private static final BigDecimal
+    SMOOTHING_FACTOR = BigDecimal.valueOf(0.70);
+
+    /** 加权平均平滑因子（代表新数据的权重）。*/
+    private static final BigDecimal
+    SMOOTHING_FACTOR_CUR = BigDecimal.ONE.subtract(SMOOTHING_FACTOR);
+
     /** MySQL 全局状态查询器。*/
     private final GlobalStatusQuery globalStatusQuery;
 
-    /** 使用 AtomicReference 管理总查询快照，实现无锁操作。*/
+    /** 使用 {@link AtomicReference} 管理总查询快照，实现无锁操作。*/
     private final
     AtomicReference<QueriesSnapshot> queriesSnapshot
         = new AtomicReference<>(QueriesSnapshot.empty());
+
+    /** 上一次经过加权平均求和计算得出的 QPS 值。*/
+    private final
+    AtomicReference<BigDecimal> lastStableQPS
+        = new AtomicReference<>(BigDecimal.ZERO);
 
     /** 快照计数器，忽略前两次的快照数据（避免头几次 QPS 计算值虚高）。*/
     private final AtomicInteger snapshotInitCount
         = new AtomicInteger(0);
 
     /**
+     * 结合当前和上一次的 QPS 数据，进行加权平均求和，
+     * 确保在缓存层失效时，涌入数据库层的计算请求不会造成 QPS 剧烈变化，
+     * 而是平滑的变化。
+     *
+     * @param currentRawQPS 当前计算得出的原始 QPS
+     *
+     * @return 平滑处理后的 QPS 结果
+     */
+    private BigDecimal
+    smoothQPS(BigDecimal currentRawQPS)
+    {
+        BigDecimal lastQPS = this.lastStableQPS.get();
+
+        if (lastQPS.compareTo(BigDecimal.ZERO) == 0) {
+            return currentRawQPS;
+        }
+
+        if (lastQPS.compareTo(currentRawQPS) == 0) {
+            return currentRawQPS;
+        }
+
+        return
+        lastQPS.multiply(SMOOTHING_FACTOR)
+               .add(currentRawQPS.multiply(SMOOTHING_FACTOR_CUR));
+    }
+
+    /**
      * 根据两张总查询数快照，计算此刻本数据库的 QPS（保留 8 位小数且四舍五入）。
      *
-     * <pre>公式：(上一次总查询数 - 本次总查询数) / 两张总查询数快照的时间差（单位：秒）</pre>
+     * <pre>公式：(本次总查询数 - 上一次总查询数) / 两张总查询数快照的时间差（单位：秒）</pre>
      */
     private QPS
     calculate(@NotNull QueriesSnapshot previous, QueriesSnapshot current)
@@ -49,12 +89,15 @@ public class QPSCounterImpl implements QPSCounter
         // 计算两次快照的时间差
         long timeDiff = previous.getTimeDiffMills(current);
 
-        // 计算两次快照的总查询差
-        long queriesDiff = current.getQueries() - previous.getQueries();
-
-        // 如果时间差小于 MIN_TIME_DIFF_MS 毫秒，直接返回空结果
-        if (timeDiff < MIN_TIME_DIFF_MS) {
-            return QPS.zero();
+        // 如果时间差小于 MIN_TIME_DIFF_MS 毫秒，
+        // 直接用 lastStableQPS 构造结果
+        if (timeDiff < MIN_TIME_DIFF_MS)
+        {
+            return
+            QPS.of(
+                this.lastStableQPS.get(), current.getQueries(),
+                0L, timeDiff, false
+            );
         }
 
         // 若检查到指标被外部重置，返回重置结果
@@ -62,18 +105,25 @@ public class QPSCounterImpl implements QPSCounter
             return QPS.reset();
         }
 
+        // 计算两次快照的总查询差
+        long queriesDiff = current.getQueries() - previous.getQueries();
+
         // 正式的计算 QPS
-        BigDecimal qps
+        BigDecimal rawQPS
             = BigDecimal.valueOf(queriesDiff)
                   .divide(
                       BigDecimal.valueOf(timeDiff / 1000.00),
                       8, RoundingMode.HALF_UP
                   );
 
+        // 平滑处理 QPS 值并更新。
+        BigDecimal smoothQPS = this.smoothQPS(rawQPS);
+        this.lastStableQPS.set(smoothQPS);
+
         // 构建 QPS 实例
         return
         QPS.of(
-            qps, current.getQueries(),
+            smoothQPS, current.getQueries(),
             queriesDiff, timeDiff, false
         );
     }
@@ -141,7 +191,6 @@ public class QPSCounterImpl implements QPSCounter
             if (retries > 0)
             {
                 // 可以考虑调用该方法优化自旋循环
-                //（虽然在低频调用下根本用不到就是了）
                 Thread.onSpinWait();
             }
 
@@ -183,17 +232,6 @@ public class QPSCounterImpl implements QPSCounter
 
         /** 总查询数是否被外部重置？*/
         boolean resetDetected;
-
-        @Contract(" -> new")
-        public static @NotNull
-        QPS zero()
-        {
-            return new
-            QPS(BigDecimal.ZERO,
-            0L, 0L, 0L,
-            false
-            );
-        }
 
         @Contract(" -> new")
         public static @NotNull
