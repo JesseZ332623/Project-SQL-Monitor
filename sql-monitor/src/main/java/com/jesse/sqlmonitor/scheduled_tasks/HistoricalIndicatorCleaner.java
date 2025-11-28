@@ -10,15 +10,10 @@ import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -30,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class HistoricalIndicatorCleaner implements DisposableBean
+public class HistoricalIndicatorCleaner
 {
     /** 响应式邮件发送器接口。*/
     private final ReactiveEmailSender emailSender;
@@ -48,45 +43,15 @@ public class HistoricalIndicatorCleaner implements DisposableBean
     /** 本定时任务是否正在运行中的标志位。*/
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
-    /** 本定时任务的订阅凭据。*/
-    private Disposable cleanupDisposable;
-
     /**
-     * 在应用完全启动时启用本任务，
-     * 启动后延迟两个星期执行第一次，后面一星期执行一次。
+     * 使用 Corn 表达式，
+     * 每周日凌晨 0 点整执行清理操作。
      */
-    @EventListener(ApplicationReadyEvent.class)
+    @Scheduled(cron = "0 0 0 ? * SUN")
     public void startTask()
     {
-        this.cleanupDisposable
-            = Flux.interval(Duration.ofDays(14L), Duration.ofDays(7L))
-                  .flatMap((ignore) -> this.cleanIndicatorUtilLastWeek())
-                  .subscribeOn(Schedulers.boundedElastic())
-                  .subscribe();
-    }
-
-    /** 应用关闭的时候取消订阅本自动任务。*/
-    @Override
-    public void destroy()
-    {
-        if (Objects.nonNull(this.cleanupDisposable) && !this.cleanupDisposable.isDisposed())
-        {
-            // 如果检查到正在运行，考虑阻塞等待任务完成
-            if (isRunning.get())
-            {
-                try {
-                    Thread.sleep(Duration.ofSeconds(3L));
-                }
-                catch (InterruptedException exception)
-                {
-                    Thread.currentThread().interrupt();
-                    log.warn("Shutdown wait interrupted.");
-                }
-            }
-
-            this.cleanupDisposable.dispose();
-            this.cleanupDisposable = null;
-        }
+        this.cleanIndicatorUtilLastWeek()
+            .subscribe();
     }
 
     /**
@@ -106,21 +71,22 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                 return Mono.empty();
             }
 
-            String serverIp             = this.masterProperties.getHost();
+            String        serverIp      = this.masterProperties.getHost();
             LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
+            final long    batchSize     = 5000L;
 
             // 初始化一个批量删除结果
             CleanUpResult cleanUpResult = CleanUpResult.init(serverIp, lastWeekPoint);
 
             return
             this.monitorLogRepository
-                .deleteOneBatchIndicator(serverIp, lastWeekPoint, 5000L)
+                .deleteOneBatchIndicator(serverIp, lastWeekPoint, batchSize)
                 .expand((deleted) -> {
                     if (deleted > 0)
                     {
                         return
                         this.monitorLogRepository
-                            .deleteOneBatchIndicator(serverIp, lastWeekPoint, 5000L)
+                            .deleteOneBatchIndicator(serverIp, lastWeekPoint, batchSize)
                             .delayElement(Duration.ofMillis(50L));
                     }
                     else
@@ -147,7 +113,7 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                     );
 
                     // 如果总删除数大于 5000 条，可以考虑发送一条邮件给运维
-                    if (cleanUpResult.getTotalDeleted().get() > 5000L) {
+                    if (cleanUpResult.getTotalDeleted().get() > batchSize) {
                         this.sendBulkDeletionReport(cleanUpResult);
                     }
                 })
@@ -285,8 +251,15 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                     cleanUpResult.getOneWeekAgo(),
                     DatetimeFormatter.NOW()))
             .flatMap(this.emailSender::sendEmail)
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe();
+            .subscribe(
+                null,   // 没有结果需要消费
+                (exception) ->
+                    log.error(
+                        "Failed to send bulk deletion report email, Caused by: {}",
+                        exception.getMessage(), exception
+                    ),
+                () -> log.info("Send batch delete report successfully!")
+            );
     }
 
     /** 向运维发送批量删除超时的报告。*/
@@ -307,8 +280,16 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                 cleanUpResult.getTotalDeleted().get(),
                 DatetimeFormatter.NOW()))
         .flatMap(this.emailSender::sendEmail)
-        .subscribeOn(Schedulers.boundedElastic())
-        .subscribe();
+        .subscribe(
+            null,
+            (exception) ->
+                log.error(
+                    "Failed to send bulk deletion timeout report email, Caused by: {}",
+                    exception.getMessage(), exception
+                ),
+
+            () -> log.info("Send bulk deletion timeout report email successfully!")
+        );
     }
 
     /** 自动清理任务执行失败的时候也要向运维发送邮件。*/
@@ -332,7 +313,14 @@ public class HistoricalIndicatorCleaner implements DisposableBean
                     )
             )
             .flatMap(this.emailSender::sendEmail)
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe();
+            .subscribe(
+                null,
+                (exception) ->
+                    log.error(
+                        "Failed to send bulk deletion failed report email, Caused by: {}",
+                        exception.getMessage(), exception
+                    ),
+                () -> log.info("Send bulk deletion failed report email successfully!")
+            );
     }
 }
