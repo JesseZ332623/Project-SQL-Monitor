@@ -1,5 +1,7 @@
 package com.jesse.sqlmonitor.response_body.base;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.jesse.sqlmonitor.response_body.*;
@@ -7,8 +9,11 @@ import com.jesse.sqlmonitor.response_body.qps_statistics.ExtremeQPS;
 import com.jesse.sqlmonitor.response_body.QPSResult;
 import com.jesse.sqlmonitor.response_body.qps_statistics.StandingDeviationQPS;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.Nullable;
 
 /** 所有响应体的基类。（在 Jackson 序列化/反序列化时有大用，作为类型令牌传入）*/
+@Slf4j
 @EqualsAndHashCode
 @RequiredArgsConstructor(access = AccessLevel.PUBLIC)
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
@@ -25,4 +30,17 @@ public abstract class ResponseBase<T extends ResponseBase<T>>
 {
     /** 本指标响应数据是否有效？（所有子类必须实现）*/
     public abstract boolean isValid();
+
+    /**
+     * 反序列化时，我们需要记录反序列化的真实类型是什么，
+     * 确保遭到类型攻击时有迹可循。
+     */
+    @JsonCreator
+    public static <T extends ResponseBase<T>>
+    @Nullable T create(@JsonProperty("type") String type)
+    {
+        log.debug("Deserializing ResponseBase with type: {}", type);
+
+        return null;
+    }
 }
