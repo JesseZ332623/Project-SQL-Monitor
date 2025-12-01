@@ -11,6 +11,8 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -120,7 +122,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
         {
             if (this.isRunning.compareAndSet(true, false))
             {
-                log.info("Auto-Stop RabbitMQ indicator receiver...");
+                log.info("(Auto-Stop) RabbitMQ indicator receiver...");
                 log.info(
                     "(Auto-Stop) Waiting up to {} for current batch to complete...",
                     this.properties.getShutdownDelay()
@@ -128,14 +130,33 @@ public class ReceiverLifecycleManager implements SmartLifecycle
 
                 this.indicatorReceiver.setRunningFlag(false);
 
-                // 等待可能正在处理的插入操作完成
-                try {
-                    Thread.sleep(this.properties.getShutdownDelay().toMillis());
+                final long batchInsetWait
+                    = this.properties.getShutdownDelay().toMillis();
+
+                try
+                {
+                    // 等待可能的数据库插入操作完成（有可配置的时间限制）
+                    boolean complete
+                        = this.indicatorReceiver
+                              .getCountDownLatch()
+                              .await(batchInsetWait, TimeUnit.MILLISECONDS);
+
+                    // 如果超过时间限制插入操作仍未完成，只能强行终止了。
+                    if (!complete)
+                    {
+                        log.warn(
+                            "(Auto-Stop) Wait batch insert timeout (over {} ms), forced termination.",
+                            batchInsetWait
+                        );
+                    }
                 }
-                catch (InterruptedException e)
+                catch (InterruptedException interrupt)
                 {
                     Thread.currentThread().interrupt();
-                    log.warn("(Auto-Stop) Shutdown wait interrupted.");
+                    log.warn(
+                        "(Auto-Stop) Shutdown wait interrupted. Caused by: {}",
+                        interrupt.getMessage()
+                    );
                 }
 
                 this.stopIndicatorConsumer();
@@ -173,7 +194,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
             = this.indicatorReceiverDisposable
                   .getAndSet(null);
 
-        if (disposable != null && !disposable.isDisposed())
+        if (!Objects.isNull(disposable) && !disposable.isDisposed())
         {
             log.info("Disposing indicator consumer subscription...");
             disposable.dispose();
