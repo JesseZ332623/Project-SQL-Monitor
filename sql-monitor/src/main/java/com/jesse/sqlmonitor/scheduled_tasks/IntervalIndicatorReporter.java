@@ -16,27 +16,20 @@ import io.github.jessez332623.reactive_email_sender.exception.EmailException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** 定时向运维人员发送指标报告发送器。*/
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class IntervalIndicatorReporter implements DisposableBean
+public class IntervalIndicatorReporter
 {
     /** 运维人员的邮箱号（大嘘）。*/
     @Value("${app.operation-staff.email}")
@@ -55,44 +48,15 @@ public class IntervalIndicatorReporter implements DisposableBean
     /** 本定时任务是否正在运行中的标志位。*/
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
-    /** 本定时任务的订阅凭据。*/
-    private Disposable intervalReportDisposable;
-
     /**
-     * 在应用完全启动时启用本任务，
-     * 启动后延迟 12 小时执行第一次，之后每隔 12 小时执行一次。
+     * 使用 Corn 表达式，
+     * 在每天 9 点和 18 点执行指标报告发送任务。
      */
-    @EventListener(ApplicationReadyEvent.class)
+    @Scheduled(cron = "0 0 9,18 * * ?")
     public void startTask()
     {
-        this.intervalReportDisposable
-            = Flux.interval(Duration.ofHours(12L), Duration.ofHours(12L))
-                  .flatMap((ignore) -> this.sendIntervalIndicatorReport())
-                  .subscribeOn(Schedulers.boundedElastic())
-                  .subscribe();
-    }
-
-    @Override
-    public void destroy()
-    {
-        if (Objects.nonNull(this.intervalReportDisposable) && !this.intervalReportDisposable.isDisposed())
-        {
-            // 如果检查到正在运行，考虑阻塞等待任务完成
-            if (isRunning.get())
-            {
-                try {
-                    Thread.sleep(Duration.ofSeconds(5L));
-                }
-                catch (InterruptedException exception)
-                {
-                    Thread.currentThread().interrupt();
-                    log.warn("Shutdown wait interrupted.");
-                }
-            }
-
-            this.intervalReportDisposable.dispose();
-            this.intervalReportDisposable = null;
-        }
+        this.sendIntervalIndicatorReport()
+            .subscribe();
     }
 
     /**
