@@ -12,6 +12,7 @@ import com.jesse.indicator_receiver.service.IndicatorReceiver;
 import com.jesse.indicator_receiver.utils.IPv4Converter;
 import com.jesse.indicator_receiver.utils.exception.InvalidIPv4Exception;
 import com.rabbitmq.client.Delivery;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -26,7 +27,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** 指标数据接收器实现。*/
 @Slf4j
@@ -54,13 +57,33 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
      * 是否正在运行的原子标志位
      * （由 {@link ReceiverLifecycleManager} 来传递）。
      */
-    private final AtomicBoolean isRunning
-        = new AtomicBoolean(false);
+    private final
+    AtomicBoolean isRunning = new AtomicBoolean(false);
+
+    /** 记录正在执行的数据库批量操作的操作数量。*/
+    private final
+    AtomicInteger activeInsertOperations = new AtomicInteger(0);
+
+    /**
+     * 用于 {@link this#batchInsertThenACK(Tuple2)} 方法内，
+     * 用于等待所有批量插入操作完成，在通知关闭操作。
+     */
+    @Getter
+    private final CountDownLatch countDownLatch = new CountDownLatch(1);
 
     /** 设置是否正在运行的原子标志位。*/
     public void
-    setRunningFlag(boolean flag) {
+    setRunningFlag(boolean flag)
+    {
         this.isRunning.set(flag);
+
+        // 如果设置停止标志，且当前没有活跃插入操作，
+        // 我们就立即通知可以关闭。
+        if (!flag && this.activeInsertOperations.get() == 0)
+        {
+            log.info("No active batch insert operation, count down directly.");
+            this.countDownLatch.countDown();
+        }
     }
 
     /** 将无效的消息扔进死信队列，并报告原因。*/
@@ -240,28 +263,38 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
          * <requeue> 是否重新入队
          */
         return
-        this.monitorLogRepository
-            .batchInsert(monitorLogs)
-            .timeout(this.properties.getBatchInsertTimeout())
-            .doOnSuccess((result) -> {
-                successfulDeliveries.forEach((delivery) ->
-                    ((AcknowledgableDelivery) delivery).ack(false));
+        Mono.fromRunnable(this.activeInsertOperations::incrementAndGet)
+            .then(
+                this.monitorLogRepository
+                    .batchInsert(monitorLogs)
+                    .timeout(this.properties.getBatchInsertTimeout())
+                    .doOnSuccess((result) -> {
+                        successfulDeliveries.forEach((delivery) ->
+                            ((AcknowledgableDelivery) delivery).ack(false));
 
-                log.info(
-                    "Successfully processed and acknowledged {} indicators.",
-                    successfulDeliveries.size()
-                );
-            })
-            .doOnError((error) -> {
-                successfulDeliveries.forEach((delivery) ->
-                    ((AcknowledgableDelivery) delivery).nack(false, true));
+                        log.info(
+                            "Successfully processed and acknowledged {} indicators.",
+                            successfulDeliveries.size()
+                        );
+                    })
+                    .doOnError((error) -> {
+                        successfulDeliveries.forEach((delivery) ->
+                            ((AcknowledgableDelivery) delivery).nack(false, true));
 
-                log.error(
-                    "Database insert failed, indicators will be redelivered, Caused by: {}",
-                    error.getMessage()
-                );
-            })
-            .onErrorResume((ignore) -> Mono.just(0L));
+                        log.error(
+                            "Database insert failed, indicators will be redelivered, Caused by: {}",
+                            error.getMessage()
+                        );
+                    })
+                    .onErrorResume((ignore) -> Mono.just(0L))
+                    .doFinally((signal) -> {
+                        // 只有在插入操作计数为 0 且指标消费者处于关闭期间时，
+                        // 才将 countDownLatch 的计数归零，向外部发送所有插入操作完成的信号
+                        if (this.activeInsertOperations.decrementAndGet() == 0 && !this.isRunning.get()) {
+                            this.countDownLatch.countDown();
+                        }
+                    })
+            );
     }
 
     /** 从队列中消费指标数据，存入数据库。*/
