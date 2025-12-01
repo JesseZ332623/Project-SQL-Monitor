@@ -42,7 +42,9 @@ app:
     buffer-size: 128          # 指标缓冲区大小
     buffer-timeout: 5m        # 若超过这个时间段直接刷新缓冲区
     batch-insert-timeout: 15s # 批量插入操作时间限制
-    shutdown-delay: 5s        # 取消订阅前的延迟时间
+    # 取消订阅前的延迟时间
+    #（有 CountDownLatch 在，设置一个很长的时间只是一个兜底操作）
+    shutdown-delay: 10m
 
 logging:
   level:
