@@ -10,7 +10,6 @@ import org.redisson.Redisson;
 import org.redisson.api.RedissonReactiveClient;
 import org.redisson.config.Config;
 import org.redisson.config.FullJitterDelay;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -34,7 +33,9 @@ public class RedisConfig
 {
     private final RedisProperties redisProperties;
 
-    /** Redis 响应式连接工厂配置类。*/
+    /**
+     * Redis 响应式连接工厂配置类。
+     */
     @Bean
     @Primary
     public ReactiveRedisConnectionFactory
@@ -96,7 +97,6 @@ public class RedisConfig
      *
      * @param factory Redis 连接工厂，
      *                Spring 会自动读取配置文件中的属性去构建。
-     *
      * @return 配置好的 Redis 响应式模板
      */
     @Bean
@@ -130,55 +130,46 @@ public class RedisConfig
         return new ReactiveRedisTemplate<>(factory, context);
     }
 
-    /** Redisson 响应式客户端实例配置。*/
+    /**
+     * Redisson 响应式客户端实例配置。
+     */
     @Bean
     @Primary
     public RedissonReactiveClient
-    redissonReactiveClient(
-        @Value("${spring.application.name}")
-        String environment
-    )
+    redissonReactiveClient()
     {
         Config singleServerConfig = new Config();
 
-        if ("sqlmonitor-test".equals(environment))
-        {
-            singleServerConfig.useSingleServer()
-                .setAddress("redis://0.0.0.0:6379")
-                .setPassword("1234567890");
-        }
-        else
-        {
-            // 组合服务器地址
-            final String redisAddress
-                = "redis://"                            +
-                  this.redisProperties.getHost()  + ":" +
-                  this.redisProperties.getPort();
 
-            singleServerConfig
-                .useSingleServer()
-                .setAddress(redisAddress)
-                .setUsername(this.redisProperties.getUsername())
-                .setPassword(this.redisProperties.getPassword())
-                .setTimeout(3000)
-                .setRetryAttempts(2)
-                /*
-                 * FullJitterDelay（全抖动）
-                 * 核心思想：“指数退避 + 全抖动”（Exponential Back - off + Full Jitter）。
-                 *
-                 * 初始延迟为 baseDelay（如 100ms）；
-                 * 随着重试次数增加，当前延迟值按指数增长（例如第1次 100ms，第2次 200ms，第3次 400ms…，直到达到 maxDelay 上限）；
-                 * 每次重试的实际延迟是 [0, 当前延迟值) 内的随机值（“全抖动”指随机范围覆盖整个当前延迟区间）。
-                 */
-                .setRetryDelay(new FullJitterDelay(Duration.ofMillis(500L), Duration.ofSeconds(8L)))
-                .setConnectionPoolSize(128)
-                .setConnectionMinimumIdleSize(32)
-                .setSubscriptionConnectionPoolSize(50)
-                .setSubscriptionConnectionMinimumIdleSize(10)
-                .setKeepAlive(true)
-                .setPingConnectionInterval(30000)   // 30 秒一次心跳检查
-                .setDnsMonitoringInterval(5000);    // DNS 监控
-        }
+        // 组合服务器地址
+        final String redisAddress
+            = "redis://" +
+              this.redisProperties.getHost() + ":" +
+              this.redisProperties.getPort();
+
+        singleServerConfig
+            .useSingleServer()
+            .setAddress(redisAddress)
+            .setUsername(this.redisProperties.getUsername())
+            .setPassword(this.redisProperties.getPassword())
+            .setTimeout(3000)
+            .setRetryAttempts(2)
+            /*
+             * FullJitterDelay（全抖动）
+             * 核心思想：“指数退避 + 全抖动”（Exponential Back - off + Full Jitter）。
+             *
+             * 初始延迟为 baseDelay（如 100ms）；
+             * 随着重试次数增加，当前延迟值按指数增长（例如第1次 100ms，第2次 200ms，第3次 400ms…，直到达到 maxDelay 上限）；
+             * 每次重试的实际延迟是 [0, 当前延迟值) 内的随机值（“全抖动”指随机范围覆盖整个当前延迟区间）。
+             */
+            .setRetryDelay(new FullJitterDelay(Duration.ofMillis(500L), Duration.ofSeconds(8L)))
+            .setConnectionPoolSize(128)
+            .setConnectionMinimumIdleSize(32)
+            .setSubscriptionConnectionPoolSize(50)
+            .setSubscriptionConnectionMinimumIdleSize(10)
+            .setKeepAlive(true)
+            .setPingConnectionInterval(30000)   // 30 秒一次心跳检查
+            .setDnsMonitoringInterval(5000);    // DNS 监控
 
         return
         Redisson.create(singleServerConfig).reactive();
