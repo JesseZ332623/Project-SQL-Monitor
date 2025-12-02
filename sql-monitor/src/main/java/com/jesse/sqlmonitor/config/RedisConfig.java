@@ -144,7 +144,7 @@ public class RedisConfig
         if ("sqlmonitor-test".equals(environment))
         {
             singleServerConfig.useSingleServer()
-                .setAddress("redis://redis-ci:6379")
+                .setAddress("redis://0.0.0.0:6379")
                 .setPassword("1234567890");
         }
         else
