@@ -130,35 +130,6 @@ jobs:
         # 在指定目录查找所有文本文件并 echo 它的路径，将错误信息重定向到空设备（忽略错误信息）
         # 如果在指定目录下没找到任何文本文件，则输出 No test report
       - name: Build and test all modules
-        env:
-          # MySQL slaver (R2DBC) 配置覆盖 - 针对两个模块的 slaver
-          APP_R2DBC_SLAVER_HOST: localhost
-          APP_R2DBC_SLAVER_PORT: 3307
-          APP_R2DBC_SLAVER_USER: Jesse_EC233
-          APP_R2DBC_SLAVER_PASSWORD: 3191955858_EC
-          APP_R2DBC_SLAVER_DEFAULT-SCHEMA: sql_monitor
-
-          # MySQL master 配置覆盖 - 只针对 sql-monitor（若 CI 中 master 是 docker 的 master）
-          APP_R2DBC_MASTER_HOST: localhost
-          APP_R2DBC_MASTER_PORT: 3433
-          APP_R2DBC_MASTER_USER: root
-          APP_R2DBC_MASTER_PASSWORD: 123456
-
-          # RabbitMQ 配置覆盖 - 针对两个模块
-          APP_RABBITMQ_HOST: localhost
-          APP_RABBITMQ_PORT: 5673
-          APP_RABBITMQ_USER: jesse
-          APP_RABBITMQ_PASSWORD: 1234567890
-          APP_RABBITMQ_VIRTUALHOST: /
-          APP_RABBITMQ_CONNECT-TIMEOUT: 30000
-
-          # Redis 配置覆盖 - 只针对 sql-monitor（若测试用到）
-          APP_REDIS_HOST: localhost
-          APP_REDIS_PORT: 6380
-          APP_REDIS_PASSWORD: 1234567890  # docker-compose 中是 1234567890，但 yml 中是 Jesse:1234567890 - 确认匹配
-
-          # 额外：为 R2DBC 添加连接参数，避免 SSL/认证问题（可选，但推荐）
-          SPRING_R2DBC_URL: r2dbc:mysql://localhost:3307/sql_monitor?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
         run: |
           echo "=== Start to build and test all backend modules ==="
           
