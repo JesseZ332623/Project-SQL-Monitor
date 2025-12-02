@@ -28,12 +28,12 @@ services:
     image: mysql:8
     container_name: mysql-slaver-ci
     environment:
-      # MYSQL_ROOT_PASSWORD: root_password  # 临时 root 密码
+      MYSQL_ROOT_PASSWORD: root_password  # 临时 root 密码
       MYSQL_DATABASE: sql_monitor  # 对应 slaver.default-schema
       MYSQL_USER: Jesse_EC233      # 对应 slaver.user
       MYSQL_PASSWORD: 3191955858_EC # 对应 slaver.password
     ports:
-      - "3306:3306"  # 保持 localhost:3306，对应 slaver.host: localhost
+      - "3307:3306"  # 保持 localhost:3306，对应 slaver.host: localhost
     command:
       - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4
@@ -61,7 +61,7 @@ services:
       - --requirepass 1234567890  # 设置 Redis 密码
       - --appendonly yes
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: [ "CMD-SHELL", "redis-cli", "-a", "1234567890", "ping" ]
       interval: 10s
@@ -77,8 +77,8 @@ services:
       RABBITMQ_DEFAULT_PASS: 1234567890     # 对应 rabbitmq.password
       RABBITMQ_DEFAULT_VHOST: /             # 对应 rabbitmq.virtualhost
     ports:
-      - "5672:5672"   # AMQP 协议
-      - "15672:15672" # 管理界面
+      - "5673:5672"   # AMQP 协议
+      - "15673:15672" # 管理界面
     healthcheck:
       test: [ "CMD-SHELL", "rabbitmq-diagnostics", "ping" ]
       interval: 10s
