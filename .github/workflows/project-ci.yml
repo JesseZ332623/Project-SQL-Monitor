@@ -25,7 +25,7 @@ jobs:
           # 'corretto' AWS 维护
           # 'zulu'     Azul Systems 维护
           # 'openjdk'  Oracle 官方 OpenJDK
-          distribution: 'openjdk'
+          distribution: 'temurin'
 
       - name: Cache Maven dependencies
         # 该 Action 用于缓存依赖项，加快构建的速度
