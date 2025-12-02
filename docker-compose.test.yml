@@ -15,12 +15,12 @@ services:
       - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping || exit 1"]
-      interval: 10s
-      timeout: 8s
-      retries: 5
-      start_period: 30s
+#    healthcheck:
+#      test: ["CMD-SHELL", "mysqladmin ping || exit 1"]
+#      interval: 10s
+#      timeout: 8s
+#      retries: 5
+#      start_period: 30s
     restart: unless-stopped
 
     # 从数据库
