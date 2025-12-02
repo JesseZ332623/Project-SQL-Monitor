@@ -37,7 +37,7 @@ jobs:
       - name: Initialize test databases
         run: |
           echo "Initialize slaver database..."
-          docker-compose exec -T mysql-slaver-ci mysql -uJesse_EC233 -p3191955858_EC -e "
+          docker-compose -f docker-compose.test.yml exec -T mysql-slaver-ci mysql -uJesse_EC233 -p3191955858_EC -e "
             CREATE DATABASE IF NOT EXISTS `sql_monitor`;
             USE `sql_monitor`;
             CREATE TABLE `monitor_log` (
