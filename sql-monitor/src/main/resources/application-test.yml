@@ -65,7 +65,7 @@ app:
           connectiontimeout: 5000
 
   redis:
-    host: localhost
+    host: redis-ci
     port: 6379
     username: Jesse
     password: 1234567890
