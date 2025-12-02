@@ -1,0 +1,96 @@
+name: Backend Modules CI # 后端模块 CI 测试
+
+on:
+  push:
+    branches: [ develop, main ] # 尝试推送到这两个分支时会触发 CI 测试
+  pull_request:
+    branches: [ develop, main ] # 尝试对这两个分支发起 PS 时也会触发 CI 测试
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest # 在最新版的 Ubuntu 虚拟机上运行
+
+    steps:
+      - name: Checkout repository
+        # 该 Action 将仓库的代码检出到 runner 的工作目录（相当于 git clone）
+        uses: actions/checkout@v4
+
+      - name: Setup Java and Maven
+        # 该 Action 安装指定版本的 JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'       # Java 版本
+          # 发行版本，可以是
+          # 'temurin'  Eclipse 基金会开源，社区维护
+          # 'corretto' AWS 维护
+          # 'zulu'     Azul Systems 维护
+          # 'openjdk'  Oracle 官方 OpenJDK
+          distribution: 'openjdk'
+
+      - name: Cache Maven dependencies
+        # 该 Action 用于缓存依赖项，加快构建的速度
+        uses: actions/cache@v3
+        with:
+          # 缓存所有下载的依赖和所有模块的构建目录
+          path: |
+            ~/.m2/repository
+            */target
+          # 将缓存保存到 Github 服务器（使用 key 查找）
+          # 只要项目内的任何一个 pom.xml 文件发生变动，都会创建新缓存
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          # 后备匹配机制，如果匹配 key 失败，则会尝试匹配 restore-keys 属性设置的键
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+        # mvn clean compile test -B
+        # 命令中的 -B 选项意味批处理模式 (--batch-mode) 不显示下载进度
+        #
+        # find indicator_receiver/target/surefire-reports \
+        # -name "*.txt" -exec echo " - {}" \; 2>/dev/null || echo " No test report"
+        # 在指定目录查找所有文本文件并 echo 它的路径，将错误信息重定向到空设备（忽略错误信息）
+        # 如果在指定目录下没找到任何文本文件，则输出 No test report
+      - name: Build and test all modules
+        run: |
+          echo "=== Start to build and test all backend modules ==="
+          
+          echo "--- Test module indicator_receiver ---"
+          cd indicator_receiver
+          mvn clean compile test -B
+          cd ..
+
+          echo "--- Test module sql-monitor ---"
+          cd sql-monitor
+          mvn clean compile test -B
+          cd ..
+          
+          echo "=== All test complete ==="
+
+      # 生成测试报告摘要
+      - name: Generate test reports
+        if: always()
+        run: |
+          echo "Conclusion of test report"
+          
+          echo "1. Module indicator_report: "
+          find indicator_receiver/target/surefire-reports -name "*.txt" -exec echo " - {}" \; 2>/dev/null || echo " No test report"
+          
+          echo "2. Module sql-monitor: "
+          find sql-monitor/target/surefire-reports -name "*.txt" -exec echo " - {}" \; 2>/dev/null || echo " No test report"
+
+      # 生成 JaCoCo 测试覆盖率报告
+      - name: Generate JaCoCo coverage report
+        run: |
+          cd indicator_receiver
+          mvn jacoco:report
+          cd ../sql-monitor
+          mvn jacoco:report
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-reports
+          path: |
+            indicator_receiver/target/site/jacoco
+            sql-monitor/target/site/jacoco
+          retention-days: 90 # 保留 90 天（默认）
