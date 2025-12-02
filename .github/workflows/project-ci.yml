@@ -130,6 +130,8 @@ jobs:
         # 在指定目录查找所有文本文件并 echo 它的路径，将错误信息重定向到空设备（忽略错误信息）
         # 如果在指定目录下没找到任何文本文件，则输出 No test report
       - name: Build and test all modules
+        env:
+          SPRING_DATA_REDIS_HOST: redis-ci
         run: |
           echo "=== Start to build and test all backend modules ==="
           
