@@ -1,0 +1,88 @@
+version: '3.8'
+services:
+  # 主数据库
+  mysql-master:
+    image: mysql:8
+    container_name: mysql-master-ci
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456 # 这个后要放在仓库的 Security 里面
+      # MYSQL_DATABASE: sql_monitor # 主库无需指定默认 schema
+    ports:
+      - "3433:3306"
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      restart: unless-stopped
+
+    # 从数据库
+    mysql-slaver:
+      image: mysql:8
+      container_name: mysql-slaver-ci
+      environment:
+        MYSQL_ROOT_PASSWORD: root_password  # 临时 root 密码
+        MYSQL_DATABASE: sql_monitor  # 对应 slaver.default-schema
+        MYSQL_USER: Jesse_EC233      # 对应 slaver.user
+        MYSQL_PASSWORD: 3191955858_EC # 对应 slaver.password
+      ports:
+        - "3306:3306"  # 保持 localhost:3306，对应 slaver.host: localhost
+      command:
+        - --default-authentication-plugin=mysql_native_password
+        - --character-set-server=utf8mb4
+        - --collation-server=utf8mb4_unicode_ci
+      healthcheck:
+        test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-uJesse_EC233", "-p3191955858_EC" ]
+        interval: 10s
+        timeout: 5s
+        retries: 3
+      restart: unless-stopped
+      # 需要等主库启动后再启动从库
+      depends_on:
+        mysql-master:
+          condition: service_healthy
+
+    redis:
+      image: redis:7-alpine
+      container_name: redis-ci
+      environment:
+        REDIS_USERNAME: Jesse       # 对应 redis.username
+        REDIS_PASSWORD: 1234567890  # 对应 redis.password
+      command:
+        - redis-server
+        - --requirepass 1234567890  # 设置 Redis 密码
+        - --appendonly yes
+      ports:
+        - "6379:6379"
+      healthcheck:
+        test: [ "CMD", "redis-cli", "-a", "1234567890", "ping" ]
+        interval: 10s
+        timeout: 5s
+        retries: 3
+      restart: unless-stopped
+
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        container_name: rabbitmq-ci
+        environment:
+          RABBITMQ_DEFAULT_USER: jesse          # 对应 rabbitmq.user
+          RABBITMQ_DEFAULT_PASS: 1234567890     # 对应 rabbitmq.password
+          RABBITMQ_DEFAULT_VHOST: /             # 对应 rabbitmq.virtualhost
+        ports:
+          - "5672:5672"   # AMQP 协议
+          - "15672:15672" # 管理界面
+        healthcheck:
+          test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+          interval: 10s
+          timeout: 5s
+          retries: 3
+        restart: unless-stopped
+
+    # 创建一个网络让容器相互访问
+    networks:
+      ci-network:
+        driver: bridge
