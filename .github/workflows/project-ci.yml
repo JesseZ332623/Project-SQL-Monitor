@@ -11,6 +11,14 @@ jobs:
     runs-on: ubuntu-latest # 在最新版的 Ubuntu 虚拟机上运行
 
     steps:
+      # 检查系统资源
+      - name: Check system resources
+        run: |
+          echo "System info:"
+          free -h
+          df -h
+          docker info
+
       - name: Checkout repository
         # 该 Action 将仓库的代码检出到 runner 的工作目录（相当于 git clone）
         uses: actions/checkout@v4
