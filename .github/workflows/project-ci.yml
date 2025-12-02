@@ -15,6 +15,14 @@ jobs:
         # 该 Action 将仓库的代码检出到 runner 的工作目录（相当于 git clone）
         uses: actions/checkout@v4
 
+      # 安装 Docker Compose
+      - name: Set up Docker Compose
+        run: |
+          echo "Installing Docker Compose..."
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.40.3/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
+
         # 启用 Docker 容器（部署中间件服务）
       - name: Start service with Docker Compose
         run: docker-compose -f docker-compose.test.yml up -d
