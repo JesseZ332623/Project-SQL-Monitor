@@ -4,7 +4,7 @@ services:
     image: mysql:8
     container_name: mysql-master-ci
     environment:
-      MYSQL_USER: root
+      # MYSQL_USER: root
       MYSQL_ROOT_PASSWORD: 123456 # 这个后面要放在仓库的 Security 里面
       # MYSQL_DATABASE: sql_monitor # 主库无需指定默认 schema
     ports:
