@@ -56,9 +56,15 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis-ci
-    command: redis-server --requirepass 1234567890 --appendonly yes
+    command: redis-server --requirepass 1234567890
     ports:
       - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
