@@ -40,7 +40,7 @@ jobs:
         run: |
           echo "Waiting for MySQL master to be ready..."
           for i in {1..60}; do
-            if docker-compose -f docker-compose.test.yml exec -T mysql-master-ci mysqladmin ping -h127.0.0.1 -uroot -p123456 >/dev/null 2>&1; then
+            if docker-compose -f docker-compose.test.yml exec -T mysql-master mysqladmin ping -h127.0.0.1 -uroot -p123456 >/dev/null 2>&1; then
               echo "MySQL master is ready!"
               break
             fi
@@ -50,7 +50,7 @@ jobs:
       
           echo "Waiting for MySQL slave to be ready..."
           for i in {1..60}; do
-            if docker-compose -f docker-compose.test.yml exec -T mysql-slaver-ci mysqladmin ping -h127.0.0.1 -uJesse_EC233 -p3191955858_EC >/dev/null 2>&1; then
+            if docker-compose -f docker-compose.test.yml exec -T mysql-slaver mysqladmin ping -h127.0.0.1 -uJesse_EC233 -p3191955858_EC >/dev/null 2>&1; then
               echo "MySQL slave is ready!"
               break
             fi
@@ -90,10 +90,10 @@ jobs:
           EOF
     
           # 执行 SQL 文件
-          docker-compose -f docker-compose.test.yml exec -T mysql-slaver-ci mysql -uJesse_EC233 -p3191955858_EC < /tmp/init_slave.sql
+          docker-compose -f docker-compose.test.yml exec -T mysql-slaver mysql -uJesse_EC233 -p3191955858_EC < /tmp/init_slave.sql
           
           # 验证表是否创建成功
-          docker-compose -f docker-compose.test.yml exec -T mysql-slaver-ci mysql -uJesse_EC233 -p3191955858_EC -e "SHOW TABLES IN sql_monitor;"
+          docker-compose -f docker-compose.test.yml exec -T mysql-slaver mysql -uJesse_EC233 -p3191955858_EC -e "SHOW TABLES IN sql_monitor;"
 
       - name: Setup Java and Maven
         # 该 Action 安装指定版本的 JDK
