@@ -14,8 +14,9 @@ services:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --performance-schema=OFF         # 禁用性能模式减少内存
-      - --innodb-buffer-pool-size=64M    # 减小缓冲池大小
-      - --innodb-log-file-size=24M       # 减小日志文件大小
+      - --innodb-buffer-pool-size=128M   # 减小缓冲池大小
+      - --innodb-log-file-size=48M       # 减小日志文件大小
+      - --max-connections=100            # 限制连接数
 #    healthcheck:
 #      test: ["CMD-SHELL", "mysqladmin ping || exit 1"]
 #      interval: 10s
@@ -34,14 +35,16 @@ services:
       MYSQL_USER: Jesse_EC233      # 对应 slaver.user
       MYSQL_PASSWORD: 3191955858_EC # 对应 slaver.password
     ports:
-      - "3307:3306"  # 保持 localhost:3306，对应 slaver.host: localhost
+      - "3307:3306"
     command:
       - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
       - --performance-schema=OFF         # 禁用性能模式减少内存
-      - --innodb-buffer-pool-size=64M    # 减小缓冲池大小
-      - --innodb-log-file-size=24M       # 减小日志文件大小
+      - --performance-schema=OFF         # 禁用性能模式减少内存
+      - --innodb-buffer-pool-size=128M   # 减小缓冲池大小
+      - --innodb-log-file-size=48M       # 减小日志文件大小
+      - --max-connections=100            # 限制连接数
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping || exit 1"]
       interval: 10s
