@@ -82,7 +82,7 @@ services:
           retries: 3
         restart: unless-stopped
 
-    # 创建一个网络让容器相互访问
-    networks:
-      ci-network:
-        driver: bridge
+# 创建一个网络让容器相互访问
+#networks:
+#  ci-network:
+#    driver: bridge
