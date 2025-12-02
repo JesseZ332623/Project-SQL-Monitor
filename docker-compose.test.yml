@@ -18,7 +18,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-      restart: unless-stopped
+    restart: unless-stopped
 
     # 从数据库
     mysql-slaver:
