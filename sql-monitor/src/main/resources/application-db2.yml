@@ -12,7 +12,7 @@ server:
 
 spring:
   application:
-  name: sqlmonitor-db2
+    name: sqlmonitor-db2
   main:
     web-application-type: reactive
   lifecycle:
