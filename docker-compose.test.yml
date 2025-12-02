@@ -65,22 +65,22 @@ services:
       retries: 3
     restart: unless-stopped
 
-    rabbitmq:
-      image: rabbitmq:3-management-alpine
-      container_name: rabbitmq-ci
-      environment:
-        RABBITMQ_DEFAULT_USER: jesse          # 对应 rabbitmq.user
-        RABBITMQ_DEFAULT_PASS: 1234567890     # 对应 rabbitmq.password
-        RABBITMQ_DEFAULT_VHOST: /             # 对应 rabbitmq.virtualhost
-      ports:
-        - "5672:5672"   # AMQP 协议
-        - "15672:15672" # 管理界面
-      healthcheck:
-        test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
-        interval: 10s
-        timeout: 5s
-        retries: 3
-      restart: unless-stopped
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq-ci
+    environment:
+      RABBITMQ_DEFAULT_USER: jesse          # 对应 rabbitmq.user
+      RABBITMQ_DEFAULT_PASS: 1234567890     # 对应 rabbitmq.password
+      RABBITMQ_DEFAULT_VHOST: /             # 对应 rabbitmq.virtualhost
+    ports:
+      - "5672:5672"   # AMQP 协议
+      - "15672:15672" # 管理界面
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
 # 创建一个网络让容器相互访问
 networks:
