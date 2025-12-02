@@ -16,7 +16,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping || exit 1"]
       interval: 10s
-      timeout: 5s
+      timeout: 8s
       retries: 5
       start_period: 30s
     restart: unless-stopped
@@ -39,7 +39,7 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping || exit 1"]
       interval: 10s
-      timeout: 5s
+      timeout: 8s
       retries: 5
       start_period: 30s
     restart: unless-stopped
@@ -79,7 +79,7 @@ services:
       - "15672:15672" # 管理界面
     healthcheck:
       test: [ "CMD-SHELL", "rabbitmq-diagnostics", "ping" ]
-      interval: 10
+      interval: 10s
       timeout: 15s
       retries: 5
     restart: unless-stopped
