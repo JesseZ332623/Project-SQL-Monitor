@@ -142,7 +142,7 @@ jobs:
 
           echo "--- Test module sql-monitor ---"
           cd sql-monitor
-          mvn clean compile test -B
+          mvn clean compile test -B -P test
           cd ..
           
           echo "=== All test complete ==="
