@@ -37,29 +37,36 @@ jobs:
       - name: Initialize test databases
         run: |
           echo "Initialize slaver database..."
-          docker-compose -f docker-compose.test.yml exec -T mysql-slaver-ci mysql -uJesse_EC233 -p3191955858_EC -e "
-            CREATE DATABASE IF NOT EXISTS `sql_monitor`;
-            USE `sql_monitor`;
-            CREATE TABLE `monitor_log` (
-              `log_id` bigint NOT NULL,
-              `datetime` datetime NOT NULL,
-              `indicator` varchar(255) NOT NULL,
-              `server_ip` int unsigned NOT NULL,
-              `indicator_type` enum('ConnectionUsage','DatabaseSize','InnodbBufferCacheHitRate','NetWorkTraffic','QPSResult') NOT NULL,
-              `qps_value` decimal(15,8) GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'qps') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.qps')) as decimal(15,8)) end)) VIRTUAL,
-              `current_connections` int GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'connectionUsage') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.currentConnections')) as unsigned) end)) VIRTUAL,
-              `cacheHitRate` decimal(15,8) GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'innodbBufferCacheHitRate') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.cacheHitRate')) as decimal(15,8)) end)) VIRTUAL,
-              `receivePerSec` decimal(15,8) GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'networkTraffic') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.receivePerSec')) as decimal(15,8)) end)) VIRTUAL,
-              `sentPerSec` decimal(15,8) GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'networkTraffic') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.sentPerSec')) as decimal(15,8)) end)) VIRTUAL,
-              PRIMARY KEY (`log_id`),
-              KEY `idx_ip_type_datetime` (`server_ip`,`indicator_type`,`datetime`),
-              KEY `datetime_idx` (`datetime`),
-              KEY `idx_qps` (`qps_value`),
-              KEY `idx_current_connections` (`current_connections`),
-              KEY `idx_cache_hitrate` (`cacheHitRate`),
-              KEY `idx_network_traffic` (`receivePerSec`,`sentPerSec`)
-              ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-          "
+          # 将 SQL 语句写入临时文件
+          cat > /tmp/init_slave.sql << 'EOF'
+          CREATE DATABASE IF NOT EXISTS `sql_monitor`;
+          USE `sql_monitor`;
+          CREATE TABLE `monitor_log` (
+          `log_id` bigint NOT NULL,
+          `datetime` datetime NOT NULL,
+          `indicator` varchar(255) NOT NULL,
+          `server_ip` int unsigned NOT NULL,
+          `indicator_type` enum('ConnectionUsage','DatabaseSize','InnodbBufferCacheHitRate','NetWorkTraffic','QPSResult') NOT NULL,
+          `qps_value` decimal(15,8) GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'qps') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.qps')) as decimal(15,8)) end)) VIRTUAL,
+          `current_connections` int GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'connectionUsage') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.currentConnections')) as unsigned) end)) VIRTUAL,
+          `cacheHitRate` decimal(15,8) GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'innodbBufferCacheHitRate') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.cacheHitRate')) as decimal(15,8)) end)) VIRTUAL,
+          `receivePerSec` decimal(15,8) GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'networkTraffic') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.receivePerSec')) as decimal(15,8)) end)) VIRTUAL,
+          `sentPerSec` decimal(15,8) GENERATED ALWAYS AS ((case when (json_unquote(json_extract(`indicator`,_utf8mb4'$.type')) = _utf8mb4'networkTraffic') then cast(json_unquote(json_extract(`indicator`,_utf8mb4'$.sentPerSec')) as decimal(15,8)) end)) VIRTUAL,
+          PRIMARY KEY (`log_id`),
+          KEY `idx_ip_type_datetime` (`server_ip`,`indicator_type`,`datetime`),
+          KEY `datetime_idx` (`datetime`),
+          KEY `idx_qps` (`qps_value`),
+          KEY `idx_current_connections` (`current_connections`),
+          KEY `idx_cache_hitrate` (`cacheHitRate`),
+          KEY `idx_network_traffic` (`receivePerSec`,`sentPerSec`)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+          EOF
+    
+          # 执行 SQL 文件
+          docker-compose -f docker-compose.test.yml exec -T mysql-slaver-ci mysql -uJesse_EC233 -p3191955858_EC < /tmp/init_slave.sql
+          
+          # 验证表是否创建成功
+          docker-compose -f docker-compose.test.yml exec -T mysql-slaver-ci mysql -uJesse_EC233 -p3191955858_EC -e "SHOW TABLES IN sql_monitor;"
 
       - name: Setup Java and Maven
         # 该 Action 安装指定版本的 JDK
