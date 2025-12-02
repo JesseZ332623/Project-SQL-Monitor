@@ -130,6 +130,14 @@ jobs:
         # 在指定目录查找所有文本文件并 echo 它的路径，将错误信息重定向到空设备（忽略错误信息）
         # 如果在指定目录下没找到任何文本文件，则输出 No test report
       - name: Build and test all modules
+        env:
+          SPRING_R2DBC_URL: r2dbc:mysql://localhost:3307/sql_monitor?useSSL=false&allowPublicKeyRetrieval=true  # MySQL slave 的 URL，添加参数避免 SSL/认证问题
+          SPRING_R2DBC_USERNAME: Jesse_EC233
+          SPRING_R2DBC_PASSWORD: 3191955858_EC
+          SPRING_RABBITMQ_HOST: localhost
+          SPRING_RABBITMQ_PORT: 5673
+          SPRING_RABBITMQ_USERNAME: jesse
+          SPRING_RABBITMQ_PASSWORD: 1234567890
         run: |
           echo "=== Start to build and test all backend modules ==="
           
