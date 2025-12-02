@@ -37,16 +37,27 @@ jobs:
 
       # 等待所有服务初始化完毕
       - name: Wait for service
-        run: | 
-          echo "Wait for services ready..."
-          until docker-compose -f docker-compose.test.yml exec -T mysql-master-ci mysqladmin ping -uroot -p123456 > /dev/null 2>&1; do
-          echo "Master still starting..."
-          sleep 3
+        run: |
+          echo "Waiting for MySQL master to be ready..."
+          for i in {1..60}; do
+            if docker-compose -f docker-compose.test.yml exec -T mysql-master-ci mysqladmin ping -h127.0.0.1 -uroot -p123456 >/dev/null 2>&1; then
+              echo "MySQL master is ready!"
+              break
+            fi
+            echo "Waiting for master... ($i/60)"
+            sleep 3
           done
-          until docker-compose -f docker-compose.test.yml exec -T mysql-slaver-ci mysqladmin ping -uJesse_EC233 -p3191955858_EC > /dev/null 2>&1; do
-          echo "Slave still starting..."
-          sleep 3
+      
+          echo "Waiting for MySQL slave to be ready..."
+          for i in {1..60}; do
+            if docker-compose -f docker-compose.test.yml exec -T mysql-slaver-ci mysqladmin ping -h127.0.0.1 -uJesse_EC233 -p3191955858_EC >/dev/null 2>&1; then
+              echo "MySQL slave is ready!"
+              break
+            fi
+            echo "Waiting for slave... ($i/60)"
+            sleep 3
           done
+      
           echo "All services are ready!"
           docker-compose -f docker-compose.test.yml ps
 
