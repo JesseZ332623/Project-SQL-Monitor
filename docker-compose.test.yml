@@ -4,7 +4,7 @@ services:
     container_name: mysql-master-ci
     environment:
       MYSQL_ROOT_PASSWORD: 123456
-      MYSQL_ROOT_HOST: '%'          # 关键！允许从任何 host 登录
+      MYSQL_ROOT_HOST: '%'
     ports:
       - "3433:3306"
     command: >
@@ -32,9 +32,9 @@ services:
       MYSQL_DATABASE: sql_monitor
       MYSQL_USER: Jesse_EC233
       MYSQL_PASSWORD: 3191955858_EC
-      MYSQL_ROOT_HOST: '%'          # 关键！
+      MYSQL_ROOT_HOST: '%'
     ports:
-      - "3307:3306"
+      - "3306:3306"
     command: >
       --default-authentication-plugin=mysql_native_password
       --server-id=2
@@ -58,7 +58,7 @@ services:
     container_name: redis-ci
     command: redis-server --requirepass 1234567890 --appendonly yes
     ports:
-      - "6380:6379"
+      - "6379:6379"
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -67,5 +67,5 @@ services:
       RABBITMQ_DEFAULT_USER: jesse
       RABBITMQ_DEFAULT_PASS: 1234567890
     ports:
-      - "5673:5672"
-      - "15673:15672"
+      - "5672:5672"
+      - "15672:15672"
