@@ -32,7 +32,7 @@ jobs:
         run: | 
           echo "Wait for services ready..."
           sleep 20
-          docker-compose ps
+          docker-compose -f docker-compose.test.yml ps
 
       - name: Initialize test databases
         run: |
