@@ -16,6 +16,7 @@ spring:
     name: sqlmonitor-test
   main:
     web-application-type: reactive
+    banner-mode: console
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
@@ -104,22 +105,3 @@ springdoc:
       enabled: true
   model-and-view-allowed: true
   default-produces-media-type: application/json
-
-logging:
-  level:
-    org:
-      springdoc: DEBUG
-      springframework:
-        data:
-          r2dbc: DEBUG
-        web:
-          reactive: WARN
-
-    io:
-      github:
-        jessez332623:
-          redis_lock: DEBUG
-
-    com:
-      jesse:
-        sqlmonitor: DEBUG

@@ -12,9 +12,10 @@ server:
 
 spring:
   application:
-    name: sqlmonitor-db1
+    name: sqlmonitor
   main:
     web-application-type: reactive
+    banner-mode: console
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
@@ -25,8 +26,8 @@ app:
       port: 3433
       user: root
       password: 123456
-      default-schema:
-    slaver:                 # 查询监测数据的数据库服务器
+      default-schema: # 无需指定默认 Schema
+    slaver:           # 保存、查询监测数据的数据库服务器
       host: localhost
       port: 3306
       user: Jesse_EC233
@@ -103,22 +104,3 @@ springdoc:
       enabled: true
   model-and-view-allowed: true
   default-produces-media-type: application/json
-
-logging:
-  level:
-    org:
-      springdoc: DEBUG
-      springframework:
-        data:
-          r2dbc: DEBUG
-        web:
-          reactive: WARN
-
-    io:
-      github:
-        jessez332623:
-          redis_lock: DEBUG
-
-    com:
-      jesse:
-        sqlmonitor: DEBUG

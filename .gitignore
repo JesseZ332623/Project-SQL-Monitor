@@ -31,3 +31,11 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Test Log
+/indicator_receiver/indicator_receiver_logs/error.log
+/indicator_receiver/indicator_receiver_logs/warn.log
+/sql-monitor/sql_monitor_logs/debug.log
+/sql-monitor/sql_monitor_logs/error.log
+/sql-monitor/sql_monitor_logs/info.log
+/sql-monitor/sql_monitor_logs/warn.log

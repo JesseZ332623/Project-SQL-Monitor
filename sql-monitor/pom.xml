@@ -42,15 +42,9 @@
             </activation>
         </profile>
         <profile>
-            <id>db1</id>
+            <id>prod</id>
             <properties>
-                <activatedProperties>db1</activatedProperties>
-            </properties>
-        </profile>
-        <profile>
-            <id>db2</id>
-            <properties>
-                <activatedProperties>db2</activatedProperties>
+                <activatedProperties>prod</activatedProperties>
             </properties>
         </profile>
     </profiles>

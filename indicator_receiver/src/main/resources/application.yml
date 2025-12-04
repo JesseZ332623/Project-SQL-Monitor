@@ -47,10 +47,5 @@ app:
     shutdown-delay: 10m
 
 logging:
-  level:
-    org:
-      springframework:
-        data:
-          r2dbc: DEBUG
-        web:
-          reactive: WARN
+  file:
+    path: ./indicator_receiver_logs
