@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="false">
+    <springProperty scope="context"
+                    name="LOG_DIR"
+                    source="logging.file.path"
+                    defaultValue="./sql_monitor_logs"/>
+
+    <springProperty scope="context"
+                    name="MONITORED_BASE_HOST"
+                    source="app.r2dbc.master.host"/>
+
+    <!-- ========== 公共 Appender（所有环境都会定义） ========== -->
+
+    <!-- ERROR 级别 -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${MONITORED_BASE_HOST}/error.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/archived/${MONITORED_BASE_HOST}/error.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <!-- WARN 级别 -->
+    <appender name="WARN_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${MONITORED_BASE_HOST}/warn.log</file>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/archived/${MONITORED_BASE_HOST}/warn.%d{yyyy-MM-dd}.log.gz</fileNamePattern>
+            <maxHistory>15</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <!-- INFO 级别 -->
+    <appender name="INFO_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_DIR}/${MONITORED_BASE_HOST}/info.log</file>
+        <!-- 接收 INFO 及以上，但排除 ERROR 和 WARN -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>INFO</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_DIR}/archived/${MONITORED_BASE_HOST}/info.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <!-- ========== 开发/测试环境专用 ========== -->
+    <springProfile name="dev,test">
+        <!-- DEBUG 级别（仅开发用） -->
+        <appender name="DEBUG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>${LOG_DIR}/${MONITORED_BASE_HOST}/debug.log</file>
+            <filter class="ch.qos.logback.classic.filter.LevelFilter">
+                <level>DEBUG</level>
+                <onMatch>ACCEPT</onMatch>
+                <onMismatch>DENY</onMismatch>
+            </filter>
+            <encoder>
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <fileNamePattern>${LOG_DIR}/archived/${MONITORED_BASE_HOST}/debug.%d{yyyy-MM-dd}.log</fileNamePattern>
+                <maxHistory>3</maxHistory>
+                <totalSizeCap>500MB</totalSizeCap>
+            </rollingPolicy>
+        </appender>
+
+        <!-- 控制台输出（彩色） -->
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan(%logger{36}) - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ERROR_FILE"/>
+            <appender-ref ref="WARN_FILE"/>
+            <appender-ref ref="INFO_FILE"/>
+        </root>
+
+        <!-- 业务模块日志等级 -->
+        <logger name="com.jesse.indicator_receiver" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="DEBUG_FILE"/> <!-- 引用 DEBUG_FILE -->
+        </logger>
+    </springProfile>
+
+    <!-- ========== 生产环境专用 ========== -->
+    <springProfile name="prod">
+        <!-- 异步 Appender -->
+        <appender name="ASYNC_ERROR" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="ERROR_FILE"/>
+            <queueSize>1024</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+            <includeCallerData>false</includeCallerData>
+        </appender>
+
+        <appender name="ASYNC_WARN" class="ch.qos.logback.classic.AsyncAppender">
+            <appender-ref ref="WARN_FILE"/>
+            <queueSize>512</queueSize>
+            <discardingThreshold>0</discardingThreshold>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="ASYNC_ERROR"/>
+            <appender-ref ref="ASYNC_WARN"/>
+            <appender-ref ref="INFO_FILE"/>
+        </root>
+
+        <!-- 业务模块日志等级 -->
+        <logger name="com.jesse.sqlmonitor" level="INFO" additivity="false">
+            <appender-ref ref="ASYNC_ERROR"/>
+            <appender-ref ref="ASYNC_WARN"/>
+            <appender-ref ref="INFO_FILE"/>
+        </logger>
+    </springProfile>
+
+    <!-- ========== 如果没有指定 profile，使用默认配置 ========== -->
+    <springProfile name="!test &amp; !dev &amp; !prod">
+        <!-- 控制台输出（简单格式） -->
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            </encoder>
+        </appender>
+
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ERROR_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- ========== 第三方库日志降级（所有环境通用） ========== -->
+    <logger name="io.projectreactor.rabbitmq" level="WARN"/>
+    <logger name="io.r2dbc" level="WARN"/>
+    <logger name="org.springframework" level="INFO"/>
+    <logger name="org.springframework.data.r2dbc" level="WARN"/>
+    <logger name="org.springframework.test" level="WARN"/>
+    <logger name="org.hibernate" level="WARN"/>
+</configuration>
