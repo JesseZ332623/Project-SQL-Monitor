@@ -273,7 +273,7 @@ public class IndicatorCacher
             // 先从数据库取数据然后再更新到缓存，
             // 直接返回数据库查询结果给上层调用者
             // 避免 Redis 重新上线后被大量堆积的请求冲击
-            // 直到缓存数据被预热后，在放行至正常逻辑
+            // 直到缓存数据被预热后，再放行至正常逻辑
             return
             indicatorSupplier.doOnSuccess((data) -> {
                 if (Objects.nonNull(data)) {
