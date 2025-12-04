@@ -32,7 +32,7 @@ public class ReceiverLifeCycleServiceImpl implements ReceiverLifeCycleService
                 IllegalStateException.class,
                 (illegalState) ->
                     ReactiveResponseBuilder
-                        .BAD_REQUEST(illegalState.getMessage(), illegalState)
+                        .BAD_REQUEST(illegalState.getMessage(), null)
             );
     }
 
@@ -52,7 +52,7 @@ public class ReceiverLifeCycleServiceImpl implements ReceiverLifeCycleService
                 IllegalStateException.class,
                 (illegalState) ->
                     ReactiveResponseBuilder
-                        .BAD_REQUEST(illegalState.getMessage(), illegalState)
+                        .BAD_REQUEST(illegalState.getMessage(), null)
             );
     }
 

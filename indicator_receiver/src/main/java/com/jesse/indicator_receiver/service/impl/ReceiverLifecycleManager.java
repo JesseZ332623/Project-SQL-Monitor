@@ -58,11 +58,11 @@ public class ReceiverLifecycleManager implements SmartLifecycle
                 {
                     throw new
                     IllegalStateException(
-                       "Indicator receiver already started!"
+                       "(Http-Request) Indicator receiver already started!"
                     );
                 }
 
-                log.info("Starting RabbitMQ indicator receiver...");
+                log.info("(Http-Request) Starting RabbitMQ indicator receiver...");
                 this.indicatorReceiver.setRunningFlag(true);
                 this.startIndicatorConsumer();
             }
@@ -79,21 +79,48 @@ public class ReceiverLifecycleManager implements SmartLifecycle
                 if (!this.isRunning.compareAndSet(true, false))
                 {
                     throw new
-                    IllegalStateException("Indicator receiver already stopped!");
+                    IllegalStateException(
+                        "(Http-Request) Indicator receiver already stopped!"
+                    );
                 }
 
-                log.info("Stop RabbitMQ indicator receiver...");
+                final Duration batchInsetWait
+                    = this.properties.getShutdownDelay();
+
+                log.info("(Http-Request) Stop RabbitMQ indicator receiver...");
                 log.info(
-                    "Waiting up to {} for current batch to complete...",
-                    this.properties.getShutdownDelay()
+                    "(Http-Request) Waiting up to {} for current batch insert to complete...",
+                    batchInsetWait
                 );
 
                 this.indicatorReceiver.setRunningFlag(false);
 
-                Mono.delay(this.properties.getShutdownDelay())
-                    .then(Mono.fromRunnable(this::stopIndicatorConsumer))
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe();
+                try
+                {
+                    boolean completed
+                        = this.indicatorReceiver
+                              .getCountDownLatch()
+                              .await(batchInsetWait.toMillis(), TimeUnit.MILLISECONDS);
+
+                    if (!completed)
+                    {
+                        log.warn(
+                            "(Http-Request) Wait batch insert timeout (over {} ms), forced termination.",
+                            batchInsetWait
+                        );
+                    }
+
+                    Mono.fromRunnable(this::stopIndicatorConsumer)
+                        .subscribe();
+                }
+                catch (InterruptedException interrupt)
+                {
+                    Thread.currentThread().interrupt();
+                    log.warn(
+                        "(Http-Request) Shutdown wait interrupted. Caused by: {}",
+                        interrupt.getMessage()
+                    );
+                }
             }
         }).then();
     }
@@ -106,7 +133,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
         {
             if (this.isRunning.compareAndSet(false, true))
             {
-                log.info("Auto-Starting RabbitMQ indicator receiver...");
+                log.info("(Auto-Starting) RabbitMQ indicator receiver...");
 
                 this.indicatorReceiver.setRunningFlag(true);
                 this.startIndicatorConsumer();
@@ -124,7 +151,7 @@ public class ReceiverLifecycleManager implements SmartLifecycle
             {
                 log.info("(Auto-Stop) RabbitMQ indicator receiver...");
                 log.info(
-                    "(Auto-Stop) Waiting up to {} for current batch to complete...",
+                    "(Auto-Stop) Waiting up to {} for current batch insert to complete...",
                     this.properties.getShutdownDelay()
                 );
 
