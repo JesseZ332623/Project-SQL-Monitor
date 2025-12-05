@@ -1,7 +1,7 @@
 // services/api.js
 const API_BASE_URL = '/api/sql-monitor'
 
-export const fetchServerTime = async () => {
+const fetchServerTime = async () => {
     try 
     {
         console.log(`${API_BASE_URL}/running-time`);
@@ -22,7 +22,7 @@ export const fetchServerTime = async () => {
     }
 }
 
-export const fetchBaseAddress = async () => {
+const fetchBaseAddress = async () => {
     try 
     {
         const response = await fetch(`${API_BASE_URL}/base-address`)
@@ -45,7 +45,7 @@ export const fetchBaseAddress = async () => {
     }
 }
 
-export const fetchQPSData = async () => {
+const fetchQPSData = async () => {
     try 
     {
         const response = await fetch(`${API_BASE_URL}/qps`)
@@ -70,7 +70,7 @@ export const fetchQPSData = async () => {
     }
 }
 
-export const fetchConnectionsUsage = async () => {
+const fetchConnectionsUsage = async () => {
     try 
     {
         const response 
@@ -101,7 +101,7 @@ export const fetchConnectionsUsage = async () => {
     }
 }
 
-export const fetchNetworkTraffic = async (sizeUnit = 'KB') => {
+const fetchNetworkTraffic = async (sizeUnit = 'KB') => {
     try 
     {
         const response = await fetch(`${API_BASE_URL}/network-traffic?sizeUnit=${sizeUnit}`)
@@ -131,7 +131,7 @@ export const fetchNetworkTraffic = async (sizeUnit = 'KB') => {
     }
 }
 
-export const fetchInnodbBufferCacheHitRate = async () => {
+const fetchInnodbBufferCacheHitRate = async () => {
     try 
     {
         const response 
@@ -157,4 +157,13 @@ export const fetchInnodbBufferCacheHitRate = async () => {
         console.error('Error fetching network traffic data:', error)
         throw new Error('Failed to fetch network traffic data. Please check if the server is running.')
     }
+}
+
+export {
+    fetchServerTime,
+    fetchBaseAddress,
+    fetchQPSData,
+    fetchConnectionsUsage,
+    fetchNetworkTraffic,
+    fetchInnodbBufferCacheHitRate
 }
