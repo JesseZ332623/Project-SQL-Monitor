@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
 /** 日期格式化器。*/
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 final public class DatetimeFormatter
@@ -25,7 +27,8 @@ final public class DatetimeFormatter
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"),
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),   // 完整格式
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),      // 不含秒
-                DateTimeFormatter.ofPattern("yyyy-MM-dd HH")),        // ...
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH"),
+                ISO_LOCAL_DATE_TIME),        // ...
             "date", Arrays.asList(
                 DateTimeFormatter.ofPattern("yyyy-MM-dd"),
                 DateTimeFormatter.ofPattern("yyyy-MM"),
