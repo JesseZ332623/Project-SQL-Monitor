@@ -189,26 +189,28 @@ public class IntervalIndicatorReporter
         });
     }
 
-    /** 收集各种指标，构建一个指标报告。*/
+    /** 收集各种指标，构建一个从今天开始到此刻时间段内的指标报告。*/
     private @NotNull Mono<IndicatorReport>
     fetchIndicatorReport()
     {
-        final String serverIp = this.masterProperties.getHost();
+        final String serverIp          = this.masterProperties.getHost();
+        final LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        final LocalDateTime to         = LocalDateTime.now();
 
         return
         Mono.zip(
              this.monitorLogRepository
-                 .getIndicatorIncrement(serverIp, LocalDate.now().atStartOfDay()),
+                 .getIndicatorIncrement(serverIp, startOfDay),
              this.monitorLogRepository
-                 .getAverageQPS(serverIp, LocalDateTime.now()),
+                 .getAverageQPS(serverIp, startOfDay, to),
              this.monitorLogRepository
-                 .getMedianQPS(serverIp, LocalDateTime.now()),
+                 .getMedianQPS(serverIp, startOfDay, to),
              this.monitorLogRepository
-                 .getExtremeQPS(serverIp, LocalDateTime.now()),
+                 .getExtremeQPS(serverIp, startOfDay, to),
              this.monitorLogRepository
-                 .getStandingDeviationQPS(serverIp, LocalDateTime.now()),
+                 .getStandingDeviationQPS(serverIp, startOfDay, to),
              this.monitorLogRepository
-                 .getAverageNetworkTraffic(serverIp, LocalDateTime.now()),
+                 .getAverageNetworkTraffic(serverIp, startOfDay, to),
              this.indicatorsRepository.getConnectionUsage())
         .map((indicators) -> {
              final IndicatorGrowth indicatorGrowth = indicators.getT1();
