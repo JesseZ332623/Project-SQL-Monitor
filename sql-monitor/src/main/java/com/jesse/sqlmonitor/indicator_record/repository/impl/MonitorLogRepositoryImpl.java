@@ -1,10 +1,11 @@
-package com.jesse.sqlmonitor.indicator_record.repository;
+package com.jesse.sqlmonitor.indicator_record.repository.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.indicator_record.entity.IndicatorType;
 import com.jesse.sqlmonitor.indicator_record.exception.QueryIndicatorFailed;
+import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.indicator_record.repository.dto.AverageNetworkTraffic;
 import com.jesse.sqlmonitor.indicator_record.repository.dto.IndicatorGrowth;
 import com.jesse.sqlmonitor.monitor.constants.SizeUnit;
@@ -20,12 +21,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Objects;
-
-import static com.jesse.sqlmonitor.utils.SQLMonitorUtils.extractClassName;
 
 /** 监控日志实体仓储类实现。*/
 @Slf4j
@@ -50,7 +48,12 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
 
     @Override
     public Mono<Long>
-    deleteOneBatchIndicator(String serverIP, @NotNull LocalDateTime until, long batchSize)
+    deleteOneBatchIndicator(
+        @NotNull String serverIP,
+        @NotNull LocalDateTime from,
+        @NotNull LocalDateTime to,
+        long batchSize
+    )
     {
         final String deleteSQL
             = """
@@ -59,17 +62,22 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
             WHERE
                 server_ip = INET_ATON(:serverIP)
                 AND
-                datetime <= :until
+                datetime BETWEEN :from AND :to
             ORDER BY log_id DESC
             LIMIT :batchSize
             """;
+
+        if (batchSize < 0) {
+            throw new IllegalArgumentException("Argument batchSize not less then 0");
+        }
 
         return
         this.databaseClient
             .sql(deleteSQL)
             .bind("serverIP",  serverIP)
-            .bind("until",     until.atZone(ZoneId.systemDefault()).toInstant())
-            .bind("batchSize",  batchSize)
+            .bind("from",      from.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("to",        to.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("batchSize", batchSize)
             .fetch()
             .rowsUpdated();
     }
@@ -78,9 +86,11 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
     public Flux<? extends ResponseBase<?>>
     fetchIndicator(
         @NotNull Class<? extends ResponseBase<?>> type,
-        String serverIP,
-        @NotNull LocalDateTime until,
-        @NotNull QueryOrder queryOrder
+        @NotNull String serverIP,
+        @NotNull LocalDateTime from,
+        @NotNull LocalDateTime to,
+        @NotNull QueryOrder queryOrder,
+        long limit, long offset
     )
     {
         /*
@@ -102,30 +112,29 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                   AND
                   server_ip = INET_ATON(:serverIP)
                   AND
-                  datetime <= :until
+                  datetime BETWEEN :from AND :to
               ORDER BY
                  datetime %s
+              LIMIT :limit OFFSET :offset
               """.formatted(queryOrder.name());
 
         return
         this.databaseClient
             .sql(querySQL)
-            .bind("indicatorType", IndicatorType.valueOf(extractClassName(type.getTypeName())))
-            .bind("serverIP", serverIP)
-            .bind("until", until.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("indicatorType", IndicatorType.valueOf(type.getSimpleName()))
+            .bind("serverIP",      serverIP)
+            .bind("from",          from.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("to",            to.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("limit",         limit)
+            .bind("offset",        offset)
             .fetch()
             .all()
             .map((queryResult) -> {
-
-                String indicatorJSON
-                    = (String) queryResult.get("indicator");
-
-                ResponseBase<?> indicator;
                 try
                 {
-                    indicator
-                        = this.mapper
-                              .readValue(indicatorJSON, type);
+                    return
+                    this.mapper
+                        .readValue((String) queryResult.get("indicator"), type);
                 }
                 catch (JsonProcessingException exception)
                 {
@@ -134,14 +143,50 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                         exception.getMessage(), exception
                     );
                 }
-
-                return indicator;
             });
+    }
+
+    public Mono<Long>
+    getIndicatorCount(
+        @NotNull Class<? extends ResponseBase<?>> type,
+        @NotNull String        serverIP,
+        @NotNull LocalDateTime from,
+        @NotNull LocalDateTime to
+    )
+    {
+        final String querySQL
+            = """
+              SELECT
+                  COUNT(*) AS count
+              FROM
+                  monitor_log
+              WHERE
+                  indicator_type = :indicatorType
+                  AND
+                  server_ip = INET_ATON(:serverIP)
+                  AND
+                  datetime BETWEEN :from AND :to
+              """;
+
+        return
+        this.databaseClient
+            .sql(querySQL)
+            .bind("indicatorType", type.getSimpleName())
+            .bind("serverIP",      serverIP)
+            .bind("from",          from.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("to",            to.atZone(ZoneId.systemDefault()).toInstant())
+            .fetch()
+            .one()
+            .map((result) ->
+                (Long) result.get("count"));
     }
 
     @Override
     public Mono<IndicatorGrowth>
-    getIndicatorIncrement(String serverIP, @NotNull LocalDateTime start)
+    getIndicatorIncrement(
+        @NotNull String        serverIP,
+        @NotNull LocalDateTime start
+    )
     {
         final String indicatorGrowthSQL
             = """
@@ -151,9 +196,9 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
             FROM
             	sql_monitor.monitor_log
             WHERE
-            	`datetime` >= :startPoint
-            	AND `datetime` <= NOW()
-                AND `server_ip` = INET_ATON(:serverIP);
+                `server_ip` = INET_ATON(:serverIP)
+                AND
+            	`datetime` BETWEEN :startPoint AND NOW()
             """;
 
         return
@@ -173,7 +218,11 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
 
     @Override
     public Mono<Double>
-    getAverageQPS(String serverIP, LocalDateTime until)
+    getAverageQPS(
+        @NotNull String        serverIP,
+        @NotNull LocalDateTime from,
+        @NotNull LocalDateTime to
+    )
     {
         final String qpsAverageSQL
             = """
@@ -186,14 +235,15 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                 AND
                 `server_ip` = INET_ATON(:serverIP)
                 AND
-                `datetime` <= :until
+                `datetime` BETWEEN :from AND :to
             """;
 
         return
         this.databaseClient
             .sql(qpsAverageSQL)
             .bind("serverIP", serverIP)
-            .bind("until", until)
+            .bind("from", from.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("to",   to.atZone(ZoneId.systemDefault()).toInstant())
             .fetch()
             .one()
             .map((average) -> {
@@ -208,7 +258,11 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
 
     @Override
     public Mono<Double>
-    getMedianQPS(String serverIP, LocalDateTime until)
+    getMedianQPS(
+        @NotNull String        serverIP,
+        @NotNull LocalDateTime from,
+        @NotNull LocalDateTime to
+    )
     {
         final String qpsMedianSQL
             = """
@@ -226,7 +280,7 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                     AND
                     `server_ip` = INET_ATON(:serverIP)
                     AND
-                    `datetime` <= :until
+                    `datetime` BETWEEN :from AND :to
             ) AS sorted
             WHERE
             	row_index IN (FLOOR((total_rows + 1) / 2), FLOOR((total_rows + 2) / 2))
@@ -236,7 +290,8 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
         this.databaseClient
             .sql(qpsMedianSQL)
             .bind("serverIP", serverIP)
-            .bind("until", until)
+            .bind("from", from.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("to",   to.atZone(ZoneId.systemDefault()).toInstant())
             .fetch()
             .one()
             .map((average) -> {
@@ -251,7 +306,11 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
 
     @Override
     public Mono<ExtremeQPS>
-    getExtremeQPS(String serverIP, LocalDateTime until)
+    getExtremeQPS(
+        @NotNull String        serverIP,
+        @NotNull LocalDateTime from,
+        @NotNull LocalDateTime to
+    )
     {
         final String qpsExtremeSQL
             = """
@@ -265,14 +324,15 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                 AND
                 `server_ip` = INET_ATON(:serverIP)
                 AND
-                `datetime` <= :until
+                `datetime` BETWEEN :from AND :to
             """;
 
         return
         this.databaseClient
             .sql(qpsExtremeSQL)
             .bind("serverIP", serverIP)
-            .bind("until", until)
+            .bind("from", from.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("to",   to.atZone(ZoneId.systemDefault()).toInstant())
             .fetch()
             .one()
             .map((result) -> {
@@ -289,7 +349,11 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
 
     @Override
     public Mono<StandingDeviationQPS>
-    getStandingDeviationQPS(String serverIP, LocalDateTime until)
+    getStandingDeviationQPS(
+        @NotNull String        serverIP,
+        @NotNull LocalDateTime from,
+        @NotNull LocalDateTime to
+    )
     {
         final String qpsStddevSQL
             = """
@@ -304,14 +368,15 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                 AND
                 `server_ip` = INET_ATON(:serverIP)
                 AND
-                `datetime` <= :until
+                `datetime` BETWEEN :from AND :to
             """;
 
         return
         this.databaseClient
             .sql(qpsStddevSQL)
             .bind("serverIP", serverIP)
-            .bind("until", until)
+            .bind("from", from.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("to",   to.atZone(ZoneId.systemDefault()).toInstant())
             .fetch()
             .one()
             .map((result) -> {
@@ -326,7 +391,8 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                 final double loadStability
                     = (stddev == -1.00 || avg == -1.00) ? -1.00 : stddev / avg;
 
-                final long dataPoints    = (Long) result.get("data_points");
+                final long dataPoints
+                    = (Long) result.get("data_points");
 
                 return
                 StandingDeviationQPS.builder()
@@ -339,7 +405,11 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
 
     @Override
     public Mono<AverageNetworkTraffic>
-    getAverageNetworkTraffic(String serverIP, LocalDateTime until)
+    getAverageNetworkTraffic(
+        @NotNull String        serverIP,
+        @NotNull LocalDateTime from,
+        @NotNull LocalDateTime to
+    )
     {
         final String networkTrafficAverageSQL
             = """
@@ -353,14 +423,15 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                 AND
                 `server_ip` = INET_ATON(:serverIP)
                 AND
-                `datetime` <= :until
+                `datetime` BETWEEN :from AND :to
             """;
 
         return
         this.databaseClient
             .sql(networkTrafficAverageSQL)
             .bind("serverIP", serverIP)
-            .bind("until", until)
+            .bind("from", from.atZone(ZoneId.systemDefault()).toInstant())
+            .bind("to",   to.atZone(ZoneId.systemDefault()).toInstant())
             .fetch()
             .one()
             .map((averageTraffic) -> {
