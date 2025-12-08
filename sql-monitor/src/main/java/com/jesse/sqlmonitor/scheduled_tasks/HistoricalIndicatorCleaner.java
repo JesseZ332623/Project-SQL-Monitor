@@ -172,7 +172,7 @@ public class HistoricalIndicatorCleaner
 
             final String        serverIp      = this.masterProperties.getHost();
             final LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
-            final LocalDateTime deleteFrom    = LocalDateTime.MIN;
+            final LocalDateTime deleteFrom    = LocalDateTime.of(1970, 1, 1, 0, 0, 0, 0);
             final long          batchSize     = 5000L;
 
             // 初始化一个批量删除结果
