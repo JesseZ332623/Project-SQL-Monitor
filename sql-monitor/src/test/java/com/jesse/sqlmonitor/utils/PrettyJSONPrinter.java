@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -13,7 +14,8 @@ import org.jetbrains.annotations.NotNull;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 final public class PrettyJSONPrinter
 {
-    /** 启用了美化格式的 Jackson 对象映射器。*/
+    /** 启用了美化格式的 JSON 对象映射器。*/
+    @Getter
     private final static
     ObjectMapper mapper
         = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
