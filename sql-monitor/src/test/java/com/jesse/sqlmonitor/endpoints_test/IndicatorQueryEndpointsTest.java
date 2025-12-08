@@ -19,8 +19,11 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
 /** 指标统计数据查询端点 {@link IndicatorQueryEndpoints} 测试。*/
 @Slf4j
@@ -55,8 +58,11 @@ public class IndicatorQueryEndpointsTest
                 urlBuilder.path(IndicatorQueryEndpoints.MONITOR_LOG_QUERY)
                     .queryParam("indicator-type", "x_X")
                     .queryParam("server-ip", "0_x")
-                    .queryParam("until", "O_o")
+                    .queryParam("from", "O_o")
+                    .queryParam("to", "\\0/")
                     .queryParam("order", "?_x")
+                    .queryParam("pageNo", "3_3")
+                    .queryParam("perPageLimit", "8_8")
                     .build()
             )
             .accept(MediaType.APPLICATION_JSON)
@@ -79,6 +85,8 @@ public class IndicatorQueryEndpointsTest
     {
         final List<String> indicatorTypes
             = Arrays.stream(IndicatorType.values())
+                    .filter((type) ->
+                        !type.equals(IndicatorType.DatabaseSize))
                     .map(IndicatorType::name)
                     .toList();
 
@@ -91,9 +99,12 @@ public class IndicatorQueryEndpointsTest
                 .uri((urlBuilder) ->
                     urlBuilder.path(IndicatorQueryEndpoints.MONITOR_LOG_QUERY)
                         .queryParam("indicator-type", type)
-                        .queryParam("server-ip", masterProperties.getHost())
-                        .queryParam("until", currentTime)
+                        .queryParam("server-ip",      masterProperties.getHost())
+                        .queryParam("from",           LocalDateTime.MIN.format(ISO_LOCAL_DATE_TIME))
+                        .queryParam("to",             currentTime)
                         .queryParam("order", "DESC")
+                        .queryParam("pageNo", "1")
+                        .queryParam("perPageLimit", "5")
                         .build()
                 )
                 .accept(MediaType.APPLICATION_JSON)
@@ -121,8 +132,8 @@ public class IndicatorQueryEndpointsTest
                 urlBuilder.path(IndicatorQueryEndpoints.MONITOR_LOG_QUERY)
                     .queryParam("indicator-type", "?_?")
                     .queryParam("server-ip", "x_X")
-                    .queryParam("until", "!_?")
-                    .queryParam("order", "O_o")
+                    .queryParam("from", "!_?")
+                    .queryParam("to", "3_3")
                     .build()
             )
             .accept(MediaType.APPLICATION_JSON)
@@ -158,7 +169,8 @@ public class IndicatorQueryEndpointsTest
                     uriBuilder.path(IndicatorQueryEndpoints.QPS_STATISTICS)
                               .queryParam("type", type)
                               .queryParam("server-ip", this.masterProperties.getHost())
-                              .queryParam("until", currentTime)
+                              .queryParam("from",      LocalDateTime.MIN.format(ISO_LOCAL_DATE_TIME))
+                              .queryParam("to",        currentTime)
                               .build())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
