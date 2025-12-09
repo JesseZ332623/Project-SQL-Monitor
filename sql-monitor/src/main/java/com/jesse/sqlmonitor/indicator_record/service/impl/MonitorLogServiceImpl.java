@@ -145,19 +145,17 @@ public class MonitorLogServiceImpl implements MonitorLogService
                     .getIndicatorCount(type, serverIP, from, to))
                 .flatMap((pageableRes) -> {
                     final List<? extends ResponseBase<?>>
-                        indicators        = pageableRes.getT1();
-                    final long totalRows  = pageableRes.getT2();
-                    final long totalPages = (totalRows + perPageLim - 1) / perPageLim; // 计算出当前参数下的总页数
-                    final Map<String, String> hateOasArgs
-                        = new HashMap<>(
-                            Map.of(
-                                "indicator-type", params.getT1(),
-                                "server-ip",      params.getT2(),
-                                "from",           from.format(ISO_LOCAL_DATE_TIME),
-                                "to",             to.format(ISO_LOCAL_DATE_TIME),
-                                "order",          params.getT5()
-                            )
-                    );
+                        indicators        = pageableRes.getT1();    // 分页查询数据
+                    final long totalRows  = pageableRes.getT2();    // 该查询条件下的所有数据量
+                    final long totalPages = (totalRows + perPageLim - 1) / perPageLim; // 计算出当前查询条件下的总页数
+                    final Map<String, String> hateOasArgs   // HATEOAS 链接中不变的参数
+                        = Map.of(
+                            "indicator-type", params.getT1(),
+                            "server-ip",      params.getT2(),
+                            "from",           from.format(ISO_LOCAL_DATE_TIME),
+                            "to",             to.format(ISO_LOCAL_DATE_TIME),
+                            "order",          params.getT5()
+                        );
 
                     return
                     ReactiveResponseBuilder.OK(
