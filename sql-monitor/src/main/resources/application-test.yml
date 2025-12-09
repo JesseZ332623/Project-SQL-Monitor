@@ -33,7 +33,7 @@ app:
       port: 3306
       user: Jesse_EC233
       password: 3191955858_EC
-      default-schema: sql_monitor
+      default-schema: sql_monitor_test
 
   rabbitmq:
     host: localhost
