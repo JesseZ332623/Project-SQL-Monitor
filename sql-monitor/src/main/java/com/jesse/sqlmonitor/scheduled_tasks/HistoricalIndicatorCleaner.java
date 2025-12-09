@@ -71,22 +71,23 @@ public class HistoricalIndicatorCleaner
                 return Mono.empty();
             }
 
-            String        serverIp      = this.masterProperties.getHost();
-            LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
-            final long    batchSize     = 5000L;
+            final String        serverIp      = this.masterProperties.getHost();
+            final LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
+            final LocalDateTime deleteFrom    = LocalDateTime.MIN;
+            final long          batchSize     = 5000L;
 
             // 初始化一个批量删除结果
             CleanUpResult cleanUpResult = CleanUpResult.init(serverIp, lastWeekPoint);
 
             return
             this.monitorLogRepository
-                .deleteOneBatchIndicator(serverIp, lastWeekPoint, batchSize)
+                .deleteOneBatchIndicator(serverIp, deleteFrom, lastWeekPoint, batchSize)
                 .expand((deleted) -> {
                     if (deleted > 0)
                     {
                         return
                         this.monitorLogRepository
-                            .deleteOneBatchIndicator(serverIp, lastWeekPoint, batchSize)
+                            .deleteOneBatchIndicator(serverIp, deleteFrom, lastWeekPoint, batchSize)
                             .delayElement(Duration.ofMillis(50L));
                     }
                     else
@@ -169,21 +170,23 @@ public class HistoricalIndicatorCleaner
                 );
             }
 
-            String serverIp             = this.masterProperties.getHost();
-            LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
+            final String        serverIp      = this.masterProperties.getHost();
+            final LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
+            final LocalDateTime deleteFrom    = LocalDateTime.of(1970, 1, 1, 0, 0, 0, 0);
+            final long          batchSize     = 5000L;
 
             // 初始化一个批量删除结果
             CleanUpResult cleanUpResult = CleanUpResult.init(serverIp, lastWeekPoint);
 
             return
             this.monitorLogRepository
-                .deleteOneBatchIndicator(serverIp, lastWeekPoint, 5000L)
+                .deleteOneBatchIndicator(serverIp, deleteFrom, lastWeekPoint, batchSize)
                 .expand((deleted) -> {
                     if (deleted > 0)
                     {
                         return
                         this.monitorLogRepository
-                            .deleteOneBatchIndicator(serverIp, lastWeekPoint, 5000L)
+                            .deleteOneBatchIndicator(serverIp, deleteFrom, lastWeekPoint, batchSize)
                             .delayElement(Duration.ofMillis(50L));
                     }
                     else

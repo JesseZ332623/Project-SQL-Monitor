@@ -8,6 +8,7 @@ import com.jesse.sqlmonitor.indicator_record.service.MonitorLogService;
 import com.jesse.sqlmonitor.indicator_record.service.constants.QPSStatisticsType;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
 import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
+import io.github.jessez332623.reactive_response_builder.pojo.Pagination;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -18,12 +19,14 @@ import reactor.core.publisher.Mono;
 import reactor.util.function.Tuples;
 
 import java.time.LocalDateTime;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static com.jesse.sqlmonitor.indicator_record.service.impl.PaginationLinkBuilder.buildPaginationLinks;
+import static com.jesse.sqlmonitor.route.endpoints_config.IndicatorQueryEndpoints.MONITOR_LOG_QUERY;
 import static com.jesse.sqlmonitor.utils.DatetimeFormatter.parseDatetime;
 import static io.github.jessez332623.reactive_response_builder.utils.URLParamPrase.praseRequestParam;
+import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
 /** 监控日志数据统计服务实现。*/
 @Slf4j
@@ -42,6 +45,7 @@ public class MonitorLogServiceImpl implements MonitorLogService
 
     private final MonitorLogRepository monitorLogRepository;
 
+    /** 通过指标类型名尝试提取并缓存指定类型令牌。*/
     @SuppressWarnings("unchecked")
     private static @NotNull Class<? extends ResponseBase<?>>
     getIndicatorType(String typeName)
@@ -86,6 +90,7 @@ public class MonitorLogServiceImpl implements MonitorLogService
         });
     }
 
+    /** 本服务类通用错误处理逻辑。*/
     private @NotNull Mono<ServerResponse>
     errorHandle(@NotNull Throwable cause)
     {
@@ -94,11 +99,11 @@ public class MonitorLogServiceImpl implements MonitorLogService
         {
             case IllegalArgumentException illegalArgument ->
                 ReactiveResponseBuilder
-                    .BAD_REQUEST(illegalArgument.getMessage(), illegalArgument);
+                    .BAD_REQUEST(illegalArgument.getMessage(), null);
 
             case QueryIndicatorFailed queryFailed ->
                 ReactiveResponseBuilder
-                    .BAD_REQUEST(queryFailed.getMessage(), queryFailed);
+                    .BAD_REQUEST(queryFailed.getMessage(), null);
 
             default ->
                 ReactiveResponseBuilder
@@ -114,28 +119,60 @@ public class MonitorLogServiceImpl implements MonitorLogService
         Mono.zip(
             praseRequestParam(request, "indicator-type"),
             praseRequestParam(request, "server-ip"),
-            praseRequestParam(request, "until"),
-            praseRequestParam(request, "order"))
+            praseRequestParam(request, "from"),
+            praseRequestParam(request, "to"),
+            praseRequestParam(request, "order"),
+            praseRequestParam(request, "pageNo"),
+            praseRequestParam(request, "perPageLimit"))
         .flatMap((params) -> {
             final Class<? extends ResponseBase<?>>
-            type = getIndicatorType(params.getT1());
-            final String serverIP     = params.getT2();
-            final LocalDateTime until = parseDatetime(params.getT3());
-            final QueryOrder order    = QueryOrder.valueOf(params.getT4().toUpperCase(Locale.ROOT));
+                type = getIndicatorType(params.getT1());
+            final String serverIP    = params.getT2();
+            final LocalDateTime from = parseDatetime(params.getT3());
+            final LocalDateTime to   = parseDatetime(params.getT4());
+            final QueryOrder order   = QueryOrder.valueOf(params.getT5().toUpperCase(Locale.ROOT));
+            final int perPageLim     = Integer.parseInt(params.getT7());    // 每页数据量
+            final int pageNo         = Integer.parseInt(params.getT6());    // 第几页？
+
+            final long offset = (pageNo - 1L) * perPageLim; // 计算偏移量
 
             return
-            this.monitorLogRepository
-                .fetchIndicator(type, serverIP, until, order)
-                .collectList()
-                .flatMap((indicators) ->
+            Mono.zip(
+                this.monitorLogRepository
+                    .fetchIndicator(type, serverIP, from, to, order, perPageLim, offset)
+                    .collectList(),
+                this.monitorLogRepository
+                    .getIndicatorCount(type, serverIP, from, to))
+                .flatMap((pageableRes) -> {
+                    final List<? extends ResponseBase<?>>
+                        indicators        = pageableRes.getT1();    // 分页查询数据
+                    final long totalRows  = pageableRes.getT2();    // 该查询条件下的所有数据量
+                    final long totalPages = (totalRows + perPageLim - 1) / perPageLim; // 计算出当前查询条件下的总页数
+                    final Map<String, String> hateOasArgs   // HATEOAS 链接中不变的参数
+                        = Map.of(
+                            "indicator-type", params.getT1(),
+                            "server-ip",      params.getT2(),
+                            "from",           from.format(ISO_LOCAL_DATE_TIME),
+                            "to",             to.format(ISO_LOCAL_DATE_TIME),
+                            "order",          params.getT5()
+                        );
+
+                    return
                     ReactiveResponseBuilder.OK(
                         indicators,
                         String.format(
-                            "Searched %d %s indicators from server %s until %s.",
-                            indicators.size(), type.getSimpleName(), serverIP, until
+                            "Searched %s indicators from server %s between %s and %s",
+                            type.getSimpleName(), serverIP, from, to
+                        ),
+                        null,
+                        new Pagination(pageNo, indicators.size(), totalRows),
+                        buildPaginationLinks(
+                            MONITOR_LOG_QUERY,
+                            hateOasArgs,
+                            pageNo, totalPages, perPageLim
                         )
-                    )
-                );
+                    );
+                });
         })
         .onErrorResume(this::errorHandle);
     }
@@ -148,17 +185,20 @@ public class MonitorLogServiceImpl implements MonitorLogService
         Mono.zip(
             praseRequestParam(request, "type"),
             praseRequestParam(request, "server-ip"),
-            praseRequestParam(request, "until"))
+            praseRequestParam(request, "from"),
+            praseRequestParam(request, "to")
+        )
         .flatMap((params) -> {
             final QPSStatisticsType statisticsType
                 = QPSStatisticsType.valueOf(params.getT1());
-            final String serverIP     = params.getT2();
-            final LocalDateTime until = parseDatetime(params.getT3());
+            final String serverIP    = params.getT2();
+            final LocalDateTime from = parseDatetime(params.getT3());
+            final LocalDateTime to   = parseDatetime(params.getT4());
 
             String customerMessage
                 = String.format(
-                    "To Calculate type of %s statistics data from server %s until %s.",
-                    statisticsType.name(), serverIP, until
+                    "To Calculate type of %s statistics data from server %s between %s and %s.",
+                    statisticsType.name(), serverIP, from, to
             );
 
             return
@@ -166,22 +206,22 @@ public class MonitorLogServiceImpl implements MonitorLogService
             {
                 case AVERAGE ->
                     this.monitorLogRepository
-                        .getAverageQPS(serverIP, until)
+                        .getAverageQPS(serverIP, from, to)
                         .map((average) ->
                             Tuples.of(average, customerMessage));
                 case MEDIAN_VALUE ->
                     this.monitorLogRepository
-                        .getMedianQPS(serverIP, until)
+                        .getMedianQPS(serverIP, from, to)
                         .map((medium) ->
                             Tuples.of(medium, customerMessage));
                 case EXTREME_VALUE ->
                     this.monitorLogRepository
-                        .getExtremeQPS(serverIP, until)
+                        .getExtremeQPS(serverIP, from, to)
                         .map((extreme) ->
                             Tuples.of(extreme, customerMessage));
                 case STANDARD_DEVIATION ->
                     this.monitorLogRepository
-                        .getStandingDeviationQPS(serverIP, until)
+                        .getStandingDeviationQPS(serverIP, from, to)
                         .map((stddev) ->
                             Tuples.of(stddev, customerMessage));
             };
