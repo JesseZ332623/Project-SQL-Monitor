@@ -30,6 +30,16 @@ import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 @SpringBootTest
 public class IndicatorQueryEndpointsTest
 {
+    /** 查询起始日期。*/
+    private final static
+    String START_TIME
+        = LocalDateTime.of(1970, 1, 1, 0, 0)
+                       .format(ISO_LOCAL_DATE_TIME);
+
+    /** 查询截止日期。*/
+    private final static
+    String CURRENT_TIME = DatetimeFormatter.NOW();
+
     private static WebTestClient webTestClient;
 
     @Autowired
@@ -90,8 +100,6 @@ public class IndicatorQueryEndpointsTest
                     .map(IndicatorType::name)
                     .toList();
 
-        final String currentTime = DatetimeFormatter.NOW();
-
         for (String type : indicatorTypes)
         {
             webTestClient
@@ -100,8 +108,8 @@ public class IndicatorQueryEndpointsTest
                     urlBuilder.path(IndicatorQueryEndpoints.MONITOR_LOG_QUERY)
                         .queryParam("indicator-type", type)
                         .queryParam("server-ip",      masterProperties.getHost())
-                        .queryParam("from",           LocalDateTime.MIN.format(ISO_LOCAL_DATE_TIME))
-                        .queryParam("to",             currentTime)
+                        .queryParam("from",           START_TIME)
+                        .queryParam("to",             CURRENT_TIME)
                         .queryParam("order", "DESC")
                         .queryParam("pageNo", "1")
                         .queryParam("perPageLimit", "5")
@@ -159,7 +167,7 @@ public class IndicatorQueryEndpointsTest
                     .map(QPSStatisticsType::name)
                     .toList();
 
-        final String currentTime = DatetimeFormatter.NOW();
+
 
         for (String type : statisticsTypes)
         {
@@ -169,8 +177,8 @@ public class IndicatorQueryEndpointsTest
                     uriBuilder.path(IndicatorQueryEndpoints.QPS_STATISTICS)
                               .queryParam("type", type)
                               .queryParam("server-ip", this.masterProperties.getHost())
-                              .queryParam("from",      LocalDateTime.MIN.format(ISO_LOCAL_DATE_TIME))
-                              .queryParam("to",        currentTime)
+                              .queryParam("from",      START_TIME)
+                              .queryParam("to",        CURRENT_TIME)
                               .build())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
