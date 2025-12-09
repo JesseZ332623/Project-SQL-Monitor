@@ -5,6 +5,7 @@ import com.jesse.sqlmonitor.scheduled_tasks.service.ScheduledTaskService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -23,6 +24,9 @@ public class ScheduledTasksEndpointsTest
 {
     private static WebTestClient webTestClient;
 
+    @Value("${spring.application.name}")
+    private String profileName;
+
     public ScheduledTasksEndpointsTest(
         @Qualifier("scheduledTasksRouterFunction")
         RouterFunction<ServerResponse> routerFunction
@@ -38,20 +42,24 @@ public class ScheduledTasksEndpointsTest
     /**
      * 测试 {@link ScheduledTaskService#executeCleanIndicatorUtilLastWeek(ServerRequest)}
      * 手动的执行历史指标清除操作。
+     * （在测试环境配置下执行，不能干扰生产环境）
      */
     @Test
     public void executeSendIntervalIndicatorReportTest()
     {
-        webTestClient
-            .post()
-            .uri(ScheduledTasksEndpoints.SEND_INDICATOR_REPORT)
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectStatus().isOk()
-            .expectBody(String.class)
-            .value((json) ->
-                System.out.println(getPrettyFormatJSON(json))
-            );
+        if ("sqlmonitor-test".equals(profileName))
+        {
+            webTestClient
+                .post()
+                .uri(ScheduledTasksEndpoints.SEND_INDICATOR_REPORT)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value((json) ->
+                    System.out.println(getPrettyFormatJSON(json))
+                );
+        }
     }
 
     /**

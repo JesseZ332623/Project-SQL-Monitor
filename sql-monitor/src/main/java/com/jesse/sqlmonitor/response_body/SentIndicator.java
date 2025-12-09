@@ -10,9 +10,9 @@ import java.time.LocalDateTime;
  *（通过 {@link reactor.rabbitmq.Sender}）发送出去。
  */
 @Getter
-@ToString
+@ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-@NoArgsConstructor
+@NoArgsConstructor(access  = AccessLevel.PRIVATE)
 @AllArgsConstructor(access = AccessLevel.PUBLIC)
 public class SentIndicator<T extends ResponseBase<T>>
     extends ResponseBase<T>
