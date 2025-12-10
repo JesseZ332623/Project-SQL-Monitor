@@ -100,11 +100,8 @@
 								</div>
 							</div>
 							<div class="card-content">
-								<NetworkTrafficChart 
-									:chart-data="networkChartData" 
-									:loading="loading"
-									:current-unit="currentNetworkUnit"
-								/>
+								<NetworkTrafficChart :chart-data="networkChartData" :loading="loading"
+									:current-unit="currentNetworkUnit" />
 							</div>
 						</div>
 					</div>
@@ -159,24 +156,25 @@
 								<div class="metric-card">
 									<div class="metric-label">Connections Usage</div>
 									<div class="metric-value" :class="{ loading: loading && !connectionsData }">
-										{{ 
-											connectionsData 
+										{{
+											connectionsData
 												? connectionsData.currentConnections + ' / ' + connectionsData.maxConnections
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">
-										{{ 'Usage: ' +  (connectionsData ? connectionsData.connectUsagePercent.toFixed(2) + '%' : '--') }}
+										{{ 'Usage: ' + (connectionsData ? connectionsData.connectUsagePercent.toFixed(2)
+											+ '%' : '--') }}
 									</div>
 								</div>
 
 								<div class="metric-card">
 									<div class="metric-label">Network Receive</div>
 									<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
-										{{ 
-											netTrafficData 
+										{{
+											netTrafficData
 												? formatNetworkRate(netTrafficData.receivePerSec, netTrafficData.sizeUnit)
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">Real-time receive rate</div>
@@ -185,10 +183,10 @@
 								<div class="metric-card">
 									<div class="metric-label">Network Sent</div>
 									<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
-										{{ 
-											netTrafficData 
+										{{
+											netTrafficData
 												? formatNetworkRate(netTrafficData.sentPerSec, netTrafficData.sizeUnit)
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">Real-time send rate</div>
@@ -197,10 +195,10 @@
 								<div class="metric-card">
 									<div class="metric-label">Total Traffic</div>
 									<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
-										{{ 
-											netTrafficData 
+										{{
+											netTrafficData
 												? formatBytes(netTrafficData.totalBytesReceive + netTrafficData.totalBytesSent)
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">Cumulative network usage</div>
@@ -208,11 +206,12 @@
 
 								<div class="metric-card">
 									<div class="metric-label">InnoDB Buffer Cache Hit Rate</div>
-									<div class="metric-value" :class="{ loading: loading && !innodbBufferCacheHitRate }">
-										{{ 
+									<div class="metric-value"
+										:class="{ loading: loading && !innodbBufferCacheHitRate }">
+										{{
 											innodbBufferCacheHitRate
 												? (innodbBufferCacheHitRate.cacheHitRate * 100.00).toFixed(4) + ' %'
-												: '--' 
+												: '--'
 										}}
 									</div>
 									<div class="metric-description">
@@ -238,15 +237,13 @@
 								</div>
 								<div class="status-item">
 									<span class="status-label">Error State:</span>
-									<span class="status-value"
-										:class="qpsData && qpsData.error ? 'error' : 'normal'">
+									<span class="status-value" :class="qpsData && qpsData.error ? 'error' : 'normal'">
 										{{ qpsData ? (qpsData.error ? 'Yes' : 'No') : '--' }}
 									</span>
 								</div>
 								<div class="status-item">
 									<span class="status-label">Auto Unit:</span>
-									<span class="status-value"
-										:class="autoUnitEnabled ? 'normal' : 'warning'">
+									<span class="status-value" :class="autoUnitEnabled ? 'normal' : 'warning'">
 										{{ autoUnitEnabled ? 'Enabled' : 'Disabled' }}
 									</span>
 								</div>
@@ -267,10 +264,16 @@
 import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue'
 import QPSChart from './components/QPSChart.vue'
 import NetworkTrafficChart from './components/NetworkTrafficChart.vue'
-import { 
-	fetchServerTime, fetchBaseAddress, 
-	fetchQPSData, fetchConnectionsUsage, 
-	fetchNetworkTraffic, fetchInnodbBufferCacheHitRate 
+import {
+	fetchAllMetrics,
+	updateChartData,
+	formatUtils,
+	calculateBestNetworkUnit
+} from './utils/dataProcessor'
+import {
+	fetchServerTime, fetchBaseAddress,
+	fetchQPSData, fetchConnectionsUsage,
+	fetchNetworkTraffic, fetchInnodbBufferCacheHitRate
 } from './services/api'
 
 export default {
@@ -280,277 +283,227 @@ export default {
 		NetworkTrafficChart
 	},
 	setup() {
-		const serverRunningTime = ref(null)
-		const baseAddress     = ref(null)
-		const qpsData         = ref(null)
-		const connectionsData = ref(null)
-		const netTrafficData  = ref(null)
-		const loading         = ref(false)
-		const error           = ref(null)
-		const autoRefresh     = ref(true)
-		const lastUpdate      = ref(null)
-		const refreshInterval = ref(3)
-		const selectedUnit    = ref('KB')  // 默认单位
-		const autoUnitEnabled = ref(false) // 自动单位切换
-		
-		// InnoDB Buffer Cache Hit Rate
-		const innodbBufferCacheHitRate = ref(null)
-		
-		let refreshTimer = null
-		
-		// 立刻初始化一次数据库地址 + 端口
-	 	fetchBaseAddress()
-			.then((response) => baseAddress.value = response.data)
+		// 响应式数据
+		const serverRunningTime = ref(null);
+		const baseAddress 		= ref(null);
+		const qpsData 			= ref(null);
+		const connectionsData 	= ref(null);
+		const netTrafficData 	= ref(null);
+		const loading 			= ref(false);
+		const error 			= ref(null);
+		const autoRefresh 		= ref(true);
+		const lastUpdate 		= ref(null);
+		const refreshInterval 	= ref(3);
+		const selectedUnit 		= ref('KB');
+		const autoUnitEnabled 	= ref(false);
+		const innodbBufferCacheHitRate = ref(null);
+
+		// Web Worker 实例
+		let refreshWorker = null;
+
+		// 初始化数据库地址
+		fetchBaseAddress().then((response) => baseAddress.value = response.data);
 
 		// 计算当前网络单位（支持自动切换）
 		const currentNetworkUnit = computed(() => {
-			if (!autoUnitEnabled.value) {
-				return selectedUnit.value
+			if (!autoUnitEnabled.value || !netTrafficData.value) {
+				return selectedUnit.value;
 			}
 
-			if (!netTrafficData.value) {
-				return selectedUnit.value
-			}
-
-			// 自动选择最合适的单位
-			const maxRate = Math.max(
-				netTrafficData.value.receivePerSec, 
+			return calculateBestNetworkUnit(
+				netTrafficData.value.receivePerSec,
 				netTrafficData.value.sentPerSec
-			)
+			);
+		});
 
-			if (maxRate >= 1024) {
-				return 'MB'
-			} else if (maxRate >= 1) {
-				return 'KB'
-			} else {
-				return 'B'
-			}
-		})
-
-		// QPS 图表数据
-		const qpsChartData = reactive({
-			labels: [],
-			datasets: [{
-				label: 'QPS',
-				data: [],
-				borderColor: '#3fb950',
-				backgroundColor: 'rgba(63, 185, 80, 0.1)',
-				borderWidth: 2,
-				fill: true,
-				tension: 0.4
-			}]
-		})
-
-		// 网络流量图表数据
-		const networkChartData = reactive({
-			labels: [],
-			datasets: [
-				{
-					label: 'Receive',
+		// 图表数据
+		const chartData = {
+			qps: reactive({
+				labels: [],
+				datasets: [{
+					label: 'QPS',
 					data: [],
-					borderColor: '#1f6feb',
-					backgroundColor: 'rgba(31, 111, 235, 0.1)',
+					borderColor: '#3fb950',
+					backgroundColor: 'rgba(63, 185, 80, 0.1)',
 					borderWidth: 2,
 					fill: true,
 					tension: 0.4
-				},
-				{
-					label: 'Send',
-					data: [],
-					borderColor: '#da3633',
-					backgroundColor: 'rgba(218, 54, 51, 0.1)',
-					borderWidth: 2,
-					fill: true,
-					tension: 0.4
-				}
-			]
-		})
+				}]
+			}),
+			network: reactive({
+				labels: [],
+				datasets: [
+					{
+						label: 'Receive',
+						data: [],
+						borderColor: '#1f6feb',
+						backgroundColor: 'rgba(31, 111, 235, 0.1)',
+						borderWidth: 2,
+						fill: true,
+						tension: 0.4
+					},
+					{
+						label: 'Send',
+						data: [],
+						borderColor: '#da3633',
+						backgroundColor: 'rgba(218, 54, 51, 0.1)',
+						borderWidth: 2,
+						fill: true,
+						tension: 0.4
+					}
+				]
+			})
+		};
 
-		const formatNumber = (num) => {
-			return new Intl.NumberFormat().format(num)
-		}
-
-		const formatBytes = (bytes) => {
-			if (!bytes) return '0 B'
-			const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-			const i = Math.floor(Math.log(bytes) / Math.log(1024))
-			return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i]
-		}
-
-		const formatNetworkRate = (rate, unit) => {
-			if (rate === undefined || rate === null) return '--'
-			return `${rate.toFixed(2)} ${unit}/s`
-		}
-
-		const updateChartData = (chartState, values, timestamp, maxDataPoints = 30) => {
-			const newLabels = [...chartState.labels, timestamp]
-			const newDatasets = chartState.datasets.map((dataset, index) => ({
-				...dataset,
-				data: [...dataset.data, values[index] || 0]
-			}))
-
-			// 限制数据点数量
-			if (newLabels.length > maxDataPoints) {
-				newLabels.shift()
-				newDatasets.forEach(dataset => dataset.data.shift())
-			}
-
-			chartState.labels = newLabels
-			chartState.datasets = newDatasets
-		}
-
-		const onUnitChange = () => {
-			autoUnitEnabled.value = false
-			fetchData()
-		}
-
+		// 数据获取函数
 		const fetchData = async () => {
-			loading.value = true
-			error.value = null
+			loading.value = true;
+			error.value = null;
 
 			try {
-				const unitToUse = autoUnitEnabled.value ? currentNetworkUnit.value : selectedUnit.value
-				
-				const [
-					qpsResponse, connResponse, 
-					netTrafficResponse, serverRunningTimeResponse, 
-					innodbBufferCacheHitRateResponse
-				] = await Promise.all([
-					fetchQPSData(),
-					fetchConnectionsUsage(),
-					fetchNetworkTraffic(unitToUse),
-					fetchServerTime(),
-					fetchInnodbBufferCacheHitRate()
-				])
+				const unitToUse = autoUnitEnabled.value ? currentNetworkUnit.value : selectedUnit.value;
+				const data = await fetchAllMetrics(unitToUse, {
+					fetchQPSData,
+					fetchConnectionsUsage,
+					fetchNetworkTraffic,
+					fetchServerTime,
+					fetchInnodbBufferCacheHitRate
+				});
 
-				qpsData.value                  = qpsResponse.data
-				connectionsData.value          = connResponse.data
-				netTrafficData.value           = netTrafficResponse.data
-				innodbBufferCacheHitRate.value = innodbBufferCacheHitRateResponse.data
-
-				const runtimeArray = serverRunningTimeResponse.data;
-				serverRunningTime.value 
-					= `${runtimeArray[0]} days ${runtimeArray[1]} hours ${runtimeArray[2]} min ${runtimeArray[3]} sec`
+				// 更新状态
+				qpsData.value 				   = data.qpsData;
+				connectionsData.value 		   = data.connectionsData;
+				netTrafficData.value 		   = data.netTrafficData;
+				innodbBufferCacheHitRate.value = data.innodbBufferCacheHitRate;
+				serverRunningTime.value 	   = formatUtils.runtime(data.runtimeArray);
 
 				// 更新图表数据
-				const now = new Date()
-				const timeLabel = now.toLocaleTimeString()
+				const now 		= new Date();
+				const timeLabel = now.toLocaleTimeString();
 
-				// 更新 QPS 图表
-				updateChartData(qpsChartData, [qpsResponse.data.qps], timeLabel)
-				
-				// 更新网络流量图表
-				updateChartData(
-					networkChartData, 
-					[
-						netTrafficResponse.data.receivePerSec, 
-						netTrafficResponse.data.sentPerSec
-					], 
-					timeLabel
-				)
+				updateChartData(chartData.qps, [data.qpsData.qps], timeLabel);
+				updateChartData(chartData.network, [data.netTrafficData.receivePerSec, data.netTrafficData.sentPerSec], timeLabel);
 
-				lastUpdate.value = now.toLocaleString()
+				lastUpdate.value = now.toLocaleString();
 
-			} catch (err) {
-				error.value = err.message
-				console.error('Error fetching data:', err)
-			} finally {
-				loading.value = false
 			}
-		}
+			catch (err) {
+				error.value = 'Error fetching data! Please checkout your network!';
+				console.error('Error fetching data:', err);
+			}
+			finally {
+				loading.value = false;
+			}
+		};
 
+		// 单位变化处理
+		const onUnitChange = () => {
+			autoUnitEnabled.value = false;
+			fetchData();
+		};
+
+		// 自动刷新控制
 		const toggleAutoRefresh = () => {
-			autoRefresh.value = !autoRefresh.value
+			autoRefresh.value = !autoRefresh.value;
 			if (autoRefresh.value) {
-				startAutoRefresh()
+				startAutoRefresh();
 			} else {
-				stopAutoRefresh()
+				stopAutoRefresh();
 			}
-		}
+		};
 
 		const startAutoRefresh = () => {
-			stopAutoRefresh() // 先清除现有的定时器
+			if (!refreshWorker) {
+				refreshWorker = new Worker(new URL('./workers/refreshWorker.js', import.meta.url));
+				refreshWorker.onmessage = (e) => {
+					if (e.data.type === 'REFRESH') 
+					{
+						console.log('Auto-refresh triggered by Web Worker at:', new Date(e.data.timestamp).toLocaleTimeString());
+						fetchData();
+					}
+				};
+			}
 
-			console.log('Starting auto-refresh with interval:', refreshInterval.value, 'seconds')
-			
-			// 立即执行一次数据获取
-			fetchData()
-			
-			// 设置定时器，无论页面是否可见都会执行
-			refreshTimer = setInterval(() => {
-				console.log('Auto-refresh triggered')
-				fetchData()
-			}, refreshInterval.value * 1000)
-		}
+			console.log('Starting auto-refresh with interval:', refreshInterval.value, 'seconds');
+			fetchData();
+
+			refreshWorker.postMessage({
+				type: 'START',
+				interval: refreshInterval.value * 1000
+			});
+		};
 
 		const stopAutoRefresh = () => {
-			if (refreshTimer) {
-				clearInterval(refreshTimer)
-				refreshTimer = null
-				console.log('Auto-refresh stopped')
+			if (refreshWorker) {
+				refreshWorker.postMessage({ type: 'STOP' });
+				console.log('Auto-refresh stopped');
 			}
-		}
+		};
 
 		// 监听刷新间隔变化
 		watch(refreshInterval, (newInterval) => {
-			if (autoRefresh.value) {
-				console.log('Refresh interval changed to', newInterval, 'seconds, restarting auto-refresh.')
-				startAutoRefresh()
+			if (autoRefresh.value && refreshWorker) {
+				console.log('Refresh interval changed to', newInterval, 'seconds, updating worker.');
+				refreshWorker.postMessage({
+					type: 'UPDATE_INTERVAL',
+					interval: newInterval * 1000
+				});
 			}
-		})
+		});
 
 		// 监听单位变化
 		watch(currentNetworkUnit, (newUnit) => {
 			if (autoUnitEnabled.value) {
-				console.log('Auto unit changed to:', newUnit)
+				console.log('Auto unit changed to:', newUnit);
 			}
-		})
+		});
 
+		// 生命周期
 		onMounted(() => {
-			// 初始数据获取
-			fetchData()
-
-			// 如果启用了自动刷新，则启动定时器
+			fetchData();
 			if (autoRefresh.value) {
-				startAutoRefresh()
+				startAutoRefresh();
 			}
-		})
+		});
 
 		onUnmounted(() => {
-			// 组件卸载时清除定时器
-			stopAutoRefresh()
-		})
+			stopAutoRefresh();
+			if (refreshWorker) {
+				refreshWorker.terminate();
+				refreshWorker = null;
+				console.log('Web Worker terminated');
+			}
+		});
 
 		return {
-			innodbBufferCacheHitRate,
 			serverRunningTime,
 			baseAddress,
 			qpsData,
 			connectionsData,
 			netTrafficData,
-			qpsChartData,
-			networkChartData,
 			loading,
 			error,
 			autoRefresh,
 			lastUpdate,
 			refreshInterval,
 			selectedUnit,
-			currentNetworkUnit,
 			autoUnitEnabled,
+			innodbBufferCacheHitRate,
+			qpsChartData: chartData.qps,
+			networkChartData: chartData.network,
 			fetchData,
 			toggleAutoRefresh,
 			onUnitChange,
-			formatNumber,
-			formatBytes,
-			formatNetworkRate
-		}
+			currentNetworkUnit,
+			formatNumber: formatUtils.number,
+			formatBytes: formatUtils.bytes,
+			formatNetworkRate: formatUtils.networkRate
+		};
 	}
-}
+};
 </script>
 
 <style>
-
 /* 图表网格布局 */
 .charts-grid {
 	display: grid;
@@ -791,9 +744,11 @@ body {
 	0% {
 		opacity: 1;
 	}
+
 	50% {
 		opacity: 0.5;
 	}
+
 	100% {
 		opacity: 1;
 	}
@@ -886,6 +841,7 @@ body {
 	0% {
 		background-position: 200% 0;
 	}
+
 	100% {
 		background-position: -200% 0;
 	}
