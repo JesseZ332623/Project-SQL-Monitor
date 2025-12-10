@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 
-/** Redis 缓存相关属性。*/
+/** Redis 缓存层相关属性类。*/
 @Data
 @ToString
 @Component
@@ -28,4 +28,7 @@ public class RedisCacheProperties
 
     /** 获取分布式锁超时时间。*/
     private Duration lockWaitTimeout;
+
+    /** 分布式锁有效期。*/
+    private long lockLeaseTime;
 }
