@@ -80,6 +80,8 @@ app:
     cache-operator-timeout: 300ms
     # 获取分布式锁超时时间
     lock-wait-timeout: 1s
+    # 分布式锁有效期（这里使用看门狗策略）
+    lock-lease-time: -1
 
   redis-health-check:
     # 健康检查间隔
