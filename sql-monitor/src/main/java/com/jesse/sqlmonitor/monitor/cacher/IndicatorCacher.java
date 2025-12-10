@@ -26,8 +26,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
-
-import static java.lang.String.format;
+import java.util.concurrent.TimeoutException;
 
 /** 指标数据缓存器实现。*/
 @Slf4j
@@ -296,10 +295,10 @@ public class IndicatorCacher
                     // 获取线程号
                     //（响应式环境下线程号不可靠，这里使用雪花算法生成的 ID 在上下文传递）
                     final long threadId  = IdUtil.getSnowflakeNextId();
-                    final long leaseTime = -1L;   // 锁期限（这里使用看门狗策略续期）
-                    final long waitTime
-                        = this.redisCacheProperties
-                              .getLockWaitTimeout().toSeconds();
+                    final long waitTime  = this.redisCacheProperties
+                                               .getLockWaitTimeout().toSeconds();
+                    final long leaseTime = this.redisCacheProperties
+                                               .getLockLeaseTime();
 
                     return
                     Mono.usingWhen(
@@ -324,15 +323,12 @@ public class IndicatorCacher
                             else
                             {
                                /* 指定时间内没有获取锁，抛出异常降级处理。*/
-                               return
-                               Mono.error(
-                                   new java.util.concurrent.TimeoutException(
-                                       format(
-                                           "Acquire lock of %s timeout! (wait time: %s)",
-                                           keyNames, waitTime
-                                       )
-                                   )
+                               log.error(
+                                   "Acquire lock of {} timeout! (wait time: {} seconds)",
+                                   keyNames, waitTime
                                );
+
+                               return Mono.error(new TimeoutException());
                            }
                        },
                         (ignore) ->
