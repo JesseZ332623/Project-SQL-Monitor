@@ -46,3 +46,22 @@ app:
 logging:
   file:
     path: ./indicator_receiver_logs
+
+springdoc:
+  api-docs:
+    path: /indicator-receiver-api-docs
+  swagger-ui:
+    path: /indicator-receiver-api-docs.html
+    enabled: true
+    deep-linking: true
+    display-request-duration: true
+  webjars:
+    prefix: /webjars
+  cache:
+    disabled: true
+  packages-to-scan: com.jesse.sqlmonitor
+  model-converters:
+    jackson:
+      enabled: true
+  model-and-view-allowed: true
+  default-produces-media-type: application/json
