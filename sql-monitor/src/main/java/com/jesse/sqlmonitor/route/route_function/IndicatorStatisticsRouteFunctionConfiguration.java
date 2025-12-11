@@ -45,16 +45,34 @@ public class IndicatorStatisticsRouteFunctionConfiguration
                         required    = true
                     ),
                     @Parameter(
-                        name        = "until",
-                        description = "统计的范围（截止时间）",
+                        name        = "from",
+                        description = "统计的起始范围（开始时间）",
                         example     = "2025-10-01 00:00:00",
                         required    = true
                     ),
                     @Parameter(
-                        name = "order",
+                        name        = "to",
+                        description = "统计的结束范围（结束时间）",
+                        example     = "2025-11-30 00:00:00",
+                        required    = true
+                    ),
+                    @Parameter(
+                        name        = "order",
                         description = "结果集的顺序（按时间排序），由多选框给出",
                         example     = "DESC",
                         schema      = @Schema(implementation = QueryOrder.class),
+                        required    = true
+                    ),
+                    @Parameter(
+                        name        = "page-no",
+                        description = "第几页？",
+                        example     = "5",
+                        required    = true
+                    ),
+                    @Parameter(
+                        name        = "page-size",
+                        description = "每页几条数据？（一般是固定值）",
+                        example     = "11",
                         required    = true
                     )
                 },
@@ -70,7 +88,7 @@ public class IndicatorStatisticsRouteFunctionConfiguration
             operation = @Operation(
                 operationId = "qpsStatistics",
                 summary     = "按条件查询 QPS 的相关统计数据",
-                tags        = {"QPS 平均值的条件查询"},
+                tags        = {"QPS 统计数据查询"},
                 parameters  = {
                     @Parameter(
                         name        = "type",
@@ -85,11 +103,17 @@ public class IndicatorStatisticsRouteFunctionConfiguration
                         required    = true
                     ),
                     @Parameter(
-                        name        = "until",
-                        description = "统计的范围（截止时间）",
+                        name        = "from",
+                        description = "统计的起始范围（开始时间）",
                         example     = "2025-10-01 00:00:00",
                         required    = true
-                    )
+                    ),
+                    @Parameter(
+                        name        = "to",
+                        description = "统计的结束范围（结束时间）",
+                        example     = "2025-11-30 00:00:00",
+                        required    = true
+                    ),
                 },
                 responses   = {
                     @ApiResponse(responseCode = "200", description = "查询并计算出来的相关统计数据"),
