@@ -2,6 +2,7 @@ package com.jesse.sqlmonitor.component_test;
 
 import cn.hutool.core.util.IdUtil;
 import com.jesse.sqlmonitor.component_test.dto.RandomJokeDTO;
+import com.jesse.sqlmonitor.properties.RedisCacheProperties;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.redisson.Redisson;
@@ -45,6 +46,9 @@ public class RedissonTest
     @Autowired
     @Qualifier("R2dbcMasterDatabaseClient")
     private DatabaseClient databaseClient;
+
+    @Autowired
+    private RedisCacheProperties redisCacheProperties;
 
     private RedissonReactiveClient redissonReactiveClient = null;
 
@@ -126,14 +130,19 @@ public class RedissonTest
             = this.getRedissonReactiveClient().getLock("test-redisson-lock");
 
         final long contextThreadId = IdUtil.getSnowflakeNextId();
+        final long waiiTime        = this.redisCacheProperties
+                                         .getLockWaitTimeout().toSeconds();
+        final long leastTime       = this.redisCacheProperties.getLockLeaseTime();
 
         Flux.interval(Duration.ZERO, Duration.ofMillis(1500L))
+            .onBackpressureBuffer() // interval() 操作不支持背压，需要一个缓冲区暂存来不及处理的信号
             .take(5L)
             .concatMap((sequence) ->
                 Mono.fromRunnable(() -> System.out.println("No. " + sequence))
                     .then(
                         Mono.usingWhen(
-                            lockReactive.tryLock(500L, -1L, TimeUnit.MILLISECONDS, contextThreadId),
+                            lockReactive.tryLock(
+                                waiiTime, leastTime, TimeUnit.SECONDS, contextThreadId),
                             (isLocked) -> {
                                 if (isLocked)
                                 {
