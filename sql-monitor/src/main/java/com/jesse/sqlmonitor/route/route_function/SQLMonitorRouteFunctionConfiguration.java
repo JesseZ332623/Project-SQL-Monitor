@@ -122,7 +122,7 @@ public class SQLMonitorRouteFunctionConfiguration
                             name = "statusName",
                             description = """
                                 全局状态名全局状态名，
-                                <a href='https://github.com/JesseZ332623/Project-SQL-Monitor/blob/main/sql-monitor/src/main/java/com/jesse/sqlmonitor/monitor/constants/GlobalStatusName.java'>
+                                <a href='https://github.com/JesseZ332623/Project-SQL-Monitor/blob/develop/sql-monitor/src/main/java/com/jesse/sqlmonitor/monitor/constants/GlobalStatusName.java'>
                                     查看完整 GlobalStatusName 列表
                                 </a>
                                 """,
@@ -175,6 +175,7 @@ public class SQLMonitorRouteFunctionConfiguration
                         @Parameter(
                             name        = "includeSysShema",
                             description = "是否包含系统数据库？",
+                            example     = "false",
                             required    = true
                         )
                     },
@@ -248,8 +249,8 @@ public class SQLMonitorRouteFunctionConfiguration
                 path = SERVER_UPTIME_QUERY,
                 operation = @Operation(
                     operationId = "getServerUpTime",
-                    summary     = "查询数据库服务器从启动至今所经过的秒数",
-                    tags        = {"数据库服务器从启动至今所经过的秒数获取"},
+                    summary     = "查询数据库服务器从启动至今所经过的时间",
+                    tags        = {"数据库服务器从启动至今所经过的时间获取"},
                     responses = {
                         @ApiResponse(
                             responseCode = "200",
