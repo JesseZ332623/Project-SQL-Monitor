@@ -1,14 +1,18 @@
 package com.jesse.indicator_receiver.route;
 
+import com.jesse.indicator_receiver.route.filter.MonitoringFilter;
 import com.jesse.indicator_receiver.service.ReceiverLifeCycleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.jetbrains.annotations.NotNull;
 import org.springdoc.core.annotations.RouterOperation;
 import org.springdoc.core.annotations.RouterOperations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.reactive.function.server.RequestPredicates;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -77,15 +81,20 @@ public class IndicatorReceiverRouteFuncConfig
     })
     public RouterFunction<ServerResponse>
     indicatorReceiverRouteFunc(
-        @NotNull
-        ReceiverLifeCycleService receiverLifeCycleService
+        @NotNull @Autowired
+        final ReceiverLifeCycleService receiverLifeCycleService
     )
     {
         return
-        RouterFunctions.route()
-            .GET(RUN_STATUS,      receiverLifeCycleService::runStatus)
-            .POST(START_RECEIVER, receiverLifeCycleService::start)
-            .POST(STOP_RECEIVER,  receiverLifeCycleService::stop)
-            .build();
+        RouterFunctions.nest(
+            RequestPredicates.path(IndicatorReceiverEndpoints.ROOT)
+                .and(RequestPredicates.accept(MediaType.APPLICATION_JSON)),
+            RouterFunctions.route()
+                .GET(RUN_STATUS,      receiverLifeCycleService::runStatus)
+                .POST(START_RECEIVER, receiverLifeCycleService::start)
+                .POST(STOP_RECEIVER,  receiverLifeCycleService::stop)
+                .filter(MonitoringFilter::doFilter)
+                .build()
+        );
     }
 }
