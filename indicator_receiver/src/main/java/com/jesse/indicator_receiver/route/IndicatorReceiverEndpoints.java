@@ -3,15 +3,15 @@ package com.jesse.indicator_receiver.route;
 /** 指标数据接收器服务端点配置类。*/
 public class IndicatorReceiverEndpoints
 {
-    private static final String
+    public static final String
     ROOT = "/api/indicator_receiver";
 
     public static final String
-    START_RECEIVER = ROOT + "/start";
+    START_RECEIVER = "/start";
 
     public static final String
-    STOP_RECEIVER = ROOT + "/stop";
+    STOP_RECEIVER  = "/stop";
 
     public static final String
-    RUN_STATUS = ROOT + "/run-status";
+    RUN_STATUS     = "/run-status";
 }
