@@ -90,9 +90,9 @@ app:
 
 springdoc:
   api-docs:
-    path: /api-docs
+    path: /sql-monitor-api-docs
   swagger-ui:
-    path: /swagger-ui.html
+    path: /sql-monitor-api-docs.html
     enabled: true
     deep-linking: true
     display-request-duration: true

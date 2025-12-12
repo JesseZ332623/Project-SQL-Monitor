@@ -122,8 +122,8 @@ public class MonitorLogServiceImpl implements MonitorLogService
             praseRequestParam(request, "from"),
             praseRequestParam(request, "to"),
             praseRequestParam(request, "order"),
-            praseRequestParam(request, "pageNo"),
-            praseRequestParam(request, "perPageLimit"))
+            praseRequestParam(request, "page-no"),
+            praseRequestParam(request, "page-size"))
         .flatMap((params) -> {
             final Class<? extends ResponseBase<?>>
                 type = getIndicatorType(params.getT1());
