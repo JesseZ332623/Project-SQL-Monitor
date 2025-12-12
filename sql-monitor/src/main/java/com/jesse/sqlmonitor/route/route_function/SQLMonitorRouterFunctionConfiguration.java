@@ -5,6 +5,8 @@ import com.jesse.sqlmonitor.monitor.constants.SizeUnit;
 import com.jesse.sqlmonitor.response_body.*;
 import com.jesse.sqlmonitor.response_body.QPSResult;
 import com.jesse.sqlmonitor.monitor.service.SQLMonitorService;
+import com.jesse.sqlmonitor.route.endpoints_config.SQLMonitorEndPoints;
+import com.jesse.sqlmonitor.route.route_function.filter.MonitoringFilter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -14,8 +16,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.jetbrains.annotations.NotNull;
 import org.springdoc.core.annotations.RouterOperation;
 import org.springdoc.core.annotations.RouterOperations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.reactive.function.server.RequestPredicates;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -23,11 +27,10 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import static com.jesse.sqlmonitor.route.endpoints_config.SQLMonitorEndPoints.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
-import static org.springframework.web.reactive.function.server.RequestPredicates.accept;
 
 /** SQL 指标监控程序路由函数配置。*/
 @Configuration
-public class SQLMonitorRouteFunctionConfiguration
+public class SQLMonitorRouterFunctionConfiguration
 {
     @Bean(name = "sqlMonitorRouteFunction")
     @RouterOperations(
@@ -269,19 +272,27 @@ public class SQLMonitorRouteFunctionConfiguration
         }
     )
     public RouterFunction<ServerResponse>
-    sqlMonitorRouteFunction(@NotNull SQLMonitorService sqlMonitorService)
+    sqlMonitorRouteFunction(
+        @NotNull @Autowired
+        final SQLMonitorService sqlMonitorService
+    )
     {
         return
-        RouterFunctions.route()
-            .GET(BASE_ADDRESS_QUERY,      accept(APPLICATION_JSON), sqlMonitorService::getDatabaseAddress)
-            .GET(QPS_QUERY,               accept(APPLICATION_JSON), sqlMonitorService::getQPS)
-            .GET(NETWORK_TRAFFIC_QUERY,   accept(APPLICATION_JSON), sqlMonitorService::getNetWorkTraffic)
-            .GET(GLOBAL_STATUS_QUERY,     accept(APPLICATION_JSON), sqlMonitorService::getGlobalStatus)
-            .GET(CONNECTION_USAGE_QUERY,  accept(APPLICATION_JSON), sqlMonitorService::getConnectionUsage)
-            .GET(ALL_SCHEMA_NAME_QUERY,   accept(APPLICATION_JSON), sqlMonitorService::getAllSchemaName)
-            .GET(DATABASE_SIZE_QUERY,     accept(APPLICATION_JSON), sqlMonitorService::getDatabaseSize)
-            .GET(INNODB_BUFFER_CACHE_HIT_RATE_QUERY, accept(APPLICATION_JSON), sqlMonitorService::getInnodbBufferCacheHitRate)
-            .GET(SERVER_UPTIME_QUERY, accept(APPLICATION_JSON), sqlMonitorService::getServerUpTime)
-            .build();
+        RouterFunctions.nest(
+            RequestPredicates.path(SQLMonitorEndPoints.ROOT)
+                .and(RequestPredicates.accept(APPLICATION_JSON)),
+            RouterFunctions.route()
+                .GET(BASE_ADDRESS_QUERY,       sqlMonitorService::getDatabaseAddress)
+                .GET(QPS_QUERY,                sqlMonitorService::getQPS)
+                .GET(NETWORK_TRAFFIC_QUERY,    sqlMonitorService::getNetWorkTraffic)
+                .GET(GLOBAL_STATUS_QUERY,      sqlMonitorService::getGlobalStatus)
+                .GET(CONNECTION_USAGE_QUERY,   sqlMonitorService::getConnectionUsage)
+                .GET(ALL_SCHEMA_NAME_QUERY,    sqlMonitorService::getAllSchemaName)
+                .GET(DATABASE_SIZE_QUERY,      sqlMonitorService::getDatabaseSize)
+                .GET(INNODB_BUFFER_CACHE_HIT_RATE_QUERY, sqlMonitorService::getInnodbBufferCacheHitRate)
+                .GET(SERVER_UPTIME_QUERY, sqlMonitorService::getServerUpTime)
+                .filter(MonitoringFilter::doFilter)
+                .build()
+        );
     }
 }
