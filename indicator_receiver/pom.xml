@@ -28,7 +28,27 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+        <activatedProperties>test</activatedProperties>
 	</properties>
+
+    <profiles>
+        <profile>
+            <id>test</id>
+            <properties>
+                <activatedProperties>test</activatedProperties>
+            </properties>
+            <activation>
+                <activeByDefault>true</activeByDefault>  <!-- 默认激活 -->
+            </activation>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <properties>
+                <activatedProperties>prod</activatedProperties>
+            </properties>
+        </profile>
+    </profiles>
+
 	<dependencies>
         <dependency>
             <groupId>io.github.jessez332623</groupId>

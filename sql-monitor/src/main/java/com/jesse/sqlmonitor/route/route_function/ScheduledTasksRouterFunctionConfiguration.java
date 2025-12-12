@@ -1,5 +1,7 @@
 package com.jesse.sqlmonitor.route.route_function;
 
+import com.jesse.sqlmonitor.route.endpoints_config.ScheduledTasksEndpoints;
+import com.jesse.sqlmonitor.route.route_function.filter.MonitoringFilter;
 import com.jesse.sqlmonitor.scheduled_tasks.service.ScheduledTaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -7,8 +9,11 @@ import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springdoc.core.annotations.RouterOperation;
 import org.springdoc.core.annotations.RouterOperations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.server.RequestPredicates;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;
 import org.springframework.web.reactive.function.server.ServerResponse;
@@ -61,14 +66,19 @@ public class ScheduledTasksRouterFunctionConfiguration
     })
     public RouterFunction<ServerResponse>
     scheduledTasksRouterFunction(
-        @NotNull
-        ScheduledTaskService scheduledTaskService
+        @NotNull @Autowired
+        final ScheduledTaskService scheduledTaskService
     )
     {
         return
-        RouterFunctions.route()
-            .POST(SEND_INDICATOR_REPORT,        scheduledTaskService::executeSendIntervalIndicatorReport)
-            .DELETE(CLEAN_HISTORICAL_INDICATOR, scheduledTaskService::executeCleanIndicatorUtilLastWeek)
-            .build();
+        RouterFunctions.nest(
+            RequestPredicates.path(ScheduledTasksEndpoints.ROOT)
+                .and(RequestPredicates.accept(MediaType.APPLICATION_JSON)),
+            RouterFunctions.route()
+                .POST(SEND_INDICATOR_REPORT,        scheduledTaskService::executeSendIntervalIndicatorReport)
+                .DELETE(CLEAN_HISTORICAL_INDICATOR, scheduledTaskService::executeCleanIndicatorUtilLastWeek)
+                .filter(MonitoringFilter::doFilter)
+                .build()
+        );
     }
 }

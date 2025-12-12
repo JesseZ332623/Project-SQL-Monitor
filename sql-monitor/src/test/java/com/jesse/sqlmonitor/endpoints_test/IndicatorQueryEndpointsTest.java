@@ -23,6 +23,8 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.jesse.sqlmonitor.route.endpoints_config.IndicatorQueryEndpoints.MONITOR_LOG_QUERY;
+import static com.jesse.sqlmonitor.route.endpoints_config.IndicatorQueryEndpoints.QPS_STATISTICS;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
 /** 指标统计数据查询端点 {@link IndicatorQueryEndpoints} 测试。*/
@@ -65,7 +67,7 @@ public class IndicatorQueryEndpointsTest
         webTestClient
             .get()
             .uri((urlBuilder) ->
-                urlBuilder.path(IndicatorQueryEndpoints.MONITOR_LOG_QUERY)
+                urlBuilder.path(IndicatorQueryEndpoints.ROOT + MONITOR_LOG_QUERY)
                     .queryParam("indicator-type", "x_X")
                     .queryParam("server-ip", "0_x")
                     .queryParam("from", "O_o")
@@ -105,7 +107,7 @@ public class IndicatorQueryEndpointsTest
             webTestClient
                 .get()
                 .uri((urlBuilder) ->
-                    urlBuilder.path(IndicatorQueryEndpoints.MONITOR_LOG_QUERY)
+                    urlBuilder.path(IndicatorQueryEndpoints.ROOT + MONITOR_LOG_QUERY)
                         .queryParam("indicator-type", type)
                         .queryParam("server-ip",      masterProperties.getHost())
                         .queryParam("from",           START_TIME)
@@ -137,7 +139,7 @@ public class IndicatorQueryEndpointsTest
         webTestClient
             .get()
             .uri((urlBuilder) ->
-                urlBuilder.path(IndicatorQueryEndpoints.MONITOR_LOG_QUERY)
+                urlBuilder.path(IndicatorQueryEndpoints.ROOT + MONITOR_LOG_QUERY)
                     .queryParam("indicator-type", "?_?")
                     .queryParam("server-ip", "x_X")
                     .queryParam("from", "!_?")
@@ -174,7 +176,7 @@ public class IndicatorQueryEndpointsTest
             webTestClient
                 .get()
                 .uri((uriBuilder) ->
-                    uriBuilder.path(IndicatorQueryEndpoints.QPS_STATISTICS)
+                    uriBuilder.path(IndicatorQueryEndpoints.ROOT + QPS_STATISTICS)
                               .queryParam("type", type)
                               .queryParam("server-ip", this.masterProperties.getHost())
                               .queryParam("from",      START_TIME)

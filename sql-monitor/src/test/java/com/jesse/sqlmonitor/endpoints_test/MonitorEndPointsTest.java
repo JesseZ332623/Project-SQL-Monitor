@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static com.jesse.sqlmonitor.route.endpoints_config.SQLMonitorEndPoints.*;
 import static com.jesse.sqlmonitor.utils.PrettyJSONPrinter.getPrettyFormatJSON;
 
 /** 对 {@link SQLMonitorEndPoints} 的所有端点进行测试。*/
@@ -61,7 +62,7 @@ public class MonitorEndPointsTest
     {
         webTestClient
             .get()
-            .uri(SQLMonitorEndPoints.BASE_ADDRESS_QUERY)
+            .uri(SQLMonitorEndPoints.ROOT + BASE_ADDRESS_QUERY)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
@@ -81,7 +82,7 @@ public class MonitorEndPointsTest
         {
             webTestClient
                 .get()
-                .uri(SQLMonitorEndPoints.QPS_QUERY)
+                .uri(SQLMonitorEndPoints.ROOT + QPS_QUERY)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk()
@@ -105,7 +106,7 @@ public class MonitorEndPointsTest
             webTestClient
                 .get()
                 .uri((uriBuilder) ->
-                    uriBuilder.path(SQLMonitorEndPoints.NETWORK_TRAFFIC_QUERY)
+                    uriBuilder.path(SQLMonitorEndPoints.ROOT + NETWORK_TRAFFIC_QUERY)
                         .queryParam("sizeUnit", "KB")
                         .build())
                 .accept(MediaType.APPLICATION_JSON)
@@ -130,7 +131,7 @@ public class MonitorEndPointsTest
         {
             webTestClient
                 .get()
-                .uri(SQLMonitorEndPoints.CONNECTION_USAGE_QUERY)
+                .uri(SQLMonitorEndPoints.ROOT + CONNECTION_USAGE_QUERY)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk()
@@ -161,7 +162,11 @@ public class MonitorEndPointsTest
         {
             webTestClient
                 .get()
-                .uri(SQLMonitorEndPoints.GLOBAL_STATUS_QUERY + "?statusName=" + statusName.name())
+                .uri((uriBuilder) ->
+                    uriBuilder.path(SQLMonitorEndPoints.ROOT + GLOBAL_STATUS_QUERY)
+                        .queryParam("statusName", statusName.name())
+                        .build()
+                )
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody(String.class)
@@ -180,7 +185,7 @@ public class MonitorEndPointsTest
         webTestClient
             .get()
             .uri((uriBuilder) ->
-                uriBuilder.path(SQLMonitorEndPoints.DATABASE_SIZE_QUERY)
+                uriBuilder.path(SQLMonitorEndPoints.ROOT + DATABASE_SIZE_QUERY)
                     .queryParam("schemaName", "0_o")
                     .queryParam("order", "DESC")
                     .build()
@@ -219,7 +224,7 @@ public class MonitorEndPointsTest
             webTestClient
                 .get()
                 .uri((uriBuilder) ->
-                    uriBuilder.path(SQLMonitorEndPoints.DATABASE_SIZE_QUERY)
+                    uriBuilder.path(SQLMonitorEndPoints.ROOT + DATABASE_SIZE_QUERY)
                               .queryParam("schemaName", schemaName)
                               .queryParam("order", "DESC")
                               .build()
@@ -242,7 +247,7 @@ public class MonitorEndPointsTest
     {
         webTestClient
             .get()
-            .uri(SQLMonitorEndPoints.SERVER_UPTIME_QUERY)
+            .uri(SQLMonitorEndPoints.ROOT + SERVER_UPTIME_QUERY)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
@@ -262,7 +267,7 @@ public class MonitorEndPointsTest
         {
             webTestClient
                 .get()
-                .uri(SQLMonitorEndPoints.INNODB_BUFFER_CACHE_HIT_RATE_QUERY)
+                .uri(SQLMonitorEndPoints.ROOT + INNODB_BUFFER_CACHE_HIT_RATE_QUERY)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk()

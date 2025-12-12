@@ -17,6 +17,8 @@ import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.ServerRequest;
 import org.springframework.web.reactive.function.server.ServerResponse;
 
+import static com.jesse.indicator_receiver.route.IndicatorReceiverEndpoints.*;
+
 /**
  * 指标数据接收器手动生命周期管理服务
  * {@link ReceiverLifeCycleServiceImpl} 集成测试。</br>
@@ -47,7 +49,7 @@ public class ReceiverLifeCycleServiceTests
     {
         this.webTestClient
             .get()
-            .uri(IndicatorReceiverEndpoints.RUN_STATUS)
+            .uri(IndicatorReceiverEndpoints.ROOT +  RUN_STATUS)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
@@ -67,7 +69,7 @@ public class ReceiverLifeCycleServiceTests
     {
         this.webTestClient
             .post()
-            .uri(IndicatorReceiverEndpoints.STOP_RECEIVER)
+            .uri(IndicatorReceiverEndpoints.ROOT + STOP_RECEIVER)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
@@ -87,7 +89,7 @@ public class ReceiverLifeCycleServiceTests
     {
         this.webTestClient
             .post()
-            .uri(IndicatorReceiverEndpoints.START_RECEIVER)
+            .uri(IndicatorReceiverEndpoints.ROOT + START_RECEIVER)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()

@@ -4,11 +4,11 @@ package com.jesse.sqlmonitor.route.endpoints_config;
 public class IndicatorQueryEndpoints
 {
     public static final
-    String ROOT = "/api/indicator";
+    String ROOT                 = "/api/indicator";
 
     public static final
-    String MONITOR_LOG_QUERY = ROOT + "/log";
+    String MONITOR_LOG_QUERY    = "/log";
 
     public static final
-    String QPS_STATISTICS = ROOT + "/qps-statistics";
+    String QPS_STATISTICS       = "/qps-statistics";
 }

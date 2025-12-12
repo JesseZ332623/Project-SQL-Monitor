@@ -15,6 +15,8 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 
 import java.time.Duration;
 
+import static com.jesse.sqlmonitor.route.endpoints_config.ScheduledTasksEndpoints.CLEAN_HISTORICAL_INDICATOR;
+import static com.jesse.sqlmonitor.route.endpoints_config.ScheduledTasksEndpoints.SEND_INDICATOR_REPORT;
 import static com.jesse.sqlmonitor.utils.PrettyJSONPrinter.getPrettyFormatJSON;
 
 /** 手动执行定时任务端点 {@link ScheduledTasksEndpoints} 测试。*/
@@ -51,7 +53,7 @@ public class ScheduledTasksEndpointsTest
         {
             webTestClient
                 .post()
-                .uri(ScheduledTasksEndpoints.SEND_INDICATOR_REPORT)
+                .uri(ScheduledTasksEndpoints.ROOT + SEND_INDICATOR_REPORT)
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange()
                 .expectStatus().isOk()
@@ -71,7 +73,7 @@ public class ScheduledTasksEndpointsTest
     {
         webTestClient
             .delete()
-            .uri(ScheduledTasksEndpoints.CLEAN_HISTORICAL_INDICATOR)
+            .uri(ScheduledTasksEndpoints.ROOT + CLEAN_HISTORICAL_INDICATOR)
             .accept(MediaType.APPLICATION_JSON)
             .exchange()
             .expectStatus().isOk()
