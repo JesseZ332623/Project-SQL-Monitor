@@ -45,7 +45,7 @@ public class CacherWarmUpEventPublisher
         }
 
         this.eventPublisher.publishEvent(
-            new CacherWarnUpEvent<>(keyNames, data, type)
+            new CacherWarnUpEvent<>(this, keyNames, data, type)
         );
     }
 
