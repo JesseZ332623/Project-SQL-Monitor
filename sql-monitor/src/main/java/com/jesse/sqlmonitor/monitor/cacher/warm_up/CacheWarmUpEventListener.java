@@ -23,28 +23,37 @@ public class CacheWarmUpEventListener
     /**
      * 当检查到 {@link CacherWarnUpEvent} 实例被创建时
      *（即调用 {@link CacherWarmUpEventPublisher#publishWarnUpEvent(IndicatorKeyNames, ResponseBase, Class)}）
-     * 尝试往缓存写入数据
+     * 尝试往缓存写入数据。
      */
     @EventListener
     public <T extends ResponseBase<T>> void
     handleCacheWarnUp(@NotNull CacherWarnUpEvent<T> event)
     {
-        if (Objects.nonNull(event.getData()))
+        // 如果事件不是 CacherWarmUpEventPublisher 发布的，
+        // 则不要执行缓存写入操作。
+        // 虽然目前只存在一个 CacherWarnUpEvent 事件发布器，但这种检查作为一个示范存在。
+        if (event.getSource() instanceof CacherWarmUpEventPublisher)
         {
-            ResponseBase<T> data = event.getData();
+            if (Objects.nonNull(event.getData()))
+            {
+                ResponseBase<T> data = event.getData();
 
-            this.indicatorCacher
-                .cacheIndicatorData(
-                    event.getKeyNames(), data, event.getType())
-                .subscribe(
-                    null,
-                    (exception) ->
-                        log.warn(
-                            "Cache warn up failed for data: {}, Caused by: {}",
-                            event.getKeyNames().name(),
-                            exception.getMessage()
-                        )
-                );
+                this.indicatorCacher
+                    .cacheIndicatorData(
+                        event.getKeyNames(), data, event.getType())
+                    .subscribe(
+                        null,
+                        (exception) ->
+                            log.warn(
+                                "Cache warn up failed for data: {}, Caused by: {}",
+                                event.getKeyNames().name(),
+                                exception.getMessage()
+                            )
+                    );
+            }
+        }
+        else {
+            log.warn("Event not published on CacherWarmUpEventPublisher!");
         }
     }
 }
