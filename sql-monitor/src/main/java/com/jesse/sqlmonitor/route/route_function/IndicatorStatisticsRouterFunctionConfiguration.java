@@ -4,6 +4,8 @@ import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.indicator_record.entity.IndicatorType;
 import com.jesse.sqlmonitor.indicator_record.service.MonitorLogService;
 import com.jesse.sqlmonitor.indicator_record.service.constants.QPSStatisticsType;
+import com.jesse.sqlmonitor.route.endpoints_config.IndicatorQueryEndpoints;
+import com.jesse.sqlmonitor.route.route_function.filter.MonitoringFilter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -11,17 +13,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.jetbrains.annotations.NotNull;
 import org.springdoc.core.annotations.RouterOperation;
 import org.springdoc.core.annotations.RouterOperations;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.reactive.function.server.RouterFunction;
-import org.springframework.web.reactive.function.server.RouterFunctions;
-import org.springframework.web.reactive.function.server.ServerResponse;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.server.*;
 
 import static com.jesse.sqlmonitor.route.endpoints_config.IndicatorQueryEndpoints.*;
 
 /** 指标统计数据查询服务路由函数配置类。*/
 @Configuration
-public class IndicatorStatisticsRouteFunctionConfiguration
+public class IndicatorStatisticsRouterFunctionConfiguration
 {
     @Bean(name = "indicatorStatisticsRouteFunction")
     @RouterOperations({
@@ -124,12 +126,20 @@ public class IndicatorStatisticsRouteFunctionConfiguration
         )
     })
     public RouterFunction<ServerResponse>
-    indicatorStatisticsRouteFunction(@NotNull MonitorLogService monitorLogService)
+    indicatorStatisticsRouteFunction(
+        @NotNull @Autowired
+        final MonitorLogService monitorLogService
+    )
     {
         return
-        RouterFunctions.route()
-            .GET(MONITOR_LOG_QUERY, monitorLogService::fetchIndicatorLog)
-            .GET(QPS_STATISTICS,    monitorLogService::qpsStatistics)
-            .build();
+        RouterFunctions.nest(
+            RequestPredicates.path(IndicatorQueryEndpoints.ROOT)
+                .and(RequestPredicates.accept(MediaType.APPLICATION_JSON)),
+            RouterFunctions.route()
+                .GET(MONITOR_LOG_QUERY, monitorLogService::fetchIndicatorLog)
+                .GET(QPS_STATISTICS,    monitorLogService::qpsStatistics)
+                .filter(MonitoringFilter::doFilter)
+                .build()
+            );
     }
 }

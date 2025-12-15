@@ -7,6 +7,7 @@ import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.indicator_record.service.MonitorLogService;
 import com.jesse.sqlmonitor.indicator_record.service.constants.QPSStatisticsType;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
+import com.jesse.sqlmonitor.route.endpoints_config.IndicatorQueryEndpoints;
 import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
 import io.github.jessez332623.reactive_response_builder.pojo.Pagination;
 import lombok.RequiredArgsConstructor;
@@ -167,7 +168,7 @@ public class MonitorLogServiceImpl implements MonitorLogService
                         null,
                         new Pagination(pageNo, indicators.size(), totalRows),
                         buildPaginationLinks(
-                            MONITOR_LOG_QUERY,
+                            IndicatorQueryEndpoints.ROOT + MONITOR_LOG_QUERY,
                             hateOasArgs,
                             pageNo, totalPages, perPageLim
                         )
