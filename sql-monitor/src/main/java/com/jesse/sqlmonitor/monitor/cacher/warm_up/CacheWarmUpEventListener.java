@@ -9,7 +9,10 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.Objects;
+
+import static java.time.format.DateTimeFormatter.ISO_INSTANT;
 
 /** 指标预热事件监听器。*/
 @Slf4j
@@ -52,8 +55,15 @@ public class CacheWarmUpEventListener
                     );
             }
         }
-        else {
-            log.warn("Event not published on CacherWarmUpEventPublisher!");
+        else
+        {
+            log.warn(
+                "Event not published on CacherWarmUpEventPublisher! " +
+                "(publish timestamp: {} publisher: {})",
+                ISO_INSTANT.format(
+                    Instant.ofEpochMilli(event.getTimestamp())),
+                event.getSource().getClass().getSimpleName()
+            );
         }
     }
 }
