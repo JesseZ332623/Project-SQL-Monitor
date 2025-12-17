@@ -136,7 +136,6 @@ public class IndicatorCacher
 
                 return Mono.empty();
             });
-
     }
 
     /**
