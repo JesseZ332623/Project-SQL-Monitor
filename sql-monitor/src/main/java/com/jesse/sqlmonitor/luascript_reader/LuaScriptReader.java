@@ -5,7 +5,6 @@ import com.jesse.sqlmonitor.luascript_reader.exception.LuaScriptNotFound;
 import com.jesse.sqlmonitor.luascript_reader.exception.LuaScriptSecurityException;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -29,11 +28,10 @@ import static java.lang.String.format;
 @Slf4j
 @Component
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@RequiredArgsConstructor(access = AccessLevel.PUBLIC)
 final public class LuaScriptReader
 {
     /** 本项目 Lua 脚本根目录（从配置中读取）。*/
-    @Value("{app.lua-root-classpath}")
+    @Value("${app.lua-root-classpath:lua-script}")
     private String LUA_SCRIPT_ROOT_CLASSPATH;
 
     /** Lua 脚本缓存：operatorType -> (scriptName -> script) */
