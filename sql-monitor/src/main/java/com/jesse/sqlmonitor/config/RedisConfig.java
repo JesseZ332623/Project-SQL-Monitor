@@ -1,6 +1,8 @@
 package com.jesse.sqlmonitor.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.jesse.sqlmonitor.luascript_reader.LuaOperatorResult;
 import com.jesse.sqlmonitor.properties.RedisProperties;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
@@ -19,10 +21,7 @@ import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
-import org.springframework.data.redis.serializer.RedisSerializer;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import org.springframework.data.redis.serializer.*;
 
 import java.time.Duration;
 
@@ -130,16 +129,40 @@ public class RedisConfig
         return new ReactiveRedisTemplate<>(factory, context);
     }
 
-    /**
-     * Redisson 响应式客户端实例配置。
-     */
+    /** 专门用于执行 Lua 脚本的响应式 Redis 模板。*/
+    @Bean
+    public ReactiveRedisTemplate<String, LuaOperatorResult>
+    redisLuaScriptTemplate(ReactiveRedisConnectionFactory factory)
+    {
+        RedisSerializer<String> keySerializer = new StringRedisSerializer();
+
+        Jackson2JsonRedisSerializer<LuaOperatorResult> valueSerializer
+            = new Jackson2JsonRedisSerializer<>(
+                new ObjectMapper()
+                    .findAndRegisterModules()
+                    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS),
+                LuaOperatorResult.class
+        );
+
+        RedisSerializationContext<String, LuaOperatorResult> context
+            = RedisSerializationContext.<String, LuaOperatorResult>
+                newSerializationContext(keySerializer)
+                    .value(valueSerializer)
+                    .hashKey(keySerializer)
+                    .hashValue(valueSerializer)
+                    .build();
+
+        return new
+        ReactiveRedisTemplate<>(factory, context);
+    }
+
+    /** Redisson 响应式客户端实例配置。*/
     @Bean
     @Primary
     public RedissonReactiveClient
     redissonReactiveClient()
     {
         Config singleServerConfig = new Config();
-
 
         // 组合服务器地址
         final String redisAddress
