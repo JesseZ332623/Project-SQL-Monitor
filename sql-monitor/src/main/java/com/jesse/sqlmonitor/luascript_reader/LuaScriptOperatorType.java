@@ -8,7 +8,8 @@ import lombok.RequiredArgsConstructor;
 public enum LuaScriptOperatorType
 {
     // SOME_TYPES("...")
-    ;
+    /** 测试用。*/
+    TEST_SCRIPT("test");
 
     @Getter
     private final String typeName;
