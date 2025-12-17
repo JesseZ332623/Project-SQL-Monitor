@@ -22,6 +22,7 @@ import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
@@ -94,18 +95,16 @@ public class IndicatorCacher
         @NotNull Map<String, Object> indicatorMap
     )
     {
+        final Duration cacheTTL = this.redisCacheProperties.getTtl();
+        final Duration cacheOperatorTimeout
+            = this.redisCacheProperties.getCacheOperatorTimeout();
+
         return
         this.redisTemplate
             .opsForHash()
             .putAll(cacheKey, indicatorMap)
-            .then(
-                this.redisTemplate
-                    .expire(
-                        cacheKey,
-                        this.redisCacheProperties.getTtl()
-                    )
-            )
-            .timeout(this.redisCacheProperties.getCacheOperatorTimeout())
+            .then(this.redisTemplate.expire(cacheKey, cacheTTL))
+            .timeout(cacheOperatorTimeout)
             .then();
     }
 
