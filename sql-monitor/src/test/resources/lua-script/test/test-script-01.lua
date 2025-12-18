@@ -8,8 +8,17 @@ local function getTimestamp()
     return tonumber(redisTime[1]) * 1000 + math.floor(tonumber(redisTime[2]) / 1000.00)
 end
 
-local suceessResult = { status = "SUCCESS", timestamp = getTimestamp() }
-local failedResult  = { status = "TEST_FIALED", timestamp = getTimestamp() }
+local suceessResult = {
+    status    = "SUCCESS",
+    message   = "Randoom value less then 150",
+    timestamp = getTimestamp()
+}
+
+local failedResult = {
+    status    = "TEST_FIALED",
+    message   = "Randoom value bigger then 150",
+    timestamp = getTimestamp()
+}
 
 if (randomVal < 150) then
     return cjson.encode(suceessResult)
