@@ -88,6 +88,9 @@ app:
     # PING 操作的超时时间
     ping-timeout: 1s
 
+  # 项目 Lua 脚本 root classpath
+  lua-root-classpath: lua-script
+
 springdoc:
   api-docs:
     path: /sql-monitor-api-docs
