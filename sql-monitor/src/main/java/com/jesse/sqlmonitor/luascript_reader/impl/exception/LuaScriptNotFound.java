@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.luascript_reader.exception;
+package com.jesse.sqlmonitor.luascript_reader.impl.exception;
 
 /** 在指定文件目录下找不到指定 Lua 脚本时抛出本异常。*/
 public class LuaScriptNotFound extends RuntimeException
