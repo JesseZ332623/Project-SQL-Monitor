@@ -28,7 +28,7 @@ public class IndicatorStatisticsRouterFunctionConfiguration
     @Bean(name = "indicatorStatisticsRouteFunction")
     @RouterOperations({
         @RouterOperation(
-            path = MONITOR_LOG_QUERY,
+             path = IndicatorQueryEndpoints.ROOT + MONITOR_LOG_QUERY,
             operation = @Operation(
                 operationId = "fetchIndicatorLog",
                 summary     = "按条件查询指标日志数据",
@@ -86,7 +86,7 @@ public class IndicatorStatisticsRouterFunctionConfiguration
             )
         ),
         @RouterOperation(
-            path = QPS_STATISTICS,
+            path = IndicatorQueryEndpoints.ROOT + QPS_STATISTICS,
             operation = @Operation(
                 operationId = "qpsStatistics",
                 summary     = "按条件查询 QPS 的相关统计数据",
