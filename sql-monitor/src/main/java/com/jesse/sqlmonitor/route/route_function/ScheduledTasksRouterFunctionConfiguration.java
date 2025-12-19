@@ -30,7 +30,7 @@ public class ScheduledTasksRouterFunctionConfiguration
     @Bean(name = "scheduledTasksRouterFunction")
     @RouterOperations({
         @RouterOperation(
-            path = SEND_INDICATOR_REPORT,
+            path = ScheduledTasksEndpoints.ROOT + SEND_INDICATOR_REPORT,
             operation = @Operation(
                 operationId = "executeSendIntervalIndicatorReport",
                 summary     = "手动的执行例行指标数据报告发送的操作",
@@ -47,7 +47,7 @@ public class ScheduledTasksRouterFunctionConfiguration
             )
         ),
         @RouterOperation(
-            path = CLEAN_HISTORICAL_INDICATOR,
+            path = ScheduledTasksEndpoints.ROOT + CLEAN_HISTORICAL_INDICATOR,
             operation = @Operation(
                 operationId = "executeCleanIndicatorUtilLastWeek",
                 summary     = "手动的执行历史指标清除操作",
