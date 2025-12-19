@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.luascript_reader;
+package com.jesse.sqlmonitor.luascript_reader.impl;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
