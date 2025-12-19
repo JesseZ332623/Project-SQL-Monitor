@@ -2,7 +2,7 @@
 
 <p>
     <a href="https://skillicons.dev">
-        <img src="https://skillicons.dev/icons?i=mysql,redis,rabbitmq,spring,vue,vite" alt="仪表盘页面预览">
+        <img src="https://skillicons.dev/icons?i=mysql,redis,rabbitmq,spring,vue,vite,lua" alt="仪表盘页面预览">
     </a>
 </p>
 
@@ -18,4 +18,4 @@
 
 ### [Apache License Version 2.0](https://github.com/JesseZ332623/Project-SQL-Monitor/blob/main/LICENSE)
 
-*Last Update: 2025.12.18*
+*Last Update: 2025.12.19*
