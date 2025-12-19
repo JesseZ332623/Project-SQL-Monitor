@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.luascript_reader.exception;
+package com.jesse.sqlmonitor.luascript_reader.impl.exception;
 
 /** 加载 Lua 脚本失败时抛出本异常。*/
 public class LuaScriptLoadFailed extends RuntimeException
