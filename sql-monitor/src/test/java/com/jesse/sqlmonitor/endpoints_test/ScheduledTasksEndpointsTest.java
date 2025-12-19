@@ -49,19 +49,16 @@ public class ScheduledTasksEndpointsTest
     @Test
     public void executeSendIntervalIndicatorReportTest()
     {
-        if ("sqlmonitor-test".equals(profileName))
-        {
-            webTestClient
-                .post()
-                .uri(ScheduledTasksEndpoints.ROOT + SEND_INDICATOR_REPORT)
-                .accept(MediaType.APPLICATION_JSON)
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class)
-                .value((json) ->
-                    System.out.println(getPrettyFormatJSON(json))
-                );
-        }
+        webTestClient
+            .post()
+            .uri(ScheduledTasksEndpoints.ROOT + SEND_INDICATOR_REPORT)
+            .accept(MediaType.APPLICATION_JSON)
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody(String.class)
+            .value((json) ->
+                System.out.println(getPrettyFormatJSON(json))
+            );
     }
 
     /**
@@ -71,15 +68,18 @@ public class ScheduledTasksEndpointsTest
     @Test
     public void executeCleanIndicatorUtilLastWeekTest()
     {
-        webTestClient
-            .delete()
-            .uri(ScheduledTasksEndpoints.ROOT + CLEAN_HISTORICAL_INDICATOR)
-            .accept(MediaType.APPLICATION_JSON)
-            .exchange()
-            .expectStatus().isOk()
-            .expectBody(String.class)
-            .value((json) ->
-                System.out.println(getPrettyFormatJSON(json))
-            );
+        if ("sqlmonitor-test".equals(profileName))
+        {
+            webTestClient
+                .delete()
+                .uri(ScheduledTasksEndpoints.ROOT + CLEAN_HISTORICAL_INDICATOR)
+                .accept(MediaType.APPLICATION_JSON)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .value((json) ->
+                    System.out.println(getPrettyFormatJSON(json))
+                );
+        }
     }
 }
