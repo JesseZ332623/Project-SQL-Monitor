@@ -27,6 +27,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @RequiredArgsConstructor
 public class HistoricalIndicatorCleaner
 {
+    /**
+     * 删除操作起始时间点。
+     *（MySQL 解析不了 LocalDateTime.MIN，这里构造一个 UNIX 纪元时间来替代）
+     */
+    private final static
+    LocalDateTime DELETE_FROM
+        = LocalDateTime.of(1970, 1, 1, 0, 0, 0, 0);
+
     /** 响应式邮件发送器接口。*/
     private final ReactiveEmailSender emailSender;
 
@@ -73,7 +81,7 @@ public class HistoricalIndicatorCleaner
 
             final String        serverIp      = this.masterProperties.getHost();
             final LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
-            final LocalDateTime deleteFrom    = LocalDateTime.MIN;
+            final LocalDateTime deleteFrom    = DELETE_FROM;
             final long          batchSize     = 5000L;
 
             // 初始化一个批量删除结果
@@ -172,7 +180,7 @@ public class HistoricalIndicatorCleaner
 
             final String        serverIp      = this.masterProperties.getHost();
             final LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
-            final LocalDateTime deleteFrom    = LocalDateTime.of(1970, 1, 1, 0, 0, 0, 0);
+            final LocalDateTime deleteFrom    = DELETE_FROM;
             final long          batchSize     = 5000L;
 
             // 初始化一个批量删除结果
