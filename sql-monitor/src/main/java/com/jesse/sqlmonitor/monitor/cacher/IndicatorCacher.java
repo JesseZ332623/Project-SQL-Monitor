@@ -3,6 +3,9 @@ package com.jesse.sqlmonitor.monitor.cacher;
 import cn.hutool.core.util.IdUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jesse.sqlmonitor.indicator_record.service.IndicatorSender;
+import com.jesse.sqlmonitor.luascript_reader.LuaScriptReader;
+import com.jesse.sqlmonitor.luascript_reader.impl.LuaOperatorResult;
+import com.jesse.sqlmonitor.luascript_reader.impl.LuaScriptOperatorType;
 import com.jesse.sqlmonitor.monitor.cacher.warm_up.health.RedisHealthChecker;
 import com.jesse.sqlmonitor.monitor.cacher.util.CacheDataConverter;
 import com.jesse.sqlmonitor.monitor.cacher.warm_up.CacherWarmUpEventPublisher;
@@ -24,6 +27,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +53,13 @@ public class IndicatorCacher
 
     /** Redisson 响应式客户端实例。*/
     private final RedissonReactiveClient redissonReactiveClient;
+
+    /** Redis Lua 脚本读取器接口。*/
+    private final LuaScriptReader luaScriptReader;
+
+    /** 专门用于执行 Lua 脚本的响应式 Redis 模板。*/
+    private final
+    ReactiveRedisTemplate<String, LuaOperatorResult> redisLuaTemplate;
 
     /** 响应式通用 Redis 模板。*/
     private final
@@ -91,21 +102,44 @@ public class IndicatorCacher
     /** 更新指标数据至 Redis 缓存。*/
     private @NotNull Mono<Void>
     saveIndicatorMapToCache(
-        @NotNull String              cacheKey,
+        @NotNull IndicatorKeyNames   keyNames,
         @NotNull Map<String, Object> indicatorMap
     )
     {
-        final Duration cacheTTL = this.redisCacheProperties.getTtl();
+        final String cacheKey = this.getCacheKey(keyNames);
+        final long cacheTTL   = this.redisCacheProperties.getTtl().toMillis();
         final Duration cacheOperatorTimeout
             = this.redisCacheProperties.getCacheOperatorTimeout();
 
         return
-        this.redisTemplate
-            .opsForHash()
-            .putAll(cacheKey, indicatorMap)
-            .then(this.redisTemplate.expire(cacheKey, cacheTTL))
-            .timeout(cacheOperatorTimeout)
-            .then();
+        this.luaScriptReader
+            .read(LuaScriptOperatorType.INDICATOR_CACHER, "saveIndicatorMapToCache.lua")
+            .flatMap((script) ->
+                this.redisLuaTemplate
+                    .execute(script, List.of(cacheKey), indicatorMap, cacheTTL)
+                    .timeout(cacheOperatorTimeout)
+                    .next()
+                    .flatMap((result) -> {
+                        switch (result.getStatus())
+                        {
+                            case "NEGATIVE_CACHE_TTL" -> {
+                                return Mono.error(
+                                    new IllegalArgumentException(result.getMessage())
+                                );
+                            }
+
+                            case "ERROR" -> {
+                                return Mono.error(
+                                    new IllegalStateException(result.getMessage())
+                                );
+                            }
+
+                            case "SUCCESS" -> { return Mono.empty(); }
+
+                            case null, default ->
+                                throw new IllegalStateException("Unexcepted result status");
+                        }
+                    }));
     }
 
     /** 将最新的指标数据包装成 {@link SentIndicator} 后发往 RabbitMQ。*/
@@ -156,14 +190,12 @@ public class IndicatorCacher
         Class<T>          type
     )
     {
-        final String cacheKey = this.getCacheKey(keyNames);
-
         return
         CacheDataConverter
             .makeCacheDataFromIndicator(indicator, type, this.objectMapper)
             .flatMap((indicatorMap) ->
                 Mono.when(
-                    this.saveIndicatorMapToCache(cacheKey, indicatorMap),
+                    this.saveIndicatorMapToCache(keyNames, indicatorMap),
                     this.sendIndicatorToTaskQueue(indicator, type)
                 ))
             // 更新缓存操作成功后，需要标记这一类的缓存数据预热成功
