@@ -36,7 +36,7 @@ public class SQLMonitorRouterFunctionConfiguration
     @RouterOperations(
         {
             @RouterOperation(
-                path = BASE_ADDRESS_QUERY,
+                path = SQLMonitorEndPoints.ROOT + BASE_ADDRESS_QUERY,
                 operation = @Operation(
                     operationId = "getDatabaseAddress",
                     summary     = "获取数据库服务器地址和端口号",
@@ -59,7 +59,7 @@ public class SQLMonitorRouterFunctionConfiguration
                 )
             ),
             @RouterOperation(
-                path = QPS_QUERY,
+                path = SQLMonitorEndPoints.ROOT + QPS_QUERY,
                 operation = @Operation(
                     operationId = "getQPS",
                     summary     = "获取本数据库此刻的 QPS（每秒查询频率）",
@@ -82,7 +82,7 @@ public class SQLMonitorRouterFunctionConfiguration
                 )
             ),
             @RouterOperation(
-                path = NETWORK_TRAFFIC_QUERY,
+                path = SQLMonitorEndPoints.ROOT + NETWORK_TRAFFIC_QUERY,
                 operation = @Operation(
                     operationId = "getNetWorkTraffic",
                     summary     = "获取本数据库网络流量相关数据",
@@ -115,7 +115,7 @@ public class SQLMonitorRouterFunctionConfiguration
                 )
             ),
             @RouterOperation(
-                path = GLOBAL_STATUS_QUERY,
+                path = SQLMonitorEndPoints.ROOT + GLOBAL_STATUS_QUERY,
                 operation = @Operation(
                     operationId = "getGlobalStatus",
                     summary     = "获取被数据库的全局状态",
@@ -149,7 +149,7 @@ public class SQLMonitorRouterFunctionConfiguration
                 )
             ),
             @RouterOperation(
-                path = CONNECTION_USAGE_QUERY,
+                path = SQLMonitorEndPoints.ROOT + CONNECTION_USAGE_QUERY,
                 operation = @Operation(
                     operationId = "getConnectionUsage",
                     summary     = "获取数据库连接使用率相关数据",
@@ -170,7 +170,7 @@ public class SQLMonitorRouterFunctionConfiguration
                 )
             ),
             @RouterOperation(
-                path = ALL_SCHEMA_NAME_QUERY,
+                path = SQLMonitorEndPoints.ROOT + ALL_SCHEMA_NAME_QUERY,
                 operation = @Operation(
                     operationId = "getAllSchemaName",
                     summary     = "获取所有的数据库名",
@@ -195,7 +195,7 @@ public class SQLMonitorRouterFunctionConfiguration
                 )
             ),
             @RouterOperation(
-                path = DATABASE_SIZE_QUERY,
+                path = SQLMonitorEndPoints.ROOT + DATABASE_SIZE_QUERY,
                 operation = @Operation(
                     operationId = "getDatabaseSize",
                     summary     = "获取数据库指定库和库下所有表的大小",
@@ -227,7 +227,7 @@ public class SQLMonitorRouterFunctionConfiguration
                 )
             ),
             @RouterOperation(
-                path = INNODB_BUFFER_CACHE_HIT_RATE_QUERY,
+                path = SQLMonitorEndPoints.ROOT + INNODB_BUFFER_CACHE_HIT_RATE_QUERY,
                 operation = @Operation(
                     operationId = "getInnodbBufferCacheHitRate",
                     summary     = "查询 InnoDB 缓存命中率",
@@ -249,7 +249,7 @@ public class SQLMonitorRouterFunctionConfiguration
                 )
             ),
             @RouterOperation(
-                path = SERVER_UPTIME_QUERY,
+                path = SQLMonitorEndPoints.ROOT + SERVER_UPTIME_QUERY,
                 operation = @Operation(
                     operationId = "getServerUpTime",
                     summary     = "查询数据库服务器从启动至今所经过的时间",

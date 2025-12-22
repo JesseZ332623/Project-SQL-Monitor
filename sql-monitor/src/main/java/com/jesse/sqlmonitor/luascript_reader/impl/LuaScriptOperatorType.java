@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.luascript_reader;
+package com.jesse.sqlmonitor.luascript_reader.impl;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -9,7 +9,13 @@ public enum LuaScriptOperatorType
 {
     // SOME_TYPES("...")
     /** 测试用。*/
-    TEST_SCRIPT("test");
+    TEST_SCRIPT("test"),
+
+    /** 缓存操作 Lua 脚本。*/
+    INDICATOR_CACHER("indicator-cacher"),
+
+    /** 其他 Lua 脚本。*/
+    OTHERS("others");
 
     @Getter
     private final String typeName;

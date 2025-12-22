@@ -26,7 +26,7 @@ public class IndicatorReceiverRouteFuncConfig
     @Bean(name = "indicatorReceiverRouteFunc")
     @RouterOperations({
         @RouterOperation(
-            path      = RUN_STATUS,
+            path      = IndicatorReceiverEndpoints.ROOT + RUN_STATUS,
             method    = { RequestMethod.GET },
             operation = @Operation(
                 operationId = "runStatus",
@@ -41,7 +41,7 @@ public class IndicatorReceiverRouteFuncConfig
             )
         ),
         @RouterOperation(
-            path      = START_RECEIVER,
+            path      = IndicatorReceiverEndpoints.ROOT + START_RECEIVER,
             method    = { RequestMethod.POST },
             operation = @Operation(
                 operationId = "start",
@@ -60,7 +60,7 @@ public class IndicatorReceiverRouteFuncConfig
             )
         ),
         @RouterOperation(
-            path      = STOP_RECEIVER,
+            path      = IndicatorReceiverEndpoints.ROOT + STOP_RECEIVER,
             method    = { RequestMethod.POST },
             operation = @Operation(
                 operationId = "stop",

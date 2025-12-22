@@ -2,7 +2,7 @@ package com.jesse.sqlmonitor.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.jesse.sqlmonitor.luascript_reader.LuaOperatorResult;
+import com.jesse.sqlmonitor.luascript_reader.impl.LuaOperatorResult;
 import com.jesse.sqlmonitor.properties.RedisProperties;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SocketOptions;
