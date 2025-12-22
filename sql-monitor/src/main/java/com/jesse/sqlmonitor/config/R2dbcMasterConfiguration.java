@@ -3,32 +3,24 @@ package com.jesse.sqlmonitor.config;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
 import io.r2dbc.pool.ConnectionPool;
 import io.r2dbc.pool.ConnectionPoolConfiguration;
-import io.r2dbc.spi.ConnectionFactories;
-import io.r2dbc.spi.ConnectionFactory;
-import io.r2dbc.spi.ConnectionFactoryOptions;
-import io.r2dbc.spi.Option;
+import io.r2dbc.spi.*;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-// import org.springframework.data.r2dbc.config.AbstractR2dbcConfiguration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.data.r2dbc.convert.R2dbcCustomConversions;
-import org.springframework.data.r2dbc.dialect.MySqlDialect;
-import org.springframework.data.r2dbc.repository.config.EnableR2dbcRepositories;
 import org.springframework.r2dbc.core.DatabaseClient;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-
-import static io.r2dbc.spi.ConnectionFactoryOptions.*;
-import static org.springframework.data.r2dbc.dialect.DialectResolver.getDialect;
 
 /** Spring Data R2DBC 主数据源配置类。*/
 @Configuration
-@EnableR2dbcRepositories
 @RequiredArgsConstructor
-public class R2dbcMasterConfiguration // extends AbstractR2dbcConfiguration
+public class R2dbcMasterConfiguration
 {
     /** 来自配置文件的 R2DBC 主数据库属性类。*/
     private final R2dbcMasterProperties masterProperties;
@@ -38,34 +30,36 @@ public class R2dbcMasterConfiguration // extends AbstractR2dbcConfiguration
     @Bean(name = "R2dbcMasterConnectionFactory")
     public @NotNull ConnectionFactory connectionFactory()
     {
-        ConnectionFactoryOptions options
-            = ConnectionFactoryOptions.builder()
-                .option(DRIVER, "mysql")
-                .option(HOST, masterProperties.getHost())
-                .option(PORT, masterProperties.getPort())
-                .option(USER, masterProperties.getUser())
-                .option(PASSWORD, masterProperties.getPassword())
-                .option(DATABASE, masterProperties.getDefaultSchema())
-                .option(SSL, false)
-                .option(Option.valueOf("useUnicode"), "true")
-                .option(Option.valueOf("characterEncoding"), "utf8")
-                .option(Option.valueOf("zeroDateTimeBehavior"), "convertToNull")
-                .option(Option.valueOf("serverTimezone"), "Asia/Shanghai")
-                .option(Option.valueOf("autoReconnect"), "true")
-                .option(Option.valueOf("rewriteBatchedStatements"), "true")
-                .option(Option.valueOf("allowPublicKeyRetrieval"), "true")
-                .build();
+        final String coonectionURL
+            = String.format(
+                "r2dbc:mysql://%s:%s@%s:%d/%s?serverTimezone=Asia/Shanghai" +
+                "&allowPublicKeyRetrieval=true" +
+                "&useUnicode=true"              +
+                "&characterEncoding=UTF8"       +
+                "&sslMode=preferred",
+                masterProperties.getUser(),
+                URLEncoder.encode(masterProperties.getPassword(), StandardCharsets.UTF_8),
+                masterProperties.getHost(),
+                masterProperties.getPort(),
+                masterProperties.getDefaultSchema()
+        );
 
-        ConnectionFactory connectionFactory = ConnectionFactories.get(options);
+        ConnectionFactory connectionFactory = ConnectionFactories.get(coonectionURL);
 
         // 配置连接池
         ConnectionPoolConfiguration poolConfiguration
             = ConnectionPoolConfiguration.builder()
                 .connectionFactory(connectionFactory)
-                .validationQuery("SELECT 1")
-                .initialSize(35)
-                .maxSize(65)
-                .maxIdleTime(Duration.ofSeconds(30))
+                .validationQuery("SELECT 1")             // 连接验证查询语句
+                .validationDepth(ValidationDepth.REMOTE) // 连接验证深度（远程）
+                .initialSize(0)                          // 初始连接池大小
+                .maxSize(15)                             // 最大连接池大小
+                .backgroundEvictionInterval(Duration.ofMinutes(1L)) // 定期验证限制连接间隔
+                .maxIdleTime(Duration.ofMinutes(30))                // 连接最大闲置时间
+                .maxLifeTime(Duration.ofHours(1L))                  // 连接最大存活时间
+                .maxAcquireTime(Duration.ofSeconds(30L))            // 获取连接期限时间
+                .acquireRetry(3)                      // 获取连接失败最多重试次数
+                .maxCreateConnectionTime(Duration.ofSeconds(10L))   // 建立单个连接期限时间
                 .build();
 
         return new ConnectionPool(poolConfiguration);
@@ -75,24 +69,14 @@ public class R2dbcMasterConfiguration // extends AbstractR2dbcConfiguration
     @Bean("R2dbcMasterDatabaseClient")
     public @NotNull DatabaseClient
     databaseClient(
+        @Autowired
         @Qualifier("R2dbcMasterConnectionFactory")
-        ConnectionFactory connectionFactory
+        final ConnectionFactory connectionFactory
     )
     {
         return
         DatabaseClient.builder()
             .connectionFactory(connectionFactory)
-            .bindMarkers(getDialect(connectionFactory).getBindMarkersFactory())
             .build();
-    }
-
-    /** 向 R2DBC 阐明使用 MySQL 方言。*/
-    @Bean
-    public R2dbcCustomConversions
-    customConversions(DatabaseClient client)
-    {
-        return R2dbcCustomConversions.of(
-            MySqlDialect.INSTANCE
-        );
     }
 }
