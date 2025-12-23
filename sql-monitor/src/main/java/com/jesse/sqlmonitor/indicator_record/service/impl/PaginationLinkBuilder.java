@@ -95,8 +95,8 @@ final public class PaginationLinkBuilder
         params.forEach(builder::queryParam);
 
         // 设置分页参数
-        builder.queryParam("pageNo", page);
-        builder.queryParam("perPageLimit", size);
+        builder.queryParam("page-no", page);
+        builder.queryParam("page-size", size);
 
         return builder.build().toUriString();
     }
