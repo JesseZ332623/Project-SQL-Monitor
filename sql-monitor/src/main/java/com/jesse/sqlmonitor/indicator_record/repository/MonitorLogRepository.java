@@ -1,6 +1,7 @@
 package com.jesse.sqlmonitor.indicator_record.repository;
 
 import com.jesse.sqlmonitor.constants.QueryOrder;
+import com.jesse.sqlmonitor.indicator_record.dto.FetchIndicatorResult;
 import com.jesse.sqlmonitor.indicator_record.repository.dto.AverageNetworkTraffic;
 import com.jesse.sqlmonitor.indicator_record.repository.dto.IndicatorGrowth;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
@@ -48,7 +49,7 @@ public interface MonitorLogRepository
      *
      * @return 发布所有匹配监控日志记录的 {@link Flux}
      */
-    Flux<? extends ResponseBase<?>>
+    Flux<FetchIndicatorResult>
     fetchIndicator(
         @NotNull Class<? extends ResponseBase<?>> type,
         @NotNull String        serverIP,
