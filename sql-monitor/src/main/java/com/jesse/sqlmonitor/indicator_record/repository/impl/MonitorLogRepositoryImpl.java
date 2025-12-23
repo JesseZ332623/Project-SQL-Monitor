@@ -3,6 +3,7 @@ package com.jesse.sqlmonitor.indicator_record.repository.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jesse.sqlmonitor.constants.QueryOrder;
+import com.jesse.sqlmonitor.indicator_record.dto.FetchIndicatorResult;
 import com.jesse.sqlmonitor.indicator_record.entity.IndicatorType;
 import com.jesse.sqlmonitor.indicator_record.exception.QueryIndicatorFailed;
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
@@ -83,7 +84,7 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
     }
 
     @Override
-    public Flux<? extends ResponseBase<?>>
+    public Flux<FetchIndicatorResult>
     fetchIndicator(
         @NotNull Class<? extends ResponseBase<?>> type,
         @NotNull String serverIP,
@@ -133,8 +134,13 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                 try
                 {
                     return
-                    this.mapper
-                        .readValue((String) queryResult.get("indicator"), type);
+                    new FetchIndicatorResult(
+                        (LocalDateTime) queryResult.get("datetime"),
+                        this.mapper
+                            .readValue((String) queryResult.get("indicator"), type),
+                        (String) queryResult.get("server_ip_str"),
+                        IndicatorType.valueOf((String) queryResult.get("indicator_type"))
+                    );
                 }
                 catch (JsonProcessingException exception)
                 {
