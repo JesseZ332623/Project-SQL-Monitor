@@ -18,11 +18,15 @@ self.onmessage = function (e) {
 			// 设置新的定时器
 			currentInterval = interval || currentInterval;
 			intervalId = setInterval(() => {
-				// 发送刷新信号到主线程
-				self.postMessage({
-					type: 'REFRESH',
-					timestamp: Date.now()
-				});
+				try {
+					// 发送刷新信号到主线程
+					self.postMessage({
+						type: 'REFRESH',
+						timestamp: Date.now()
+					});
+				} catch (error) {
+					console.error('Error sending refresh message:', error);
+				}
 			}, currentInterval);
 
 			console.log('Worker: Auto-refresh started with interval:', currentInterval, 'ms');
@@ -43,10 +47,14 @@ self.onmessage = function (e) {
 			if (intervalId) {
 				clearInterval(intervalId);
 				intervalId = setInterval(() => {
-					self.postMessage({
-						type: 'REFRESH',
-						timestamp: Date.now()
-					});
+					try {
+						self.postMessage({
+							type: 'REFRESH',
+							timestamp: Date.now()
+						});
+					} catch (error) {
+						console.error('Error sending refresh message:', error);
+					}
 				}, currentInterval);
 			}
 			console.log('Worker: Interval updated to:', currentInterval, 'ms');
@@ -54,16 +62,30 @@ self.onmessage = function (e) {
 	}
 };
 
-// 当 Worker 被终止时清理定时器
-self.addEventListener('error', () => {
-	if (intervalId) {
-		clearInterval(intervalId);
-	}
+// Worker 错误处理
+self.addEventListener('error', (e) => {
+    console.error('Worker error:', e.error);
+    if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+    }
+    // 发送错误信息到主线程
+    self.postMessage({
+        type: 'ERROR',
+        message: e.error.message
+    });
 });
 
-// 当 Worker 被终止时清理定时器
-self.addEventListener('unhandledrejection', () => {
-	if (intervalId) {
-		clearInterval(intervalId);
-	}
+self.addEventListener('unhandledrejection', (e) => {
+    console.error('Unhandled promise rejection in worker:', e.reason);
+    if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+    }
+    // 发送错误信息到主线程
+    self.postMessage({
+        type: 'ERROR',
+        message: e.reason.message || 'Unhandled promise rejection'
+    });
+    e.preventDefault(); // 防止默认错误行为
 });
