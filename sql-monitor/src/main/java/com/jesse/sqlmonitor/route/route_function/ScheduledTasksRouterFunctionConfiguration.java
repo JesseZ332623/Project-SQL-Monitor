@@ -2,8 +2,11 @@ package com.jesse.sqlmonitor.route.route_function;
 
 import com.jesse.sqlmonitor.route.endpoints_config.ScheduledTasksEndpoints;
 import com.jesse.sqlmonitor.route.route_function.filter.MonitoringFilter;
+import com.jesse.sqlmonitor.scheduled_tasks.dto.CleanUpResult;
 import com.jesse.sqlmonitor.scheduled_tasks.service.ScheduledTaskService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
@@ -20,6 +23,7 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 
 import static com.jesse.sqlmonitor.route.endpoints_config.ScheduledTasksEndpoints.CLEAN_HISTORICAL_INDICATOR;
 import static com.jesse.sqlmonitor.route.endpoints_config.ScheduledTasksEndpoints.SEND_INDICATOR_REPORT;
+import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
 /** 手动执行定时任务路由函数配置类。*/
 @Configuration
@@ -55,7 +59,12 @@ public class ScheduledTasksRouterFunctionConfiguration
                 responses   = {
                     @ApiResponse(
                         responseCode = "200",
-                        description  = "成功清除上星期之前的历史指标"),
+                        description  = "成功清除上星期之前的历史指标",
+                        content      = @Content(
+                            mediaType = APPLICATION_JSON_VALUE,
+                            schema    = @Schema(implementation = CleanUpResult.class)
+                        )
+                    ),
                     @ApiResponse(
                         responseCode = "500",
                         description  = "数据库操作失败，或者其他未知错误"
@@ -76,7 +85,7 @@ public class ScheduledTasksRouterFunctionConfiguration
                 .and(RequestPredicates.accept(MediaType.APPLICATION_JSON)),
             RouterFunctions.route()
                 .POST(SEND_INDICATOR_REPORT,        scheduledTaskService::executeSendIntervalIndicatorReport)
-                .DELETE(CLEAN_HISTORICAL_INDICATOR, scheduledTaskService::executeCleanIndicatorUtilLastWeek)
+                .DELETE(CLEAN_HISTORICAL_INDICATOR, scheduledTaskService::executeCleanIndicatorUntilLastWeek)
                 .filter(MonitoringFilter::doFilter)
                 .build()
         );
