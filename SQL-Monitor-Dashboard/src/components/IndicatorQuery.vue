@@ -240,29 +240,90 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue'
 import { fetchIndicatorLog, fetchQPSStatistics } from '../services/indicator-query-api.js'
 import { formatUtils } from '../utils/dataProcessor'
 import { fetchBaseAddress } from '../services/monitor-api.js'
+
+// 缓存相关的常量和函数
+const CACHE_KEY = 'indicatorQueryCache';
+const CACHE_EXPIRY_TIME = 24 * 60 * 60 * 1000; // 24小时过期时间
+
+// 保存缓存数据
+const saveToCache = (data) => {
+  try {
+    const cacheData = {
+      ...data,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.warn('Failed to save to cache:', error);
+  }
+};
+
+// 从缓存中读取数据
+const loadFromCache = () => {
+  try {
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    if (cachedData) {
+      const parsedData = JSON.parse(cachedData);
+      // 检查缓存是否过期
+      if (Date.now() - parsedData.timestamp < CACHE_EXPIRY_TIME) {
+        return parsedData;
+      } else {
+        // 缓存过期，清除它
+        localStorage.removeItem(CACHE_KEY);
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load from cache:', error);
+  }
+  return null;
+};
+
+// 清除缓存
+const clearCache = () => {
+  localStorage.removeItem(CACHE_KEY);
+};
 
 export default {
   name: 'IndicatorQuery',
   props: {},
   setup() {
-    // 表单数据
-    const selectedType = ref('')
-    const serverIp = ref('')
+    // 从缓存中恢复数据，如果存在且未过期
+    const cachedData = loadFromCache();
+    
+    // 表单数据 - 优先使用缓存数据
+    const selectedType = ref(cachedData?.selectedType || '')
+    const serverIp = ref(cachedData?.serverIp || '')
     const serverIpLoading = ref(false) // 新增：服务器IP加载状态
-    const fromDate = ref('')
-    const toDate = ref('')
-    const orderBy = ref('DESC')
-    const page = ref(1)
-    const qpsStatisticsType = ref('STANDARD_DEVIATION') // 默认为标准差
+    const fromDate = ref(cachedData?.fromDate || '')
+    const toDate = ref(cachedData?.toDate || '')
+    const orderBy = ref(cachedData?.orderBy || 'DESC')
+    const page = ref(cachedData?.page || 1)
+    const qpsStatisticsType = ref(cachedData?.qpsStatisticsType || 'STANDARD_DEVIATION') // 默认为标准差
 
-    // 结果数据
-    const queryResult = ref(null)
-    const qpsStats = ref(null)
+    // 结果数据 - 优先使用缓存数据
+    const queryResult = ref(cachedData?.queryResult || null)
+    const qpsStats = ref(cachedData?.qpsStats || null)
     const loading = ref(false)
+
+    // 保存状态到缓存的函数
+    const saveStateToCache = () => {
+      const stateData = {
+        selectedType: selectedType.value,
+        serverIp: serverIp.value,
+        fromDate: fromDate.value,
+        toDate: toDate.value,
+        orderBy: orderBy.value,
+        page: page.value,
+        qpsStatisticsType: qpsStatisticsType.value,
+        queryResult: queryResult.value,
+        qpsStats: qpsStats.value,
+      };
+      saveToCache(stateData);
+    };
 
     // 监听指标类型变化，清除QPS统计信息
     watch(selectedType, (newType) => {
@@ -272,6 +333,8 @@ export default {
         // 同时清除QPS统计类型选择
         qpsStatisticsType.value = '';
       }
+      // 保存状态到缓存
+      saveStateToCache();
     });
 
     // 监听QPS统计类型变化，如果指标类型不是QPSResult，清除统计信息
@@ -280,6 +343,13 @@ export default {
         // 如果选择了QPS统计类型但指标类型不是QPSResult，清除统计信息
         qpsStats.value = null;
       }
+      // 保存状态到缓存
+      saveStateToCache();
+    });
+
+    // 监听其他响应式变量变化，保存到缓存
+    watch([serverIp, fromDate, toDate, orderBy, page], () => {
+      saveStateToCache();
     });
 
     // 初始化服务器IP
@@ -316,11 +386,22 @@ export default {
       queryResult.value = null
       qpsStats.value = null
       qpsStatisticsType.value = 'STANDARD_DEVIATION' // 重置为默认值
+      
+      // 清除缓存
+      clearCache();
     }
 
     // 初始化组件时获取服务器IP
     onMounted(() => {
-      initServerIp();
+      // 如果缓存中有数据，不需要重新获取服务器IP
+      if (!cachedData || !cachedData.serverIp) {
+        initServerIp();
+      }
+    })
+
+    // 在组件卸载时保存状态到缓存
+    onUnmounted(() => {
+      saveStateToCache();
     })
 
     // 获取数据
@@ -383,6 +464,8 @@ export default {
         // 不显示错误消息
       } finally {
         loading.value = false
+        // 保存状态到缓存
+        saveStateToCache();
       }
     }
 
@@ -390,6 +473,8 @@ export default {
     const goToPage = (pageNum) => {
       if (pageNum < 1) return
       page.value = pageNum
+      // 保存状态到缓存
+      saveStateToCache();
       fetchData()
     }
 
@@ -397,6 +482,8 @@ export default {
     const fetchQPSStats = async () => {
       if (!qpsStatisticsType.value) {
         qpsStats.value = null;
+        // 保存状态到缓存
+        saveStateToCache();
         return;
       }
 
@@ -404,6 +491,8 @@ export default {
       if (selectedType.value !== 'QPSResult') {
         console.error('QPS statistics can only be fetched for QPSResult indicator type.');
         qpsStats.value = null;
+        // 保存状态到缓存
+        saveStateToCache();
         return;
       }
 
@@ -418,12 +507,15 @@ export default {
       try {
         const statsResult = await fetchQPSStatistics(qpsStatisticsType.value, serverIp.value, fromDate.value, toDate.value);
         qpsStats.value = statsResult.data;
+        // 保存状态到缓存
+        saveStateToCache();
       } catch (statsError) {
         console.error('Failed to fetch QPS statistics:', statsError);
         qpsStats.value = null;
+        // 保存状态到缓存
+        saveStateToCache();
       }
     };
-
     // 计算总页数
     const totalPages = computed(() => {
       if (!queryResult.value?.metadata?.pagination?.totalItem) {
