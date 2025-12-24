@@ -11,28 +11,27 @@ import lombok.*;
 @Getter
 @ToString
 @Builder
-@NoArgsConstructor(access  = AccessLevel.PRIVATE)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class IndicatorReport
 {
     /** 指标数据增长量 */
-    private IndicatorGrowth indicatorGrowth;
+    private final IndicatorGrowth indicatorGrowth;
 
     /** QPS 平均值 */
-    private Double averageQPS;
+    private final Double averageQPS;
 
     /** QPS 中位数 */
-    private Double medianQPS;
+    private final Double medianQPS;
 
     /** QPS 极值 */
-    private ExtremeQPS extremeQPS;
+    private final ExtremeQPS extremeQPS;
 
     /** QPS 标准差和负载均衡率 */
-    private StandingDeviationQPS standingDeviationQPS;
+    private final StandingDeviationQPS standingDeviationQPS;
 
     /** 数据库网络流量 平均值 */
-    private AverageNetworkTraffic averageNetworkTraffic;
+    private final AverageNetworkTraffic averageNetworkTraffic;
 
     /** 连接使用率 */
-    private ConnectionUsage connectionUsage;
+    private final ConnectionUsage connectionUsage;
 }
