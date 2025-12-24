@@ -31,6 +31,12 @@
 							>
 								Indicator Query
 							</button>
+							<button 
+								:class="['tab-btn', { active: activeTab === 'control' }]" 
+								@click="activeTab = 'control'"
+							>
+								Control
+							</button>
 						</nav>
 					</div>
 					<p class="subtitle">Real-time database query performance monitoring</p>
@@ -266,6 +272,11 @@
 			<div v-if="activeTab === 'query'">
 				<IndicatorQuery />
 			</div>
+			
+			<!-- Control Tab -->
+			<div v-if="activeTab === 'control'">
+				<ScheduledTasks />
+			</div>
 
 			<footer class="footer">
 				<p>Database Monitoring System &copy; 2025</p>
@@ -279,6 +290,7 @@ import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue'
 import QPSChart from './components/QPSChart.vue'
 import NetworkTrafficChart from './components/NetworkTrafficChart.vue'
 import IndicatorQuery from './components/IndicatorQuery.vue'
+import ScheduledTasks from './components/ScheduledTasks.vue'
 import {
 	fetchAllMetrics,
 	updateChartData,
@@ -296,7 +308,8 @@ export default {
 	components: {
 		QPSChart,
 		NetworkTrafficChart,
-		IndicatorQuery
+		IndicatorQuery,
+		ScheduledTasks
 	},
 	setup() {
 		// 响应式数据
