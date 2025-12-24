@@ -39,7 +39,7 @@ const fetchIndicatorLog = async (type, ip, from, to, order, page) => {
         requestURL.searchParams.append('page-no', page)
         requestURL.searchParams.append('page-size', pageSize)
 
-        const response = await fetch(requestURL.toString(), {
+        const response = await fetch(requestURL, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -108,7 +108,7 @@ const fetchQPSStatistics = async (type, ip, from, to) => {
         requestURL.searchParams.append('from', from)
         requestURL.searchParams.append('to', to)
 
-        const response = await fetch(requestURL.toString(), {
+        const response = await fetch(requestURL, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
