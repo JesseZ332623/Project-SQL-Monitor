@@ -2,11 +2,7 @@
 
 // 统一的数据获取函数
 export async function fetchAllMetrics(unitToUse, api) {
-	const [
-		qpsResponse, connResponse,
-		netTrafficResponse, serverRunningTimeResponse,
-		innodbBufferCacheHitRateResponse
-	] = await Promise.all([
+	const results = await Promise.allSettled([
 		api.fetchQPSData(),
 		api.fetchConnectionsUsage(),
 		api.fetchNetworkTraffic(unitToUse),
@@ -14,12 +10,14 @@ export async function fetchAllMetrics(unitToUse, api) {
 		api.fetchInnodbBufferCacheHitRate()
 	]);
 
+	const [qpsResult, connResult, netTrafficResult, serverRunningTimeResult, innodbResult] = results;
+
 	return {
-		qpsData: qpsResponse.data,
-		connectionsData: connResponse.data,
-		netTrafficData: netTrafficResponse.data,
-		runtimeArray: serverRunningTimeResponse.data,
-		innodbBufferCacheHitRate: innodbBufferCacheHitRateResponse.data
+		qpsData: qpsResult.status === 'fulfilled' ? qpsResult.value.data : null,
+		connectionsData: connResult.status === 'fulfilled' ? connResult.value.data : null,
+		netTrafficData: netTrafficResult.status === 'fulfilled' ? netTrafficResult.value.data : null,
+		runtimeArray: serverRunningTimeResult.status === 'fulfilled' ? serverRunningTimeResult.value.data : [],
+		innodbBufferCacheHitRate: innodbResult.status === 'fulfilled' ? innodbResult.value.data : null
 	};
 }
 
@@ -45,10 +43,11 @@ export function updateChartData(chartState, values, timestamp, maxDataPoints = 3
 export const formatUtils = {
 	number: (num) => num ? new Intl.NumberFormat().format(num) : '--',
 	bytes: (bytes) => {
+		if (bytes === 0) return '0 B';
 		if (!bytes) return '0 B';
 		const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(1024));
-		return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+		const i = Math.floor(Math.log(Math.abs(bytes)) / Math.log(1024));
+		return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + sizes[i];
 	},
 	networkRate: (rate, unit) => {
 		return rate !== undefined && rate !== null ? `${rate.toFixed(2)} ${unit}/s` : '--';
@@ -61,7 +60,14 @@ export const formatUtils = {
 
 // 计算最佳网络单位
 export function calculateBestNetworkUnit(receivePerSec, sentPerSec) {
-	const maxRate = Math.max(receivePerSec, sentPerSec);
+	// 检查输入值是否为有效数字
+	if (typeof receivePerSec !== 'number' || typeof sentPerSec !== 'number' || 
+	    isNaN(receivePerSec) || isNaN(sentPerSec)) {
+		return 'KB'; // 默认单位
+	}
+	
+	const maxRate = Math.max(Math.abs(receivePerSec), Math.abs(sentPerSec));
+	if (maxRate >= 1024 * 1024) return 'GB'; // 如果速率大于等于1024*1024，则使用GB
 	if (maxRate >= 1024) return 'MB';
 	if (maxRate >= 1) return 'KB';
 	return 'B';
