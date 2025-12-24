@@ -2,6 +2,7 @@ package com.jesse.sqlmonitor.scheduled_tasks.service.impl;
 
 import com.jesse.sqlmonitor.scheduled_tasks.HistoricalIndicatorCleaner;
 import com.jesse.sqlmonitor.scheduled_tasks.IntervalIndicatorReporter;
+import com.jesse.sqlmonitor.scheduled_tasks.constants.TaskExecuter;
 import com.jesse.sqlmonitor.scheduled_tasks.exception.ScheduledTasksException;
 import com.jesse.sqlmonitor.scheduled_tasks.service.ScheduledTaskService;
 import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
@@ -13,7 +14,7 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-/** 手动执行定时任务服务实现。*/
+/** 手动执行定时任务服务实现类。*/
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -29,11 +30,11 @@ public class ScheduledTaskServiceImpl implements ScheduledTaskService
 
     @Override
     public Mono<ServerResponse>
-    executeCleanIndicatorUtilLastWeek(ServerRequest request)
+    executeCleanIndicatorUntilLastWeek(ServerRequest request)
     {
         return
         this.historicalIndicatorCleaner
-            .cleanIndicatorUtilLastWeekManually()
+            .cleanIndicatorUntilLastWeek(TaskExecuter.HTTP_REQUEST)
             .subscribeOn(Schedulers.boundedElastic())
             .flatMap((cleanUpRes) ->
                 ReactiveResponseBuilder.OK(
@@ -54,7 +55,7 @@ public class ScheduledTaskServiceImpl implements ScheduledTaskService
     {
         return
         this.intervalIndicatorReporter
-            .sendIntervalIndicatorReportManually()
+            .sendIntervalIndicatorReport(TaskExecuter.HTTP_REQUEST)
             .subscribeOn(Schedulers.boundedElastic())
             .then(
                 ReactiveResponseBuilder.OK(
