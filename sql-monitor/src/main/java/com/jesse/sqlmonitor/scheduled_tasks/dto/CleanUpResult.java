@@ -9,16 +9,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** 自动清理历史指标数据的结果的 DTO。*/
-@Data
+@Getter
 @ToString
-@NoArgsConstructor(access  = AccessLevel.PUBLIC)
-@AllArgsConstructor(access = AccessLevel.PUBLIC)
+@RequiredArgsConstructor(access = AccessLevel.PUBLIC)
 public class CleanUpResult
 {
-    private String        serverIp;     // 对哪个 IP 的数据执行了删除？
-    private LocalDateTime oneWeekAgo;   // 一个星期前的具体时间点是？
-    private AtomicLong    totalDeleted; // 共计删掉了多少行数据？
-    private AtomicInteger batchCount;   // 分几个批次删除的？
+    private final String        serverIp;     // 对哪个 IP 的数据执行了删除？
+    private final LocalDateTime oneWeekAgo;   // 一个星期前的具体时间点是？
+    private final AtomicLong    totalDeleted; // 共计删掉了多少行数据？
+    private final AtomicInteger batchCount;   // 分几个批次删除的？
 
     /** 初始化一个批量删除结果。*/
     @Contract("_, _ -> new")
@@ -31,5 +30,15 @@ public class CleanUpResult
             new AtomicLong(0L),
             new AtomicInteger(0)
         );
+    }
+
+    /** 增加已经删除的行数。*/
+    public void addDeleted(Long delta) {
+        this.totalDeleted.addAndGet(delta);
+    }
+
+    /** 删除的批次 + 1。*/
+    public void batchIncrement() {
+        this.batchCount.incrementAndGet();
     }
 }
