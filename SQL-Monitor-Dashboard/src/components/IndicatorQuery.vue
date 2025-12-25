@@ -84,6 +84,14 @@
       </div>
     </div>
 
+    <!-- 错误信息显示 -->
+    <div v-if="error" class="alert error-alert">
+      <svg class="alert-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+        <path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm4.5 2.5a1 1 0 001 1h4a1 1 0 100-2h-4a1 1 0 00-1 1zm1-5a1 1 0 011-1h4a1 1 0 110 2H7a1 1 0 01-1-1z" clip-rule="evenodd" />
+      </svg>
+      <span>{{ error }}</span>
+    </div>
+
     <div class="card" v-if="queryResult">
       <div class="card-header">
         <h2 class="card-title">Query Results</h2>
@@ -115,20 +123,20 @@
             <tbody>
               <tr v-for="(item, index) in queryResult.data" :key="index">
                 <td>{{ item.datetime }}</td>
-                <td v-if="selectedType === 'ConnectionUsage'">{{ item.indicator.maxConnections }}</td>
-                <td v-if="selectedType === 'ConnectionUsage'">{{ item.indicator.currentConnections }}</td>
-                <td v-if="selectedType === 'ConnectionUsage'">{{ item.indicator.connectUsagePercent }}%</td>
-                <td v-if="selectedType === 'QPSResult'">{{ item.indicator.qps?.toFixed(2) }}</td>
-                <td v-if="selectedType === 'QPSResult'">{{ item.indicator.currentQueries }}</td>
-                <td v-if="selectedType === 'QPSResult'">{{ item.indicator.queryDiff }}</td>
-                <td v-if="selectedType === 'NetWorkTraffic'">{{ item.indicator.totalBytesSent }}</td>
-                <td v-if="selectedType === 'NetWorkTraffic'">{{ item.indicator.totalBytesReceive }}</td>
-                <td v-if="selectedType === 'NetWorkTraffic'">{{ item.indicator.sentPerSec }}/s</td>
-                <td v-if="selectedType === 'NetWorkTraffic'">{{ item.indicator.receivePerSec }}/s</td>
-                <td v-if="selectedType === 'InnodbBufferCacheHitRate'">{{ (item.indicator.cacheHitRate * 100).toFixed(4) }}%
+                <td v-if="selectedType === 'ConnectionUsage'">{{ item.indicator?.maxConnections }}</td>
+                <td v-if="selectedType === 'ConnectionUsage'">{{ item.indicator?.currentConnections }}</td>
+                <td v-if="selectedType === 'ConnectionUsage'">{{ item.indicator?.connectUsagePercent }}%</td>
+                <td v-if="selectedType === 'QPSResult'">{{ item.indicator?.qps?.toFixed(2) }}</td>
+                <td v-if="selectedType === 'QPSResult'">{{ item.indicator?.currentQueries }}</td>
+                <td v-if="selectedType === 'QPSResult'">{{ item.indicator?.queryDiff }}</td>
+                <td v-if="selectedType === 'NetWorkTraffic'">{{ item.indicator?.totalBytesSent }}</td>
+                <td v-if="selectedType === 'NetWorkTraffic'">{{ item.indicator?.totalBytesReceive }}</td>
+                <td v-if="selectedType === 'NetWorkTraffic'">{{ item.indicator?.sentPerSec }}/s</td>
+                <td v-if="selectedType === 'NetWorkTraffic'">{{ item.indicator?.receivePerSec }}/s</td>
+                <td v-if="selectedType === 'InnodbBufferCacheHitRate'">{{ (item.indicator?.cacheHitRate * 100)?.toFixed(4) }}%
                 </td>
-                <td v-if="selectedType === 'InnodbBufferCacheHitRate'">{{ item.indicator.queryDiff }}</td>
-                <td>{{ item.indicator.valid ? 'Yes' : 'No' }}</td>
+                <td v-if="selectedType === 'InnodbBufferCacheHitRate'">{{ item.indicator?.queryDiff }}</td>
+                <td>{{ item.indicator?.valid ? 'Yes' : 'No' }}</td>
               </tr>
             </tbody>
           </table>
@@ -270,7 +278,21 @@ const loadFromCache = () => {
       const parsedData = JSON.parse(cachedData);
       // 检查缓存是否过期
       if (Date.now() - parsedData.timestamp < CACHE_EXPIRY_TIME) {
-        return parsedData;
+        // 验证缓存数据的完整性
+        if (parsedData && typeof parsedData === 'object') {
+          // 只返回预期的字段，防止不完整或损坏的缓存数据影响组件
+          return {
+            selectedType: typeof parsedData.selectedType === 'string' ? parsedData.selectedType : '',
+            serverIp: typeof parsedData.serverIp === 'string' ? parsedData.serverIp : '',
+            fromDate: typeof parsedData.fromDate === 'string' ? parsedData.fromDate : '',
+            toDate: typeof parsedData.toDate === 'string' ? parsedData.toDate : '',
+            orderBy: typeof parsedData.orderBy === 'string' ? parsedData.orderBy : 'DESC',
+            page: typeof parsedData.page === 'number' ? parsedData.page : 1,
+            qpsStatisticsType: typeof parsedData.qpsStatisticsType === 'string' ? parsedData.qpsStatisticsType : 'STANDARD_DEVIATION',
+            queryResult: parsedData.queryResult || null,
+            qpsStats: parsedData.qpsStats || null,
+          };
+        }
       } else {
         // 缓存过期，清除它
         localStorage.removeItem(CACHE_KEY);
@@ -278,6 +300,12 @@ const loadFromCache = () => {
     }
   } catch (error) {
     console.warn('Failed to load from cache:', error);
+    // 缓存数据损坏，清除它
+    try {
+      localStorage.removeItem(CACHE_KEY);
+    } catch (clearError) {
+      console.error('Failed to clear corrupted cache:', clearError);
+    }
   }
   return null;
 };
@@ -308,6 +336,7 @@ export default {
     const queryResult = ref(cachedData?.queryResult || null)
     const qpsStats = ref(cachedData?.qpsStats || null)
     const loading = ref(false)
+    const error = ref(null) // 新增：错误状态管理
 
     // 保存状态到缓存的函数
     const saveStateToCache = () => {
@@ -355,6 +384,7 @@ export default {
     // 初始化服务器IP
     const initServerIp = async () => {
       serverIpLoading.value = true;
+      error.value = null; // 清除之前的错误
       try {
         const response = await fetchBaseAddress();
         if (response && response.data) {
@@ -366,9 +396,13 @@ export default {
           } else {
             serverIp.value = address; // 如果没有端口号，则直接使用
           }
+        } else {
+          // 如果API响应没有数据，设置默认值
+          serverIp.value = '';
         }
       } catch (err) {
         console.error('Failed to fetch server IP:', err);
+        error.value = 'Failed to fetch server IP. Please make sure the server is running.';
         serverIp.value = ''; // 设置为空，这样查询时会提示IP是必需的
       } finally {
         serverIpLoading.value = false;
@@ -409,7 +443,8 @@ export default {
       // 防止重复提交
       if (loading.value) return;
       
-      loading.value = true
+      loading.value = true;
+      error.value = null; // 清除之前的错误
 
       try {
         // 参数验证
@@ -422,20 +457,22 @@ export default {
 
         // 验证IP地址格式
         if (!ip) {
-          // 简单的日志记录，不显示错误
-          console.error('Server IP is required. Please make sure the server is running and the IP is available.')
+          error.value = 'Server IP is required. Please make sure the server is running and the IP is available.';
+          console.error('Server IP is required. Please make sure the server is running and the IP is available.');
           return;
         }
 
         // 验证日期范围 (如果提供了日期)
         if (from && to && new Date(from) > new Date(to)) {
-          console.error('Start time cannot be later than end time.')
+          error.value = 'Start time cannot be later than end time.';
+          console.error('Start time cannot be later than end time.');
           return;
         }
 
         // 验证页码
         if (pageNum < 1) {
-          console.error('Page number must be at least 1.')
+          error.value = 'Page number must be at least 1.';
+          console.error('Page number must be at least 1.');
           return;
         }
 
@@ -461,7 +498,7 @@ export default {
         }
       } catch (err) {
         console.error('Error fetching indicator data:', err);
-        // 不显示错误消息
+        error.value = 'Failed to fetch indicator data. Please try again.';
       } finally {
         loading.value = false
         // 保存状态到缓存
@@ -489,6 +526,7 @@ export default {
 
       // 只有当指标类型为QPSResult时才允许获取QPS统计信息
       if (selectedType.value !== 'QPSResult') {
+        error.value = 'QPS statistics can only be fetched for QPSResult indicator type.';
         console.error('QPS statistics can only be fetched for QPSResult indicator type.');
         qpsStats.value = null;
         // 保存状态到缓存
@@ -497,6 +535,7 @@ export default {
       }
 
       if (!serverIp.value) {
+        error.value = 'Server IP is required for QPS statistics.';
         console.error('Server IP is required for QPS statistics.');
         return;
       }
@@ -511,6 +550,7 @@ export default {
         saveStateToCache();
       } catch (statsError) {
         console.error('Failed to fetch QPS statistics:', statsError);
+        error.value = 'Failed to fetch QPS statistics: ' + statsError.message;
         qpsStats.value = null;
         // 保存状态到缓存
         saveStateToCache();
@@ -554,6 +594,7 @@ export default {
       queryResult,
       qpsStats,
       loading,
+      error, // 添加错误状态到返回对象
       totalPages,
       fetchData,
       fetchQPSStats,
