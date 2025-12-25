@@ -14,6 +14,8 @@ import org.springframework.web.reactive.function.server.ServerResponse;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import static java.lang.String.format;
+
 /** 手动执行定时任务服务实现类。*/
 @Slf4j
 @Service
@@ -39,7 +41,7 @@ public class ScheduledTaskServiceImpl implements ScheduledTaskService
             .flatMap((cleanUpRes) ->
                 ReactiveResponseBuilder.OK(
                     cleanUpRes,
-                    "Executing task CleanIndicatorUtilLastWeek() manually complete."
+                    "Fiinish to clean historical indicators!"
                 ))
             .onErrorResume(
                 ScheduledTasksException.class,
@@ -60,13 +62,16 @@ public class ScheduledTaskServiceImpl implements ScheduledTaskService
             .then(
                 ReactiveResponseBuilder.OK(
                 null,
-                "Execute task sendIntervalIndicatorReportManually() complete!")
+                    format(
+                        "Finish to send report to operator staff: %s",
+                        this.intervalIndicatorReporter.getOperationsStaffEmail()
+                    )
+                ))
             .onErrorResume(
                 ScheduledTasksException.class,
                 (exception) ->
                     ReactiveResponseBuilder
                         .INTERNAL_SERVER_ERROR(exception.getMessage(), exception)
-                )
             );
     }
 }
