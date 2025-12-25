@@ -14,6 +14,7 @@ import com.jesse.sqlmonitor.scheduled_tasks.exception.ScheduledTasksException;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
 import io.github.jessez332623.reactive_email_sender.exception.EmailException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -36,6 +37,7 @@ import static java.lang.String.format;
 public class IntervalIndicatorReporter
 {
     /** 运维人员的邮箱号（大嘘）。*/
+    @Getter
     @Value("${app.operation-staff.email}")
     private String operationsStaffEmail;
 
