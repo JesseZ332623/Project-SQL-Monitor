@@ -53,7 +53,7 @@ final public class DatetimeFormatter
     public static @NotNull LocalDateTime
     parseDatetime(String dateTimeStr)
     {
-        if (StringUtils.hasLength(dateTimeStr))
+        if (!StringUtils.hasLength(dateTimeStr))
         {
             throw new
             IllegalArgumentException("Could not parse null or empty datetime string...");
