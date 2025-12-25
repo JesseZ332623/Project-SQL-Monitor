@@ -41,7 +41,7 @@ public class ScheduledTaskServiceImpl implements ScheduledTaskService
             .flatMap((cleanUpRes) ->
                 ReactiveResponseBuilder.OK(
                     cleanUpRes,
-                    "Fiinish to clean historical indicators!"
+                    "Finish to clean historical indicators!"
                 ))
             .onErrorResume(
                 ScheduledTasksException.class,
