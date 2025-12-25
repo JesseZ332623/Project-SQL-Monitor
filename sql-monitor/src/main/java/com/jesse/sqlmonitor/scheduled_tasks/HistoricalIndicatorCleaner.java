@@ -9,6 +9,7 @@ import com.jesse.sqlmonitor.scheduled_tasks.exception.ScheduledTasksException;
 import com.jesse.sqlmonitor.utils.DatetimeFormatter;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -47,6 +48,7 @@ public class HistoricalIndicatorCleaner
     private final ReactiveEmailSender emailSender;
 
     /** 运维人员的邮箱号（大嘘）。*/
+    @Getter
     @Value("${app.operation-staff.email}")
     private String operationsStaffEmail;
 
@@ -208,7 +210,7 @@ public class HistoricalIndicatorCleaner
                 清理历史指标数据 %s 条，
                 被检测的数据库服务 IP: [%s]，
                 删除时间点：[%s] 之前的所有数据，
-                执行时间：[%s]
+                执行时间点：[%s]
                 """.formatted(
                     cleanUpResult.getTotalDeleted().get(),
                     cleanUpResult.getServerIp(),
@@ -237,7 +239,7 @@ public class HistoricalIndicatorCleaner
                 批量删除历史指标数据超过 2 分钟限制！
                 被检测的数据库服务 IP: [%s]，
                 已经删除时间点：[%s] 之前的 [%d] 条数据，
-                执行时间：[%s]
+                执行时间点：[%s]
                 """.formatted(
                 cleanUpResult.getServerIp(),
                 cleanUpResult.getOneWeekAgo(),
@@ -271,7 +273,7 @@ public class HistoricalIndicatorCleaner
                      被检测的数据库服务 IP: [%s]，
                      删除时间点：[%s] 之前的所有数据，
                      错误原因：%s，
-                     执行时间：[%s]，
+                     执行时间点：[%s]，
                      请检查手动执行清理操作并检查应用状态。
                      """.formatted(
                          this.masterProperties.getHost(),
