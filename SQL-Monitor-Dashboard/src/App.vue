@@ -3,254 +3,279 @@
 		<div class="container">
 			<header class="header">
 				<div class="header-content">
-					<h1 class="title">
-						<svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-							stroke-width="2">
-							<path
-								d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
-							</path>
-							<polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
-							<polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
-							<polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
-							<polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-							<line x1="12" y1="22.08" x2="12" y2="12"></line>
-						</svg>
-						Database Monitor - {{ baseAddress }}
-					</h1>
+					<div class="header-top">
+						<h1 class="title">
+							<svg class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+								stroke-width="2">
+								<path
+									d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z">
+								</path>
+								<polyline points="7.5 4.21 12 6.81 16.5 4.21"></polyline>
+								<polyline points="7.5 19.79 7.5 14.6 3 12"></polyline>
+								<polyline points="21 12 16.5 14.6 16.5 19.79"></polyline>
+								<polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+								<line x1="12" y1="22.08" x2="12" y2="12"></line>
+							</svg>
+							Database Monitor - {{ baseAddress }}
+						</h1>
+						<nav class="nav-tabs">
+							<button 
+								:class="['tab-btn', { active: activeTab === 'dashboard' }]" 
+								@click="activeTab = 'dashboard'"
+							>
+								Dashboard
+							</button>
+							<button 
+								:class="['tab-btn', { active: activeTab === 'query' }]" 
+								@click="activeTab = 'query'"
+							>
+								Indicator Query
+							</button>
+							<button 
+								:class="['tab-btn', { active: activeTab === 'control' }]" 
+								@click="activeTab = 'control'"
+							>
+								Control
+							</button>
+						</nav>
+					</div>
 					<p class="subtitle">Real-time database query performance monitoring</p>
 				</div>
 			</header>
 
-			<div class="alert error-alert" v-if="error">
-				<svg class="alert-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-					<path fill-rule="evenodd"
-						d="M8.22 1.754a.25.25 0 00-.44 0L1.698 13.132a.25.25 0 00.22.368h12.164a.25.25 0 00.22-.368L8.22 1.754zm-1.763-.707c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0114.082 15H1.918a1.75 1.75 0 01-1.543-2.575L6.457 1.047zM9 11a1 1 0 11-2 0 1 1 0 012 0zm-.25-5.25a.75.75 0 00-1.5 0v2.5a.75.75 0 001.5 0v-2.5z">
-					</path>
-				</svg>
-				<span>Error fetching data: {{ error }}</span>
-			</div>
-
-			<div class="controls">
-				<div class="control-group">
-					<button class="btn btn-primary" @click="fetchData" :disabled="loading">
-						<svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-							<path fill-rule="evenodd"
-								d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z">
-							</path>
-						</svg>
-						Refresh
-					</button>
-					<button class="btn" :class="autoRefresh ? 'btn-danger' : 'btn-secondary'"
-						@click="toggleAutoRefresh">
-						<svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-							<path fill-rule="evenodd"
-								d="M8 2.5a5.487 5.487 0 00-4.131 1.869l1.204 1.204A.25.25 0 014.896 6H1.25A.25.25 0 011 5.75V2.104a.25.25 0 01.427-.177l1.38 1.38A7.001 7.001 0 0114.95 7.16a.75.75 0 11-1.49.178A5.501 5.501 0 008 2.5zM1.705 8.005a.75.75 0 01.834.656 5.501 5.501 0 009.592 2.97l-1.204-1.204a.25.25 0 01.177-.427h3.646a.25.25 0 01.25.25v3.646a.25.25 0 01-.427.177l-1.38-1.38A7.001 7.001 0 011.05 8.84a.75.75 0 01.656-.834z">
-							</path>
-						</svg>
-						{{ autoRefresh ? 'Stop Auto-Refresh' : 'Start Auto-Refresh' }}
-					</button>
+			<!-- Dashboard Tab -->
+			<div v-if="activeTab === 'dashboard'">
+				<div class="controls">
+					<div class="control-group">
+						<button class="btn btn-primary" @click="fetchData" :disabled="loading">
+							<svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+								<path fill-rule="evenodd"
+									d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z">
+								</path>
+							</svg>
+							Refresh
+						</button>
+						<button class="btn" :class="autoRefresh ? 'btn-danger' : 'btn-secondary'"
+							@click="toggleAutoRefresh">
+							<svg class="btn-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+								<path fill-rule="evenodd"
+									d="M8 2.5a5.487 5.487 0 00-4.131 1.869l1.204 1.204A.25.25 0 014.896 6H1.25A.25.25 0 011 5.75V2.104a.25.25 0 01.427-.177l1.38 1.38A7.001 7.001 0 0114.95 7.16a.75.75 0 11-1.49.178A5.501 5.501 0 008 2.5zM1.705 8.005a.75.75 0 01.834.656 5.501 5.501 0 009.592 2.97l-1.204-1.204a.25.25 0 01.177-.427h3.646a.25.25 0 01.25.25v3.646a.25.25 0 01-.427.177l-1.38-1.38A7.001 7.001 0 011.05 8.84a.75.75 0 01.656-.834z">
+								</path>
+							</svg>
+							{{ autoRefresh ? 'Stop Auto-Refresh' : 'Start Auto-Refresh' }}
+						</button>
+					</div>
+					<div class="status-indicator">
+						<div class="status-dot" :class="{ active: !loading }"></div>
+						<span v-if="autoRefresh">Auto-refresh every </span>
+						<select v-if="autoRefresh" v-model.number="refreshInterval" class="btn">
+							<option v-for="n in [3, 5, 15, 30, 60]" :key="n" :value="n">{{ n }}</option>
+						</select>
+						<span v-if="autoRefresh"> seconds</span>
+						<span v-else>Manual refresh mode</span>
+					</div>
 				</div>
-				<div class="status-indicator">
-					<div class="status-dot" :class="{ active: !loading }"></div>
-					<span v-if="autoRefresh">Auto-refresh every </span>
-					<select v-if="autoRefresh" v-model.number="refreshInterval" class="btn">
-						<option v-for="n in [3, 5, 15, 30, 60]" :key="n" :value="n">{{ n }}</option>
-					</select>
-					<span v-if="autoRefresh"> seconds</span>
-					<span v-else>Manual refresh mode</span>
-				</div>
-			</div>
 
-			<div class="dashboard">
-				<!-- 图表区域改为两列布局 -->
-				<div class="charts-grid">
-					<div class="chart-section">
+				<div class="dashboard">
+					<!-- 图表区域改为两列布局 -->
+					<div class="charts-grid">
+						<div class="chart-section">
+							<div class="card">
+								<div class="card-header">
+									<h2 class="card-title">QPS</h2>
+									<div class="card-actions">
+										<span class="timestamp">Last updated: {{ lastUpdate || 'Never' }}</span>
+									</div>
+								</div>
+								<div class="card-content">
+									<QPSChart :chart-data="qpsChartData" :loading="loading" />
+								</div>
+							</div>
+						</div>
+
+						<div class="chart-section">
+							<div class="card">
+								<div class="card-header">
+									<h2 class="card-title">
+										Network Traffic
+										<span class="unit-badge" v-if="currentNetworkUnit">
+											({{ currentNetworkUnit }}/s)
+										</span>
+									</h2>
+									<div class="card-actions">
+										<div class="unit-selector">
+											<label>Unit:</label>
+											<select v-model="selectedUnit" class="btn btn-sm" @change="onUnitChange">
+												<option value="B">Bytes</option>
+												<option value="KB">KB</option>
+												<option value="MB">MB</option>
+											</select>
+										</div>
+										<span class="timestamp">Last updated: {{ lastUpdate || 'Never' }}</span>
+									</div>
+								</div>
+								<div class="card-content">
+									<NetworkTrafficChart :chart-data="networkChartData" :loading="loading"
+										:current-unit="currentNetworkUnit" />
+								</div>
+							</div>
+						</div>
+					</div>
+
+					<div class="stats-section">
 						<div class="card">
 							<div class="card-header">
-								<h2 class="card-title">QPS</h2>
-								<div class="card-actions">
-									<span class="timestamp">Last updated: {{ lastUpdate || 'Never' }}</span>
-								</div>
+								<h2 class="card-title">Current Metrics</h2>
 							</div>
 							<div class="card-content">
-								<QPSChart :chart-data="qpsChartData" :loading="loading" />
+								<div class="metric-grid">
+									<div class="metric-card">
+										<div class="metric-label">Server Running Time</div>
+										<div class="metric-value" :class="{ loading: loading && !serverRunningTime }">
+											{{ serverRunningTime ? serverRunningTime : '--' }}
+										</div>
+										<div class="metric-description">Server running time begin it was start</div>
+									</div>
+									<div class="metric-card">
+										<div class="metric-label">Current QPS</div>
+										<div class="metric-value" :class="{ loading: loading && !qpsData }">
+											{{ qpsData ? qpsData.qps.toFixed(2) : '--' }}
+										</div>
+										<div class="metric-description">Queries per second</div>
+									</div>
+
+									<div class="metric-card">
+										<div class="metric-label">Total Queries</div>
+										<div class="metric-value" :class="{ loading: loading && !qpsData }">
+											{{ qpsData ? formatNumber(qpsData.currentQueries) : '--' }}
+										</div>
+										<div class="metric-description">Cumulative count</div>
+									</div>
+
+									<div class="metric-card">
+										<div class="metric-label">Query Delta</div>
+										<div class="metric-value" :class="{ loading: loading && !qpsData }">
+											{{ qpsData ? qpsData.queryDiff : '--' }}
+										</div>
+										<div class="metric-description">Since last check</div>
+									</div>
+
+									<div class="metric-card">
+										<div class="metric-label">Time Delta</div>
+										<div class="metric-value" :class="{ loading: loading && !qpsData }">
+											{{ qpsData ? qpsData.timeDiffMs + 'ms' : '--' }}
+										</div>
+										<div class="metric-description">Measurement interval</div>
+									</div>
+
+									<div class="metric-card">
+										<div class="metric-label">Connections Usage</div>
+										<div class="metric-value" :class="{ loading: loading && !connectionsData }">
+											{{
+												connectionsData
+													? connectionsData.currentConnections + ' / ' + connectionsData.maxConnections
+													: '--'
+											}}
+										</div>
+										<div class="metric-description">
+											{{ 'Usage: ' + (connectionsData ? connectionsData.connectUsagePercent.toFixed(2)
+												+ '%' : '--') }}
+										</div>
+									</div>
+
+									<div class="metric-card">
+										<div class="metric-label">Network Receive</div>
+										<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
+											{{
+												netTrafficData
+													? formatNetworkRate(netTrafficData.receivePerSec, netTrafficData.sizeUnit)
+													: '--'
+											}}
+										</div>
+										<div class="metric-description">Real-time receive rate</div>
+									</div>
+
+									<div class="metric-card">
+										<div class="metric-label">Network Sent</div>
+										<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
+											{{
+												netTrafficData
+													? formatNetworkRate(netTrafficData.sentPerSec, netTrafficData.sizeUnit)
+													: '--'
+											}}
+										</div>
+										<div class="metric-description">Real-time send rate</div>
+									</div>
+
+									<div class="metric-card">
+										<div class="metric-label">Total Traffic</div>
+										<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
+											{{
+												netTrafficData
+													? formatBytes(netTrafficData.totalBytesReceive + netTrafficData.totalBytesSent)
+													: '--'
+											}}
+										</div>
+										<div class="metric-description">Cumulative network usage</div>
+									</div>
+
+									<div class="metric-card">
+										<div class="metric-label">InnoDB Buffer Cache Hit Rate</div>
+										<div class="metric-value"
+											:class="{ loading: loading && !innodbBufferCacheHitRate }">
+											{{
+												innodbBufferCacheHitRate
+													? (innodbBufferCacheHitRate.cacheHitRate * 100.00).toFixed(4) + ' %'
+													: '--'
+											}}
+										</div>
+										<div class="metric-description">
+											Percentage of reads served from InnoDB buffer pool
+										</div>
+									</div>
+								</div>
 							</div>
 						</div>
-					</div>
 
-					<div class="chart-section">
 						<div class="card">
 							<div class="card-header">
-								<h2 class="card-title">
-									Network Traffic
-									<span class="unit-badge" v-if="currentNetworkUnit">
-										({{ currentNetworkUnit }}/s)
-									</span>
-								</h2>
-								<div class="card-actions">
-									<div class="unit-selector">
-										<label>Unit:</label>
-										<select v-model="selectedUnit" class="btn btn-sm" @change="onUnitChange">
-											<option value="B">Bytes</option>
-											<option value="KB">KB</option>
-											<option value="MB">MB</option>
-										</select>
-									</div>
-									<span class="timestamp">Last updated: {{ lastUpdate || 'Never' }}</span>
-								</div>
+								<h2 class="card-title">Status Information</h2>
 							</div>
 							<div class="card-content">
-								<NetworkTrafficChart :chart-data="networkChartData" :loading="loading"
-									:current-unit="currentNetworkUnit" />
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<div class="stats-section">
-					<div class="card">
-						<div class="card-header">
-							<h2 class="card-title">Current Metrics</h2>
-						</div>
-						<div class="card-content">
-							<div class="metric-grid">
-								<div class="metric-card">
-									<div class="metric-label">Server Running Time</div>
-									<div class="metric-value" :class="{ loading: loading && !serverRunningTime }">
-										{{ serverRunningTime ? serverRunningTime : '--' }}
+								<div class="status-info">
+									<div class="status-item">
+										<span class="status-label">Reset Detected:</span>
+										<span class="status-value" :class="qpsData && qpsData.resetDetected ? 'warning' : 'normal'">
+											{{ qpsData ? (qpsData.resetDetected ? 'Yes' : 'No') : '--' }}
+										</span>
 									</div>
-									<div class="metric-description">Server running time begin it was start</div>
-								</div>
-								<div class="metric-card">
-									<div class="metric-label">Current QPS</div>
-									<div class="metric-value" :class="{ loading: loading && !qpsData }">
-										{{ qpsData ? qpsData.qps.toFixed(2) : '--' }}
+									<div class="status-item">
+										<span class="status-label">Error State:</span>
+										<span class="status-value" :class="qpsData && qpsData.error ? 'error' : 'normal'">
+											{{ qpsData ? (qpsData.error ? 'Yes' : 'No') : '--' }}
+										</span>
 									</div>
-									<div class="metric-description">Queries per second</div>
-								</div>
-
-								<div class="metric-card">
-									<div class="metric-label">Total Queries</div>
-									<div class="metric-value" :class="{ loading: loading && !qpsData }">
-										{{ qpsData ? formatNumber(qpsData.currentQueries) : '--' }}
+									<div class="status-item">
+										<span class="status-label">Auto Unit:</span>
+										<span class="status-value" :class="autoUnitEnabled ? 'normal' : 'warning'">
+											{{ autoUnitEnabled ? 'Enabled' : 'Disabled' }}
+										</span>
 									</div>
-									<div class="metric-description">Cumulative count</div>
-								</div>
-
-								<div class="metric-card">
-									<div class="metric-label">Query Delta</div>
-									<div class="metric-value" :class="{ loading: loading && !qpsData }">
-										{{ qpsData ? qpsData.queryDiff : '--' }}
-									</div>
-									<div class="metric-description">Since last check</div>
-								</div>
-
-								<div class="metric-card">
-									<div class="metric-label">Time Delta</div>
-									<div class="metric-value" :class="{ loading: loading && !qpsData }">
-										{{ qpsData ? qpsData.timeDiffMs + 'ms' : '--' }}
-									</div>
-									<div class="metric-description">Measurement interval</div>
-								</div>
-
-								<div class="metric-card">
-									<div class="metric-label">Connections Usage</div>
-									<div class="metric-value" :class="{ loading: loading && !connectionsData }">
-										{{
-											connectionsData
-												? connectionsData.currentConnections + ' / ' + connectionsData.maxConnections
-												: '--'
-										}}
-									</div>
-									<div class="metric-description">
-										{{ 'Usage: ' + (connectionsData ? connectionsData.connectUsagePercent.toFixed(2)
-											+ '%' : '--') }}
-									</div>
-								</div>
-
-								<div class="metric-card">
-									<div class="metric-label">Network Receive</div>
-									<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
-										{{
-											netTrafficData
-												? formatNetworkRate(netTrafficData.receivePerSec, netTrafficData.sizeUnit)
-												: '--'
-										}}
-									</div>
-									<div class="metric-description">Real-time receive rate</div>
-								</div>
-
-								<div class="metric-card">
-									<div class="metric-label">Network Sent</div>
-									<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
-										{{
-											netTrafficData
-												? formatNetworkRate(netTrafficData.sentPerSec, netTrafficData.sizeUnit)
-												: '--'
-										}}
-									</div>
-									<div class="metric-description">Real-time send rate</div>
-								</div>
-
-								<div class="metric-card">
-									<div class="metric-label">Total Traffic</div>
-									<div class="metric-value" :class="{ loading: loading && !netTrafficData }">
-										{{
-											netTrafficData
-												? formatBytes(netTrafficData.totalBytesReceive + netTrafficData.totalBytesSent)
-												: '--'
-										}}
-									</div>
-									<div class="metric-description">Cumulative network usage</div>
-								</div>
-
-								<div class="metric-card">
-									<div class="metric-label">InnoDB Buffer Cache Hit Rate</div>
-									<div class="metric-value"
-										:class="{ loading: loading && !innodbBufferCacheHitRate }">
-										{{
-											innodbBufferCacheHitRate
-												? (innodbBufferCacheHitRate.cacheHitRate * 100.00).toFixed(4) + ' %'
-												: '--'
-										}}
-									</div>
-									<div class="metric-description">
-										Percentage of reads served from InnoDB buffer pool
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div class="card">
-						<div class="card-header">
-							<h2 class="card-title">Status Information</h2>
-						</div>
-						<div class="card-content">
-							<div class="status-info">
-								<div class="status-item">
-									<span class="status-label">Reset Detected:</span>
-									<span class="status-value"
-										:class="qpsData && qpsData.resetDetected ? 'warning' : 'normal'">
-										{{ qpsData ? (qpsData.resetDetected ? 'Yes' : 'No') : '--' }}
-									</span>
-								</div>
-								<div class="status-item">
-									<span class="status-label">Error State:</span>
-									<span class="status-value" :class="qpsData && qpsData.error ? 'error' : 'normal'">
-										{{ qpsData ? (qpsData.error ? 'Yes' : 'No') : '--' }}
-									</span>
-								</div>
-								<div class="status-item">
-									<span class="status-label">Auto Unit:</span>
-									<span class="status-value" :class="autoUnitEnabled ? 'normal' : 'warning'">
-										{{ autoUnitEnabled ? 'Enabled' : 'Disabled' }}
-									</span>
 								</div>
 							</div>
 						</div>
 					</div>
 				</div>
+			</div>
+
+			<!-- Indicator Query Tab -->
+			<div v-if="activeTab === 'query'">
+				<IndicatorQuery />
+			</div>
+			
+			<!-- Control Tab -->
+			<div v-if="activeTab === 'control'">
+				<ScheduledTasks />
 			</div>
 
 			<footer class="footer">
@@ -264,6 +289,8 @@
 import { ref, onMounted, onUnmounted, reactive, watch, computed } from 'vue'
 import QPSChart from './components/QPSChart.vue'
 import NetworkTrafficChart from './components/NetworkTrafficChart.vue'
+import IndicatorQuery from './components/IndicatorQuery.vue'
+import ScheduledTasks from './components/ScheduledTasks.vue'
 import {
 	fetchAllMetrics,
 	updateChartData,
@@ -274,13 +301,15 @@ import {
 	fetchServerTime, fetchBaseAddress,
 	fetchQPSData, fetchConnectionsUsage,
 	fetchNetworkTraffic, fetchInnodbBufferCacheHitRate
-} from './services/api'
+} from './services/monitor-api'
 
 export default {
 	name: 'App',
 	components: {
 		QPSChart,
-		NetworkTrafficChart
+		NetworkTrafficChart,
+		IndicatorQuery,
+		ScheduledTasks
 	},
 	setup() {
 		// 响应式数据
@@ -290,13 +319,13 @@ export default {
 		const connectionsData 	= ref(null);
 		const netTrafficData 	= ref(null);
 		const loading 			= ref(false);
-		const error 			= ref(null);
 		const autoRefresh 		= ref(true);
 		const lastUpdate 		= ref(null);
 		const refreshInterval 	= ref(3);
 		const selectedUnit 		= ref('KB');
 		const autoUnitEnabled 	= ref(false);
 		const innodbBufferCacheHitRate = ref(null);
+		const activeTab 		= ref('dashboard');
 
 		// Web Worker 实例
 		let refreshWorker = null;
@@ -358,7 +387,6 @@ export default {
 		// 数据获取函数
 		const fetchData = async () => {
 			loading.value = true;
-			error.value = null;
 
 			try {
 				const unitToUse = autoUnitEnabled.value ? currentNetworkUnit.value : selectedUnit.value;
@@ -375,20 +403,19 @@ export default {
 				connectionsData.value 		   = data.connectionsData;
 				netTrafficData.value 		   = data.netTrafficData;
 				innodbBufferCacheHitRate.value = data.innodbBufferCacheHitRate;
-				serverRunningTime.value 	   = formatUtils.runtime(data.runtimeArray);
+				serverRunningTime.value 	   = data.runtimeArray ? formatUtils.runtime(data.runtimeArray) : null;
 
 				// 更新图表数据
 				const now 		= new Date();
 				const timeLabel = now.toLocaleTimeString();
 
-				updateChartData(chartData.qps, [data.qpsData.qps], timeLabel);
-				updateChartData(chartData.network, [data.netTrafficData.receivePerSec, data.netTrafficData.sentPerSec], timeLabel);
+				updateChartData(chartData.qps, [data.qpsData?.qps || 0], timeLabel);
+				updateChartData(chartData.network, [data.netTrafficData?.receivePerSec || 0, data.netTrafficData?.sentPerSec || 0], timeLabel);
 
 				lastUpdate.value = now.toLocaleString();
 
 			}
 			catch (err) {
-				error.value = 'Error fetching data! Please checkout your network!';
 				console.error('Error fetching data:', err);
 			}
 			finally {
@@ -420,6 +447,8 @@ export default {
 					{
 						console.log('Auto-refresh triggered by Web Worker at:', new Date(e.data.timestamp).toLocaleTimeString());
 						fetchData();
+					} else if (e.data.type === 'ERROR') {
+						console.error('Web Worker error:', e.data.message);
 					}
 				};
 			}
@@ -482,13 +511,13 @@ export default {
 			connectionsData,
 			netTrafficData,
 			loading,
-			error,
 			autoRefresh,
 			lastUpdate,
 			refreshInterval,
 			selectedUnit,
 			autoUnitEnabled,
 			innodbBufferCacheHitRate,
+			activeTab,
 			qpsChartData: chartData.qps,
 			networkChartData: chartData.network,
 			fetchData,
@@ -554,6 +583,45 @@ export default {
 	.metric-grid {
 		grid-template-columns: 1fr;
 	}
+}
+
+/* 标签页样式 */
+.header-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 16px;
+}
+
+.nav-tabs {
+	display: flex;
+	gap: 4px;
+	background-color: var(--bg-tertiary);
+	padding: 4px;
+	border-radius: 6px;
+}
+
+.tab-btn {
+	padding: 8px 16px;
+	border: none;
+	background: transparent;
+	color: var(--text-secondary);
+	font-size: 14px;
+	font-weight: 500;
+	border-radius: 4px;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.tab-btn:hover {
+	background-color: var(--bg-secondary);
+	color: var(--text-primary);
+}
+
+.tab-btn.active {
+	background-color: var(--accent-primary);
+	color: #000;
 }
 
 /* 原有的其他样式保持不变 */

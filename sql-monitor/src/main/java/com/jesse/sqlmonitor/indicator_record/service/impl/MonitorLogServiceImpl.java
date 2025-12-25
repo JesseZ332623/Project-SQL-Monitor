@@ -1,6 +1,7 @@
 package com.jesse.sqlmonitor.indicator_record.service.impl;
 
 import com.jesse.sqlmonitor.constants.QueryOrder;
+import com.jesse.sqlmonitor.indicator_record.dto.FetchIndicatorResult;
 import com.jesse.sqlmonitor.indicator_record.entity.IndicatorType;
 import com.jesse.sqlmonitor.indicator_record.exception.QueryIndicatorFailed;
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
@@ -145,7 +146,7 @@ public class MonitorLogServiceImpl implements MonitorLogService
                 this.monitorLogRepository
                     .getIndicatorCount(type, serverIP, from, to))
                 .flatMap((pageableRes) -> {
-                    final List<? extends ResponseBase<?>>
+                    final List<FetchIndicatorResult>
                         indicators        = pageableRes.getT1();    // 分页查询数据
                     final long totalRows  = pageableRes.getT2();    // 该查询条件下的所有数据量
                     final long totalPages = (totalRows + perPageLim - 1) / perPageLim; // 计算出当前查询条件下的总页数

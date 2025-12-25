@@ -3,6 +3,7 @@ package com.jesse.sqlmonitor.utils;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,7 +13,6 @@ import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
@@ -53,10 +53,10 @@ final public class DatetimeFormatter
     public static @NotNull LocalDateTime
     parseDatetime(String dateTimeStr)
     {
-        if (Objects.isNull(dateTimeStr) || dateTimeStr.isEmpty())
+        if (!StringUtils.hasLength(dateTimeStr))
         {
             throw new
-            IllegalArgumentException("Could not parse null or empty string...");
+            IllegalArgumentException("Could not parse null or empty datetime string...");
         }
 
         String trimDatetimeStr = dateTimeStr.trim();

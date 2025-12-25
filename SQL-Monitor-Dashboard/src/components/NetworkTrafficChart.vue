@@ -44,14 +44,23 @@ export default {
 
             try {
                 const ctx = chartCanvas.value.getContext('2d')
+                
+                // 验证chartData结构
+                const labels = (props.chartData && Array.isArray(props.chartData.labels)) 
+                    ? props.chartData.labels 
+                    : []
+                const datasets = (props.chartData && Array.isArray(props.chartData.datasets))
+                    ? props.chartData.datasets.map(dataset => ({
+                        ...dataset,
+                        data: Array.isArray(dataset.data) ? dataset.data : []
+                    }))
+                    : []
+                
                 chartInstance = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: props.chartData.labels || [],
-                        datasets: (props.chartData.datasets || []).map(dataset => ({
-                            ...dataset,
-                            data: dataset.data || []
-                        }))
+                        labels: labels,
+                        datasets: datasets
                     },
                     options: {
                         responsive: true,
@@ -76,7 +85,7 @@ export default {
                                 callbacks: {
                                     label: function (context) {
                                         const label = context.dataset.label || ''
-                                        const value = context.parsed.y.toFixed(2)
+                                        const value = context.parsed.y !== undefined ? context.parsed.y.toFixed(2) : 'N/A'
                                         const unit = props.currentUnit || 'KB'
                                         return `${label}: ${value} ${unit}/s`
                                     }
@@ -105,7 +114,7 @@ export default {
                                 ticks: {
                                     color: '#8b949e',
                                     callback: function(value) {
-                                        return value.toFixed(2) + ` ${props.currentUnit || 'KB'}/s`
+                                        return value !== undefined ? value.toFixed(2) + ` ${props.currentUnit || 'KB'}/s` : 'N/A'
                                     }
                                 },
                                 beginAtZero: true
@@ -137,7 +146,7 @@ export default {
                     // 更新Y轴标签以反映当前单位
                     if (chartInstance.options.scales.y.ticks) {
                         chartInstance.options.scales.y.ticks.callback = function(value) {
-                            return value.toFixed(2) + ` ${props.currentUnit || 'KB'}/s`
+                            return value !== undefined ? value.toFixed(2) + ` ${props.currentUnit || 'KB'}/s` : 'N/A'
                         }
                     }
                     

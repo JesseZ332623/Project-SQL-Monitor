@@ -174,6 +174,7 @@ public class SQLMonitorRouterFunctionConfiguration
                 operation = @Operation(
                     operationId = "getAllSchemaName",
                     summary     = "获取所有的数据库名",
+                    tags        = { "本数据库服务器所有数据库名获取" },
                     parameters = {
                         @Parameter(
                             name        = "includeSysShema",

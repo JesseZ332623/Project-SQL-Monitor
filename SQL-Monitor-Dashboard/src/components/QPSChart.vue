@@ -40,14 +40,23 @@ export default {
 
             try {
                 const ctx = chartCanvas.value.getContext('2d')
+                
+                // 验证chartData结构
+                const labels = (props.chartData && Array.isArray(props.chartData.labels)) 
+                    ? props.chartData.labels 
+                    : []
+                const datasets = (props.chartData && Array.isArray(props.chartData.datasets))
+                    ? props.chartData.datasets.map(dataset => ({
+                        ...dataset,
+                        data: Array.isArray(dataset.data) ? dataset.data : []
+                    }))
+                    : []
+                
                 chartInstance = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: props.chartData.labels || [],
-                        datasets: (props.chartData.datasets || []).map(dataset => ({
-                            ...dataset,
-                            data: dataset.data || []
-                        }))
+                        labels: labels,
+                        datasets: datasets
                     },
                     options: {
                         responsive: true,
@@ -71,7 +80,7 @@ export default {
                                 borderWidth: 1,
                                 callbacks: {
                                     label: function (context) {
-                                        return `QPS: ${context.parsed.y.toFixed(2)}`
+                                        return `QPS: ${context.parsed.y !== undefined ? context.parsed.y.toFixed(2) : 'N/A'}`
                                     }
                                 }
                             }
