@@ -9,7 +9,7 @@ public interface ScheduledTaskService
 {
     /** 手动的执行历史指标清除操作。*/
     Mono<ServerResponse>
-    executeCleanIndicatorUtilLastWeek(ServerRequest request);
+    executeCleanIndicatorUntilLastWeek(ServerRequest request);
 
     /** 手动的执行例行指标数据报告发送的操作。*/
     Mono<ServerResponse>

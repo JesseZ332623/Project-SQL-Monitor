@@ -8,14 +8,17 @@ import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
 import com.jesse.sqlmonitor.response_body.ConnectionUsage;
 import com.jesse.sqlmonitor.response_body.qps_statistics.ExtremeQPS;
 import com.jesse.sqlmonitor.response_body.qps_statistics.StandingDeviationQPS;
+import com.jesse.sqlmonitor.scheduled_tasks.constants.TaskExecuter;
 import com.jesse.sqlmonitor.scheduled_tasks.dto.IndicatorReport;
 import com.jesse.sqlmonitor.scheduled_tasks.exception.ScheduledTasksException;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
 import io.github.jessez332623.reactive_email_sender.exception.EmailException;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -25,6 +28,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static java.lang.String.format;
+
 /** 定时向运维人员发送指标报告发送器。*/
 @Slf4j
 @Component
@@ -32,6 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class IntervalIndicatorReporter
 {
     /** 运维人员的邮箱号（大嘘）。*/
+    @Getter
     @Value("${app.operation-staff.email}")
     private String operationsStaffEmail;
 
@@ -55,74 +61,12 @@ public class IntervalIndicatorReporter
     @Scheduled(cron = "0 0 9,18 * * ?")
     public void startTask()
     {
-        this.sendIntervalIndicatorReport()
+        this.sendIntervalIndicatorReport(TaskExecuter.AUTO_TASK)
             .subscribe();
     }
 
     /**
-     * 定期以邮件形式向运维报告数据库服务器相关指标数据（定时任务自动调用）。
-     * 条目如下：
-     *
-     * <ul>
-     *     <li>距离上一次报告时数据增长的数量</li>
-     *     <li>数据库平均 QPS</li>
-     *     <li>数据库 QPS 极值</li>
-     *     <li>数据库 QPS 中位数</li>
-     *     <li>数据库 QPS 标准差</li>
-     *     <li>平均网络流量值</li>
-     *     <li>当前数据库连接使用率</li>
-     * </ul>
-     */
-    private @NotNull Mono<Void>
-    sendIntervalIndicatorReport()
-    {
-        return
-        Mono.defer(() -> {
-            // 检查本定时任务是否正在被执行，避免并行的调用。
-            if (!this.isRunning.compareAndSet(false, true))
-            {
-                log.warn("(Auto-task) The task sendIntervalIndicatorReport() already executing, skip...");
-                return Mono.empty();
-            }
-
-            return
-            this.fetchIndicatorReport()
-                .flatMap(this::makeIndicatorReportEmail)
-                .flatMap(this.emailSender::sendEmail)
-                .doOnSuccess((ignore) ->
-                    log.info(
-                        "Send interval indicator report email to operation staff {} complete.",
-                        this.operationsStaffEmail
-                    )
-                )
-                .doOnError(EmailException.class, (emailException) ->
-                    log.error(
-                        "Send interval indicator report email to operation staff {} failed." +
-                            "Caused by: [{}] {}",
-                        this.operationsStaffEmail,
-                        emailException.getErrorType().name(),
-                        emailException.getMessage(), emailException
-                    )
-                )
-                .doOnError((exception) ->
-                    log.error(
-                        "Send interval indicator report email to operation staff {} failed." +
-                            "Caused by: {}",
-                        this.operationsStaffEmail,
-                        exception.getMessage(), exception
-                    )
-                )
-                .doFinally((signal) -> {
-                    this.isRunning.set(false);
-                    log.info("Task sendIntervalIndicatorReport() execute complete! signal type: {}.", signal);
-                })
-                .onErrorResume((error) -> Mono.empty());
-        });
-    }
-
-    /**
      * 定期以邮件形式向运维报告数据库服务器相关指标数据。</br>
-     * （Http 请求手动调用，需要向外传播异常）
      * 条目如下：
      *
      * <ul>
@@ -134,21 +78,33 @@ public class IntervalIndicatorReporter
      *     <li>平均网络流量值</li>
      *     <li>当前数据库连接使用率</li>
      * </ul>
+     *
+     * @param taskExecuter 任务的调用者是？
      */
     public @NotNull Mono<Void>
-    sendIntervalIndicatorReportManually()
+    sendIntervalIndicatorReport(@NonNull TaskExecuter taskExecuter)
     {
+        final String executerName = taskExecuter.getExecuter();
+
         return
         Mono.defer(() -> {
             // 检查本定时任务是否正在被执行，避免并行的调用。
             if (!this.isRunning.compareAndSet(false, true))
             {
+                final String concurrencyMessage
+                    = format(
+                        "%s The task sendIntervalIndicatorReport() already executing, skip...",
+                        executerName
+                    );
+
+                log.warn(concurrencyMessage);
+
+                // 如果是自动执行的话，可以吞掉异常，只保留日志即可
+                // 反之如果是 Http 请求手动调用，必须要往上传递异常
                 return
-                Mono.error(
-                    new ScheduledTasksException(
-                        "The task sendIntervalIndicatorReport() already executing, skip..."
-                    )
-                );
+                (taskExecuter.equals(TaskExecuter.AUTO_TASK))
+                    ? Mono.empty()
+                    : Mono.error(new ScheduledTasksException(concurrencyMessage));
             }
 
             return
@@ -159,9 +115,10 @@ public class IntervalIndicatorReporter
                     (emailException) ->
                         Mono.error(
                             new ScheduledTasksException(
-                                String.format(
-                                    "Send interval indicator report email to operation staff %s failed." +
+                                format(
+                                    "%s Send interval indicator report email to operation staff %s failed." +
                                     "Error Type: [%s]",
+                                    executerName,
                                     this.operationsStaffEmail,
                                     emailException.getErrorType().name()
                                 )
@@ -171,10 +128,12 @@ public class IntervalIndicatorReporter
                 .onErrorResume((exception) ->
                     Mono.error(
                         new ScheduledTasksException(
-                            String.format(
-                                "Send interval indicator report email to operation staff %s failed. " +
-                                "Reason: (%s)",
-                                this.operationsStaffEmail, exception.getMessage()
+                            format(
+                                "%s Send interval indicator report email to operation staff %s failed. " +
+                                "Caused by: %s",
+                                executerName,
+                                this.operationsStaffEmail,
+                                exception.getMessage()
                             )
                         )
                     )
@@ -182,8 +141,8 @@ public class IntervalIndicatorReporter
                 .doFinally((signal) -> {
                     this.isRunning.set(false);
                     log.info(
-                        "(Http-request) Task sendIntervalIndicatorReport() execute complete! signal type: {}.",
-                        signal
+                        "{} Task sendIntervalIndicatorReport() execute complete! signal type: {}.",
+                        executerName, signal
                     );
                 });
         });

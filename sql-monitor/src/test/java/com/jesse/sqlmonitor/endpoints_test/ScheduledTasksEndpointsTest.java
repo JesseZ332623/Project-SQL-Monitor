@@ -42,9 +42,8 @@ public class ScheduledTasksEndpointsTest
     }
 
     /**
-     * 测试 {@link ScheduledTaskService#executeCleanIndicatorUtilLastWeek(ServerRequest)}
-     * 手动的执行历史指标清除操作。
-     * （在测试环境配置下执行，不能干扰生产环境）
+     * 测试 {@link ScheduledTaskService#executeSendIntervalIndicatorReport(ServerRequest)}
+     * 手动的执行例行指标数据报告发送的操作。
      */
     @Test
     public void executeSendIntervalIndicatorReportTest()
@@ -62,8 +61,9 @@ public class ScheduledTasksEndpointsTest
     }
 
     /**
-     * 测试 {@link ScheduledTaskService#executeSendIntervalIndicatorReport(ServerRequest)}
-     * 手动的执行例行指标数据报告发送的操作。
+     * 测试 {@link ScheduledTaskService#executeCleanIndicatorUntilLastWeek(ServerRequest)}
+     * 手动的执行历史指标清除操作。
+     *（在测试环境配置下执行，不能干扰生产环境）
      */
     @Test
     public void executeCleanIndicatorUtilLastWeekTest()

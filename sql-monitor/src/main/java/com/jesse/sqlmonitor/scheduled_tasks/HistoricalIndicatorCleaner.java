@@ -1,15 +1,19 @@
 package com.jesse.sqlmonitor.scheduled_tasks;
 
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
+import com.jesse.sqlmonitor.properties.HistoricalIndicatorCleanerProps;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
+import com.jesse.sqlmonitor.scheduled_tasks.constants.TaskExecuter;
 import com.jesse.sqlmonitor.scheduled_tasks.dto.CleanUpResult;
 import com.jesse.sqlmonitor.scheduled_tasks.exception.ScheduledTasksException;
 import com.jesse.sqlmonitor.utils.DatetimeFormatter;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -20,6 +24,8 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static java.lang.String.format;
 
 /** 定时清历史指标数据的清理器。*/
 @Slf4j
@@ -35,10 +41,14 @@ public class HistoricalIndicatorCleaner
     LocalDateTime DELETE_FROM
         = LocalDateTime.of(1970, 1, 1, 0, 0, 0, 0);
 
+    /** 历史指标数据删除任务相关属性类。 */
+    private final HistoricalIndicatorCleanerProps cleanerProps;
+
     /** 响应式邮件发送器接口。*/
     private final ReactiveEmailSender emailSender;
 
     /** 运维人员的邮箱号（大嘘）。*/
+    @Getter
     @Value("${app.operation-staff.email}")
     private String operationsStaffEmail;
 
@@ -58,188 +68,133 @@ public class HistoricalIndicatorCleaner
     @Scheduled(cron = "0 0 0 ? * SUN")
     public void startTask()
     {
-        this.cleanIndicatorUtilLastWeek()
+        this.cleanIndicatorUntilLastWeek(TaskExecuter.AUTO_TASK)
             .subscribe();
     }
 
     /**
      * 清理上一个星期之前的本监视数据库下的所有历史指标数据，
      * 确保数据库中只保留一个星期之内的数据库，维持数据的规模。
-     *（定时任务自动调用）
+     *
+     * @param taskExecuter 任务的调用者是？
+     *
+     * @return 清理任务的执行结果
      */
-    private @NotNull Mono<CleanUpResult>
-    cleanIndicatorUtilLastWeek()
+    public @NotNull Mono<CleanUpResult>
+    cleanIndicatorUntilLastWeek(@NonNull TaskExecuter taskExecuter)
     {
+        final String executerName = taskExecuter.getExecuter();
+
         return
         Mono.defer(() -> {
             // 检查本定时任务是否正在被执行，避免并行的调用。
             if (!this.isRunning.compareAndSet(false, true))
             {
-                log.warn("(Auto-task) The task cleanIndicatorUtilLastWeek() already executing, skip...");
-                return Mono.empty();
+                final String concurrencyMessage
+                    = format(
+                        "%s The task cleanIndicatorUntilLastWeek() already executing, skip...",
+                        executerName
+                    );
+
+                log.warn(concurrencyMessage);
+
+                // 如果是自动执行的话，可以吞掉异常，只保留日志即可
+                // 反之如果是 Http 请求手动调用，必须要往上传递异常
+                return (taskExecuter.equals(TaskExecuter.AUTO_TASK))
+                        ? Mono.empty()
+                        : Mono.error(new ScheduledTasksException(concurrencyMessage));
             }
 
             final String        serverIp      = this.masterProperties.getHost();
             final LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
-            final LocalDateTime deleteFrom    = DELETE_FROM;
-            final long          batchSize     = 5000L;
 
             // 初始化一个批量删除结果
             CleanUpResult cleanUpResult = CleanUpResult.init(serverIp, lastWeekPoint);
 
             return
             this.monitorLogRepository
-                .deleteOneBatchIndicator(serverIp, deleteFrom, lastWeekPoint, batchSize)
+                .deleteOneBatchIndicator(
+                    serverIp, DELETE_FROM, lastWeekPoint,
+                    this.cleanerProps.getBatchSize())
                 .expand((deleted) -> {
                     if (deleted > 0)
                     {
+                        cleanUpResult.batchIncrement();
+
                         return
                         this.monitorLogRepository
-                            .deleteOneBatchIndicator(serverIp, deleteFrom, lastWeekPoint, batchSize)
+                            .deleteOneBatchIndicator(
+                                serverIp,
+                                DELETE_FROM, lastWeekPoint,
+                                this.cleanerProps.getBatchSize())
                             .delayElement(Duration.ofMillis(50L));
                     }
                     else
                     {
                         log.info(
-                            "There is no historical indicator data that needs to be cleaned up. (IP: {}, Deadline: {})",
-                            serverIp, lastWeekPoint
+                            "{} There is no historical indicator data that needs to be cleaned up. " +
+                            "(IP: {}, Deadline: {})",
+                            executerName, serverIp, lastWeekPoint
                         );
 
                         return Mono.empty();
                     }
                 })
-                .doOnNext((oneBatchDeleted) -> {
-                    cleanUpResult.getTotalDeleted().addAndGet(oneBatchDeleted);
-                    cleanUpResult.getBatchCount().incrementAndGet();
-                })
-                .then().thenReturn(cleanUpResult)
-                .timeout(Duration.ofMinutes(2L)) // 要是删了 2 分钟都没删完，也是有问题的
+                .doOnNext(cleanUpResult::addDeleted)
+                .ignoreElements().thenReturn(cleanUpResult)
+                .timeout(this.cleanerProps.getBatchDeleteTimeout()) // 要是删了很久都没删完，也是有问题的
                 .doOnSuccess((ignore) -> {
                     log.info(
-                        "Clean up {} rows historical indicator. (IP: {}, Deadline: {})",
+                        "{} Clean up {} rows historical indicator. (IP: {}, Deadline: {})",
+                        executerName,
                         cleanUpResult.getTotalDeleted().get(),
                         serverIp, lastWeekPoint
                     );
 
-                    // 如果总删除数大于 5000 条，可以考虑发送一条邮件给运维
-                    if (cleanUpResult.getTotalDeleted().get() > batchSize) {
+                    // 如果总删除数超过阈值，可以考虑发送一条邮件给运维
+                    if (cleanUpResult.getTotalDeleted().get() > this.cleanerProps.getTotalDeleteLimit()) {
                         this.sendBulkDeletionReport(cleanUpResult);
                     }
                 })
-                .doOnError(
-                    TimeoutException.class,
-                    (timeout) -> {
-                        log.warn(
-                            "Clean up historical indicators timeout, " +
-                            "deleted {} rows so far. (IP: {}, Deadline: {})",
-                            cleanUpResult.getTotalDeleted().get(),
-                            serverIp, lastWeekPoint
-                        );
-
-                        this.sendDeletionTimeoutReport(cleanUpResult);
-                })
-                .doOnError((error) -> {
-                    log.error(
-                        "Clean up historical indicators failed, (IP: {}, Caused by: {})",
-                        serverIp, error.getMessage(), error
-                    );
-
-                    // 在批量删除中若出现错误也必须第一时间通知运维
-                    this.sendCleanUpFailedReport(lastWeekPoint, error);
-                })
-                .doFinally((signal) -> {
-                    this.isRunning.set(false);
-                    log.info("Task cleanIndicatorUtilLastWeek() execute complete! signal type: {}.", signal);
-                })
-                // 本次批量删除失败不等于整个定时流失败，
-                // 需要返回 Mono.empty() 确保流不中断
-                .onErrorResume((error) -> Mono.empty());
-        });
-    }
-
-    /**
-     * 清理上一个星期之前的本监视数据库下的所有历史指标数据，
-     * 确保数据库中只保留一个星期之内的数据库，维持数据的规模。
-     *（Http 请求手动调用）
-     */
-    public @NotNull Mono<CleanUpResult>
-    cleanIndicatorUtilLastWeekManually()
-    {
-        return
-        Mono.defer(() -> {
-            // 检查本定时任务是否正在被执行，避免并行的调用。
-            if (!this.isRunning.compareAndSet(false, true))
-            {
-                return
-                Mono.error(
-                    new ScheduledTasksException(
-                        "(Http-request) The task cleanIndicatorUtilLastWeekManually() already executing, skip..."
-                    )
-                );
-            }
-
-            final String        serverIp      = this.masterProperties.getHost();
-            final LocalDateTime lastWeekPoint = LocalDateTime.now().minusDays(7L);
-            final LocalDateTime deleteFrom    = DELETE_FROM;
-            final long          batchSize     = 5000L;
-
-            // 初始化一个批量删除结果
-            CleanUpResult cleanUpResult = CleanUpResult.init(serverIp, lastWeekPoint);
-
-            return
-            this.monitorLogRepository
-                .deleteOneBatchIndicator(serverIp, deleteFrom, lastWeekPoint, batchSize)
-                .expand((deleted) -> {
-                    if (deleted > 0)
-                    {
-                        return
-                        this.monitorLogRepository
-                            .deleteOneBatchIndicator(serverIp, deleteFrom, lastWeekPoint, batchSize)
-                            .delayElement(Duration.ofMillis(50L));
-                    }
-                    else
-                    {
-                        log.info(
-                            "(Http-request) There is no historical indicator data that needs to be cleaned up. (IP: {}, Deadline: {})",
-                            serverIp, lastWeekPoint
-                        );
-
-                        return Mono.empty();
-                    }
-                })
-                .doOnNext((oneBatchDeleted) -> {
-                    cleanUpResult.getTotalDeleted().addAndGet(oneBatchDeleted);
-                    cleanUpResult.getBatchCount().incrementAndGet();
-                })
-                .then().thenReturn(cleanUpResult)
-                .timeout(Duration.ofMinutes(2L)) // 要是删了 2 分钟都没删完，也是有问题的
                 .onErrorResume(
                     TimeoutException.class,
-                    (timeout) ->
+                    (timeout) -> {
+                        this.sendDeletionTimeoutReport(cleanUpResult);
+
+                        return
                         Mono.error(
                             new ScheduledTasksException(
-                                String.format(
-                                    "Clean up historical indicators timeout!" +
+                                format(
+                                    "%s Clean up historical indicators timeout!" +
                                     "Delete %d rows so far. (IP: %s, Deadline: %s)",
+                                    executerName,
                                     cleanUpResult.getTotalDeleted().get(),
                                     serverIp, lastWeekPoint
                                 )
                             )
-                        )
-                    )
-                    .onErrorResume((error) ->
-                        Mono.error(
-                            new ScheduledTasksException(
-                                String.format(
-                                    "Clean up historical indicators failed, (IP: %s, Caused by: %s)",
-                                    serverIp, error.getMessage()
-                                )
-                            )
-                        )
-                    )
+                        );
+                    })
+                    .onErrorResume((error) -> {
+                        final String errorMessage
+                            = format(
+                                "%s Clean up historical indicators failed, (IP: %s, Caused by: %s)",
+                                executerName, serverIp, error.getMessage()
+                            );
+
+                        final ScheduledTasksException exception
+                            = new ScheduledTasksException(errorMessage);
+
+                        this.sendCleanUpFailedReport(lastWeekPoint, exception);
+
+                        return Mono.error(exception);
+                    })
                     .doFinally((signal) -> {
                         this.isRunning.set(false);
-                        log.info("(Http-request) Task cleanIndicatorUtilLastWeek() execute complete! signal type: {}.", signal);
+                        log.info(
+                            "{} Task cleanIndicatorUtilLastWeek() execute complete! " +
+                            "signal type: {}.",
+                            executerName, signal
+                        );
                     });
             });
     }
@@ -255,7 +210,7 @@ public class HistoricalIndicatorCleaner
                 清理历史指标数据 %s 条，
                 被检测的数据库服务 IP: [%s]，
                 删除时间点：[%s] 之前的所有数据，
-                执行时间：[%s]
+                执行时间点：[%s]
                 """.formatted(
                     cleanUpResult.getTotalDeleted().get(),
                     cleanUpResult.getServerIp(),
@@ -281,10 +236,10 @@ public class HistoricalIndicatorCleaner
             operationsStaffEmail,
             "【数据库指标监视器】批量删除历史指标数据超时的报告",
             """
-                批量删除历史指标数据超过 5 分钟限制！
+                批量删除历史指标数据超过 2 分钟限制！
                 被检测的数据库服务 IP: [%s]，
                 已经删除时间点：[%s] 之前的 [%d] 条数据，
-                执行时间：[%s]
+                执行时间点：[%s]
                 """.formatted(
                 cleanUpResult.getServerIp(),
                 cleanUpResult.getOneWeekAgo(),
@@ -298,12 +253,16 @@ public class HistoricalIndicatorCleaner
                     "Failed to send bulk deletion timeout report email, Caused by: {}",
                     exception.getMessage(), exception
                 ),
-
             () -> log.info("Send bulk deletion timeout report email successfully!")
         );
     }
 
-    /** 自动清理任务执行失败的时候也要向运维发送邮件。*/
+    /**
+     * 自动清理任务执行失败的时候也要向运维发送邮件。
+     *
+     * @param timePoint 删除时间点
+     * @param cause     造成删除失败的异常
+     */
     private void
     sendCleanUpFailedReport(LocalDateTime timePoint, Throwable cause)
     {
@@ -314,7 +273,7 @@ public class HistoricalIndicatorCleaner
                      被检测的数据库服务 IP: [%s]，
                      删除时间点：[%s] 之前的所有数据，
                      错误原因：%s，
-                     执行时间：[%s]，
+                     执行时间点：[%s]，
                      请检查手动执行清理操作并检查应用状态。
                      """.formatted(
                          this.masterProperties.getHost(),
