@@ -176,7 +176,7 @@ public class RedisConfig
             .setUsername(this.redisProperties.getUsername())
             .setPassword(this.redisProperties.getPassword())
             .setTimeout(3000)
-            .setRetryAttempts(2)
+            .setRetryAttempts(3)
             /*
              * FullJitterDelay（全抖动）
              * 核心思想：“指数退避 + 全抖动”（Exponential Back - off + Full Jitter）。
@@ -191,7 +191,7 @@ public class RedisConfig
             .setSubscriptionConnectionPoolSize(50)
             .setSubscriptionConnectionMinimumIdleSize(10)
             .setKeepAlive(true)
-            .setPingConnectionInterval(30000)   // 30 秒一次心跳检查
+            .setPingConnectionInterval(60000)   // 60 秒一次心跳检查
             .setDnsMonitoringInterval(5000);    // DNS 监控
 
         return

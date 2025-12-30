@@ -39,6 +39,15 @@ import java.util.concurrent.TimeoutException;
 @RequiredArgsConstructor
 public class IndicatorCacher
 {
+    /**
+     * 一个空的超时异常，
+     * 目前在 {@link IndicatorCacher#getIndicatorCacheWithLock(IndicatorKeyNames, Mono, Class)}
+     * 方法复用抛出。
+     */
+    private final static
+    TimeoutException EMPTY_TIMEOUT_EXCEPTION
+        = new TimeoutException();
+
     /** Jackson 对象映射器。*/
     private final ObjectMapper objectMapper;
 
@@ -359,7 +368,7 @@ public class IndicatorCacher
                                    keyNames, waitTime
                                );
 
-                               return Mono.error(new TimeoutException());
+                               return Mono.error(EMPTY_TIMEOUT_EXCEPTION);
                            }
                        },
                         (ignore) ->

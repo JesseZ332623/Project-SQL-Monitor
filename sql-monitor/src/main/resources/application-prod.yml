@@ -78,7 +78,7 @@ app:
     # 缓存操作（读/写）统一超时时间
     cache-operator-timeout: 300ms
     # 获取分布式锁超时时间
-    lock-wait-timeout: 1s
+    lock-wait-timeout: 10s
     # 分布式锁有效期（这里使用看门狗策略）
     lock-lease-time: -1
 
