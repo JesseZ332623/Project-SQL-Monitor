@@ -16,6 +16,8 @@
 
 - [前端数据库指标仪表盘展示模块](https://github.com/JesseZ332623/Project-SQL-Monitor/tree/main/SQL-Monitor-Dashboard)
 
+- [Gatling 负载测试模块](https://github.com/JesseZ332623/Project-SQL-Monitor/tree/main/gatling)
+
 ### [Apache License Version 2.0](https://github.com/JesseZ332623/Project-SQL-Monitor/blob/main/LICENSE)
 
-*Last Update: 2025.12.30*
+*Last Update: 2025.12.31*

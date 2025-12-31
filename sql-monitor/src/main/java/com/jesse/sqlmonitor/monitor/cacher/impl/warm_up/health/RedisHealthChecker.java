@@ -1,6 +1,6 @@
-package com.jesse.sqlmonitor.monitor.cacher.warm_up.health;
+package com.jesse.sqlmonitor.monitor.cacher.impl.warm_up.health;
 
-import com.jesse.sqlmonitor.monitor.cacher.warm_up.CacherWarmUpEventPublisher;
+import com.jesse.sqlmonitor.monitor.cacher.impl.warm_up.CacherWarmUpEventPublisher;
 import com.jesse.sqlmonitor.properties.RedisHealthCheckProperties;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;

@@ -3,7 +3,7 @@ package com.jesse.sqlmonitor.indicator_record.dto;
 import com.jesse.sqlmonitor.constants.QueryOrder;
 import com.jesse.sqlmonitor.indicator_record.entity.IndicatorType;
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
-import com.jesse.sqlmonitor.monitor.cacher.IndicatorCacher;
+import com.jesse.sqlmonitor.monitor.cacher.impl.IndicatorCacherImpl;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
 import lombok.*;
 
@@ -21,7 +21,7 @@ public class FetchIndicatorResult
 {
     /**
      * 指标数据被
-     * {@link IndicatorCacher#sendIndicatorToTaskQueue(ResponseBase, Class)}
+     * {@link IndicatorCacherImpl#sendIndicatorToTaskQueue(ResponseBase, Class)}
      * 发送的那一刻所记录的时间点信息。
      */
     private final LocalDateTime   datetime;
