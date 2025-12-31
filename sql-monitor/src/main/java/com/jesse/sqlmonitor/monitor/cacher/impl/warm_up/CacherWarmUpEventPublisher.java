@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.monitor.cacher.warm_up;
+package com.jesse.sqlmonitor.monitor.cacher.impl.warm_up;
 
 import com.jesse.sqlmonitor.monitor.constants.IndicatorKeyNames;
 import com.jesse.sqlmonitor.response_body.base.ResponseBase;
