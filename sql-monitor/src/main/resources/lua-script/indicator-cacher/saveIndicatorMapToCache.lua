@@ -2,7 +2,7 @@
     更新指标数据至 Redis 缓存。
 
     cacheKey   缓存键名
-    cacheData  缓存数据，最初是 JSON，被解析成一个 table
+    cacheData  缓存数据，最初是 JSON，被 cjson 解析成一个 table
     cacheTTL   缓存有效期，数字类型（单位：毫秒）
 ]]
 
@@ -28,30 +28,33 @@ if cacheTTL < 0 then
 end
 
 local success, err = pcall(
-    function()
-        -- 未来指标数据构成可能会更加复杂，
-        -- 解析后兴许会出现嵌套 table 的情况，需要额外的检查。
-        for field, value in pairs(cacheData) do
-            local valueString
+        function()
+            for field, value in pairs(cacheData) do
+                if type(field) ~= "string" then
+                    error(cjson.encode({
+                        status    = "INVALID_FILED_TYPE",
+                        message   = "Field name must be strings",
+                        timestamp = getTimestamp()
+                    }))
+                end
 
-            -- 如果 value 是 nil 我考虑设 “空” 字段
-            if value == nil then
-                valueString = ""
-            else
-                valueString = cjson.encode(value)
+                -- 如果 value 是 nil 或者空 JSON，我考虑设 “空” 字段
+                local valueString
+                    = (value == nil or value == cjson.null)
+                        and ""
+                        or cjson.encode(value)
+
+                redis.pcall('HSET', cacheKey, field, valueString)
             end
 
-            redis.call('HSET', cacheKey, field, valueString)
+            redis.pcall('PEXPIRE', cacheKey, cacheTTL)
         end
-
-        redis.call('PEXPIRE', cacheKey, cacheTTL)
-    end
 )
 
 if not success then
     return cjson.encode({
         status    = "ERROR",
-        message   = tostring(err),
+        message   = err,
         timestamp = getTimestamp()
     })
 else
