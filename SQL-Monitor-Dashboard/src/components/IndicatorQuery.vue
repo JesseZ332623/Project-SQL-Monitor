@@ -19,7 +19,16 @@
             </div>
             <div class="form-group">
               <label class="form-label">Server IP</label>
-              <input v-model="serverIp" type="text" class="form-control readonly-input" readonly />
+              <div class="input-with-refresh">
+                <input v-model="serverIp" type="text" class="form-control readonly-input" readonly />
+                <button class="btn btn-secondary btn-refresh-ip" @click="refreshServerIp" :disabled="serverIpLoading">
+                  <svg v-if="!serverIpLoading" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path fill-rule="evenodd" d="M8 3a5 5 0 11-4.546 2.914.5.5 0 00-.908-.417A6 6 0 1010.454 3.086a.5.5 0 00.908.417A5 5 0 018 3z" clip-rule="evenodd" />
+                    <path d="M8 2.5a5.5 5.5 0 00-3.473 1.112A.5.5 0 014 3.5v.375a.5.5 0 00.5.5H5v.5a.5.5 0 00.5.5h.5a.5.5 0 00.5-.5V4.375a.5.5 0 00-.5-.5h-.375a.5.5 0 01-.434-.259A5.5 5.5 0 008 2.5z" />
+                  </svg>
+                  <span v-else class="loading-spinner-small"></span>
+                </button>
+              </div>
             </div>
           </div>
           <div class="form-row">
@@ -406,7 +415,14 @@ export default {
         serverIp.value = ''; // 设置为空，这样查询时会提示IP是必需的
       } finally {
         serverIpLoading.value = false;
+        // 服务器IP更新后，保存状态到缓存
+        saveStateToCache();
       }
+    }
+
+    // 刷新服务器IP
+    const refreshServerIp = async () => {
+      await initServerIp();
     }
 
     // 重置表单
@@ -427,10 +443,8 @@ export default {
 
     // 初始化组件时获取服务器IP
     onMounted(() => {
-      // 如果缓存中有数据，不需要重新获取服务器IP
-      if (!cachedData || !cachedData.serverIp) {
-        initServerIp();
-      }
+      // 始终获取最新的服务器IP，覆盖缓存中的IP值
+      initServerIp();
     })
 
     // 在组件卸载时保存状态到缓存
@@ -600,6 +614,7 @@ export default {
       fetchQPSStats,
       resetForm,
       goToPage,
+      refreshServerIp,
       formatBytes: formatUtils.bytes,
     }
   }
@@ -629,6 +644,35 @@ export default {
 .form-control.readonly-input:focus {
   outline: none;
   box-shadow: none;
+}
+
+.input-with-refresh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.input-with-refresh .form-control {
+  flex: 1;
+  margin: 0;
+}
+
+.btn-refresh-ip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  min-width: auto;
+  height: 38px;
+}
+
+.loading-spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-primary);
+  border-top: 2px solid var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .form-row {

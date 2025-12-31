@@ -2,11 +2,12 @@
 
 ## 项目概述
 
-这是一个基于响应式架构的 MySQL 数据库指标监控系统，采用多模块设计。项目主要由三个核心模块组成：
+这是一个基于响应式架构的 MySQL 数据库指标监控系统，采用多模块设计。项目主要由四个核心模块组成：
 
 1. **sql-monitor**：数据库指标监控模块，负责主动监控 MySQL 数据库的各种指标。
 2. **indicator_receiver**：监控指标接收器模块，通过 RabbitMQ 接收指标数据并存储。
 3. **SQL-Monitor-Dashboard**：前端监控仪表盘，使用 Vue.js 和 Chart.js 实现可视化展示。
+4. **gatling**：高并发性能测试模块，用于系统负载测试。
 
 整个系统使用 Spring WebFlux 响应式编程模型，结合 Redis 缓存、RabbitMQ 消息队列和 MySQL 数据库，实现了一个完整的监控解决方案。
 
@@ -17,6 +18,7 @@
 - **消息队列**: RabbitMQ
 - **前端**: Vue 3, Chart.js, Vite, Web Workers
 - **构建工具**: Maven (后端), npm (前端)
+- **测试工具**: Gatling (性能测试)
 - **其他**: Lua 脚本 (用于 Redis 缓存操作), Swagger UI (API 文档), Micrometer (监控指标), Hutool (工具库), Reactive Email Sender (邮件发送)
 
 ## 项目架构
@@ -32,6 +34,7 @@
    - 实现邮件通知功能（配置在 test 环境中）
    - 实现历史数据自动清理功能
    - 实现定期指标报告发送功能
+   - 提供手动执行定时任务的 API 端点
 
 2. **indicator_receiver 模块**:
    - 通过 RabbitMQ 接收来自监控器的指标数据
@@ -48,6 +51,12 @@
    - 实现自动刷新功能，使用 Web Workers 管理定时任务
    - 支持 QPS 统计分析（标准差、平均值、中位数、极值等）
    - 实现本地缓存功能，保存查询参数
+   - 提供手动执行定时任务的界面
+
+4. **gatling 模块**:
+   - 高并发性能测试模块
+   - 使用 Gatling 进行负载测试
+   - 生成性能测试报告和图表
 
 ## 配置文件
 
@@ -59,7 +68,7 @@
 
 - **indicator_receiver**:
   - `application-test.yml`: 测试环境配置，端口 65531
-  - `application-prod.yml`: 生产环境配置（未在当前目录中显示）
+  - `application-prod.yml`: 生产环境配置
 
 ## 构建和运行
 
@@ -78,6 +87,10 @@ mvn spring-boot:run -Pprod  # 使用生产配置
 cd indicator_receiver
 mvn spring-boot:run -Ptest  # 使用测试配置
 mvn spring-boot:run -Pprod  # 使用生产配置
+
+# 运行 Gatling 测试
+cd gatling
+mvn gatling:test
 ```
 
 ### 前端模块 (npm)
@@ -119,6 +132,8 @@ npm run preview  # 预览构建结果
 - **定时清理**: 自动清理超过一周的历史指标数据
 - **定期报告**: 每日发送数据库指标报告邮件
 - **本地缓存**: 前端支持查询参数本地缓存
+- **手动执行定时任务**: 前端提供界面手动执行定时任务
+- **性能测试**: 集成 Gatling 进行负载测试
 
 ## API 端点
 
@@ -129,6 +144,8 @@ npm run preview  # 预览构建结果
 - `/api/sql-monitor/cache-hit-rate` - 获取 InnoDB 缓存命中率
 - `/api/sql-monitor/running-time` - 获取服务器运行时间
 - `/api/sql-monitor/base-address` - 获取服务器基础地址
+- `/api/scheduled-task/indicator-report` - 手动执行指标报告发送任务 (POST)
+- `/api/scheduled-task/historical-indicator` - 手动执行历史指标清理任务 (DELETE)
 
 ### indicator_receiver 模块
 - `/api/indicator/log` - 查询指标日志（支持分页）
@@ -176,16 +193,24 @@ Project-SQL-Monitor/
 │   │   ├── components/    # Vue组件
 │   │   │   ├── IndicatorQuery.vue # 指标查询组件
 │   │   │   ├── NetworkTrafficChart.vue
-│   │   │   └── QPSChart.vue
+│   │   │   ├── QPSChart.vue
+│   │   │   └── ScheduledTasks.vue # 定时任务执行组件
 │   │   ├── services/      # API服务
 │   │   │   ├── indicator-query-api.js
-│   │   │   └── monitor-api.js
+│   │   │   ├── monitor-api.js
+│   │   │   └── scheduled-tasks-api.js
 │   │   ├── utils/         # 工具函数
 │   │   │   └── dataProcessor.js
 │   │   └── workers/       # Web Worker
 │   │       └── refreshWorker.js
 │   ├── package.json
 │   └── vite.config.js
+├── gatling/               # 性能测试模块
+│   ├── pom.xml
+│   ├── documents/
+│   └── src/
+│       ├── main/java/com/jesse/gatling/
+│       └── test/java/com/jesse/gatling/
 ├── ssl/                  # SSL 证书
 ├── documents/            # 项目文档和图片
 └── sql_monitor_logs/     # SQL 监控日志
@@ -229,11 +254,24 @@ Project-SQL-Monitor/
    - 防止数据库数据过度增长
    - 当删除数据量超过阈值时自动发送邮件通知运维人员
    - 包含超时检测和错误处理机制
+   - 提供手动触发清理任务的API和前端界面
 
 2. **定期指标报告发送器**：
    - 每天9点和18点自动发送数据库指标报告邮件
    - 报告内容包括：数据增长量、QPS统计、网络流量、连接使用率等
    - 包含错误处理和邮件发送状态监控
+   - 提供手动触发报告发送任务的API和前端界面
+
+### 手动执行定时任务功能
+- 前端新增 ScheduledTasks.vue 组件，提供手动执行定时任务的界面
+- 支持手动执行指标报告发送任务
+- 支持手动执行历史指标清理任务
+- 提供执行结果反馈和状态显示
+
+### 性能测试功能
+- 集成 Gatling 进行高并发性能测试
+- 生成详细的性能测试报告和图表
+- 包含针对 SQL 监控端点的高负载测试
 
 ### 邮件通知功能
 - 自动发送历史数据清理报告邮件
@@ -251,6 +289,7 @@ Project-SQL-Monitor/
 - Hutool 5.8.41 (工具库)
 - Reactor RabbitMQ 1.5.6 (异步消息处理)
 - SpringDoc OpenAPI 2.8.13 (API文档)
+- Gatling 3.14.9 (性能测试)
 
 ### 前端依赖更新
 - Vue 3.5.22
@@ -265,3 +304,4 @@ Project-SQL-Monitor/
 - 使用 JaCoCo 进行覆盖率分析
 - 包含单元测试和集成测试
 - 包含WebTestClient集成测试，覆盖指标查询和统计功能
+- 包含Gatling性能测试，验证系统在高并发场景下的表现
