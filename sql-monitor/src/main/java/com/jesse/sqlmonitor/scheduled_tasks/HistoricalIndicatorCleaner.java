@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.lang.String.format;
 
-/** 定时清历史指标数据的清理器。*/
+/** 定时历史指标数据清理器。*/
 @Slf4j
 @Component
 @RequiredArgsConstructor

@@ -64,7 +64,6 @@ public class MonitorLogRepositoryImpl implements MonitorLogRepository
                 server_ip = INET_ATON(:serverIP)
                 AND
                 datetime BETWEEN :from AND :to
-            ORDER BY log_id DESC
             LIMIT :batchSize
             """;
 
