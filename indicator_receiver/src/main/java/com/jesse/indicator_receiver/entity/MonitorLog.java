@@ -20,6 +20,9 @@ public class MonitorLog
     @Column("log_id")
     private Long logId;
 
+    @Column("message_id")
+    private String messageId;
+
     @Column("datetime")
     private LocalDateTime datetime;
 
