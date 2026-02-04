@@ -95,11 +95,11 @@ app:
   # 历史指标数据删除任务相关属性
   historical-indicator-cleaner:
     # 总删除条数阈值，超过该阈值要向运维发送邮件
-    total-delete-limit: 10000
+    total-delete-limit: 50000
     # 一个批次的数据条数
-    batch-size: 5000
+    batch-size: 10000
     # 批量删除超时时间段阈值
-    batch-delete-timeout: 2m
+    batch-delete-timeout: 1m
 
 springdoc:
   api-docs:
