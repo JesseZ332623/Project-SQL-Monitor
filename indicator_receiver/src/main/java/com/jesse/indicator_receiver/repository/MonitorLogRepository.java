@@ -1,6 +1,8 @@
 package com.jesse.indicator_receiver.repository;
 
 import com.jesse.indicator_receiver.entity.MonitorLog;
+import io.r2dbc.spi.Result;
+import io.r2dbc.spi.Statement;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -8,9 +10,9 @@ import org.springframework.data.r2dbc.repository.R2dbcRepository;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.reactive.TransactionalOperator;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /** 监控日志实体仓储类。*/
@@ -55,44 +57,53 @@ public class MonitorLogRepository
         // 这里我摒弃原先的逐条插入的策略，
         // 直接一口气构造出完整的批量插入 SQL 然后一并发送给数据库
         // 避免频繁的网络往返。
-        final StringBuilder insertSQL
-            = new StringBuilder(
-                  """
-                  INSERT INTO
-                      monitor_log(log_id, datetime, indicator, server_ip, indicator_type)
-                  VALUES
-                  """
-            );
-
-        List<Object> bindValues = new ArrayList<>();
-
-        for (int index = 0; index < logs.size(); ++index)
-        {
-            if (index > 0) { insertSQL.append(", "); }
-
-            insertSQL.append("(?, ?, ?, ?, ?)");
-
-            MonitorLog log = logs.get(index);
-
-            bindValues.add(log.getLogId());
-            bindValues.add(log.getDatetime());
-            bindValues.add(log.getIndicator());
-            bindValues.add(log.getServerIP());
-            bindValues.add(log.getIndicatorType().name());
-        }
-
-        DatabaseClient.GenericExecuteSpec spec
-            = this.databaseClient.sql(insertSQL.toString());
-
-        for (int index = 0; index < bindValues.size(); ++index) {
-            spec = spec.bind(index, bindValues.get(index));
-        }
-
         return
-        this.transactionalOperator
-            .transactional(spec.fetch().rowsUpdated())
-            .doOnSuccess((updatedRows) ->
-                log.info("Successfully insert {} rows of monitor log.", updatedRows))
+        Mono.from(
+            this.databaseClient
+                .inConnection((connection) -> {
+                    final Statement statement
+                        = connection.createStatement("""
+                            INSERT IGNORE INTO
+                                monitor_log(log_id, message_id, datetime, indicator, server_ip, indicator_type)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """);
+
+                    boolean isFirst = true;
+
+                    for (MonitorLog monitorLog : logs)
+                    {
+                        if (!isFirst) {
+                            statement.add();
+                        }
+
+                        isFirst = false;
+
+                        statement.bind(0, monitorLog.getLogId())
+                                 .bind(1, monitorLog.getMessageId())
+                                 .bind(2, monitorLog.getDatetime())
+                                 .bind(3, monitorLog.getIndicator())
+                                 .bind(4, monitorLog.getServerIP())
+                                 .bind(5, monitorLog.getIndicatorType().name());
+                    }
+
+                    return
+                    Flux.from(statement.execute())
+                        .flatMap(Result::getRowsUpdated)
+                        .reduce(0L, Long::sum);
+                }).as(this.transactionalOperator::transactional))
+            .doOnNext((updatedRows) -> {
+                if (updatedRows < logs.size())
+                {
+                    log.warn(
+                        "Batch insert: expected {}, " +
+                        "but only {} rows inserted (duplicates ignored).",
+                        logs.size(), updatedRows
+                    );
+                }
+                else {
+                    log.info("Successfully insert {} rows of monitor log.", updatedRows);
+                }
+            })
             .doOnError((error) ->
                 log.error(
                     "Batch insert monitor log failed, roll back. Caused by: {}",

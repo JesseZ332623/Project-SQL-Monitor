@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class SentIndicator<T extends ResponseBase<T>>
     extends ResponseBase<T>
 {
+    private String        messageId;
     private LocalDateTime localDateTime;
     private String        address;
     private T             indicator;

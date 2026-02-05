@@ -12,6 +12,10 @@
                     source="logging.file.path"
                     defaultValue="./indicator_receiver_logs"/>
 
+    <springProperty scope="context"
+                    name="SERVICE_PORT"
+                    source="server.port"/>
+
     <!-- ========== 公共 Appender（所有环境都会定义） ========== -->
 
     <!-- ERROR 级别 -->
@@ -51,7 +55,7 @@
           <cleanHistoryOnStart> 标签表示在应用启动时自动清理过期的归档
     -->
     <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_DIR}/error.log</file>
+        <file>${LOG_DIR}/${SERVICE_PORT}/error.log</file>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>ERROR</level>
             <onMatch>ACCEPT</onMatch>
@@ -70,7 +74,7 @@
 
     <!-- WARN 级别 -->
     <appender name="WARN_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_DIR}/warn.log</file>
+        <file>${LOG_DIR}/${SERVICE_PORT}/warn.log</file>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>WARN</level>
             <onMatch>ACCEPT</onMatch>
@@ -89,7 +93,7 @@
 
     <!-- INFO 级别 -->
     <appender name="INFO_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${LOG_DIR}/info.log</file>
+        <file>${LOG_DIR}/${SERVICE_PORT}/info.log</file>
         <filter class="ch.qos.logback.classic.filter.LevelFilter">
             <level>INFO</level>
             <onMatch>ACCEPT</onMatch>
@@ -111,7 +115,7 @@
     <springProfile name="dev,test">
         <!-- DEBUG 级别（仅开发用） -->
         <appender name="DEBUG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>${LOG_DIR}/debug.log</file>
+            <file>${LOG_DIR}/${SERVICE_PORT}/debug.log</file>
             <filter class="ch.qos.logback.classic.filter.LevelFilter">
                 <level>DEBUG</level>
                 <onMatch>ACCEPT</onMatch>
