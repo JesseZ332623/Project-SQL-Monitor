@@ -14,6 +14,9 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "app.indicator-receiver")
 public class IndicatorReceiverProperties
 {
+    /** 单个消费者最多暂存的未确认消息数量。*/
+    private int prefetchCount;
+
     /** 指标数据缓存数量。*/
     private int bufferSize;
 
