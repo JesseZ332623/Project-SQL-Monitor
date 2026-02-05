@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /** 监控日志实体仓储类集成测试。*/
@@ -81,6 +82,7 @@ public class MonitorLogRepositoryTest
                 MonitorLog monitorLog
                     = MonitorLog.builder()
                         .logId(IdUtil.getSnowflakeNextId())
+                        .messageId(UUID.randomUUID().toString())
                         .datetime(LocalDateTime.now())
                         .serverIP(RandomUtil.randomLong(3332702476L, 3332705476L))
                         .indicator(
