@@ -19,14 +19,13 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.AcknowledgableDelivery;
+import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.Receiver;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -108,17 +107,18 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
     private @NotNull Tuple2<List<MonitorLog>, List<Delivery>>
     parseDeliveries(@NotNull List<AcknowledgableDelivery> deliveries)
     {
-        List<MonitorLog> monitorLogs          = new ArrayList<>();
-        List<Delivery>   successfulDeliveries = new ArrayList<>();
+        final List<MonitorLog> monitorLogs          = new ArrayList<>();
+        final List<Delivery>   successfulDeliveries = new ArrayList<>();
+
 
         deliveries.forEach((delivery) -> {
 
             // 提取消息载荷
-            String sentIndicator
+            final String sentIndicator
                 = new String(delivery.getBody(), StandardCharsets.UTF_8);
 
-            SentIndicator<?> sentIndicatorInstance;
-            String indicatorJSON;
+            final SentIndicator<?> sentIndicatorInstance;
+            final String indicatorJSON;
 
             try
             {
@@ -181,6 +181,7 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
                 MonitorLog monitorLog
                     = MonitorLog.builder()
                         .logId(IdUtil.getSnowflakeNextId())
+                        .messageId(sentIndicatorInstance.getMessageId())
                         .datetime(sentIndicatorInstance.getLocalDateTime())
                         .serverIP(IPv4Converter.ipToLong(ipaddress))
                         .indicator(indicatorJSON)
@@ -301,9 +302,12 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
     @Override
     public Mono<Void> receiveIndicator()
     {
+        final ConsumeOptions consumeOptions
+            = new ConsumeOptions().qos(this.properties.getPrefetchCount());
+
         return
         this.receiver
-            .consumeManualAck(QUEUE_NAME)
+            .consumeManualAck(QUEUE_NAME, consumeOptions)
             .bufferTimeout(this.properties.getBufferSize(), this.properties.getBufferTimeout())
             .map(this::parseDeliveries)
             .flatMap(this::batchInsertThenACK)
