@@ -32,6 +32,7 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 /** 指标接收器 {@link IndicatorReceiverImpl} 单元测试类。*/
 @Slf4j
@@ -82,15 +83,50 @@ class IndicatorReceiverUnitTests
     /** 携带非法 IPv4 地址的指标数据 JSON。*/
     private String invalidIPv4SentIndicatorJSON;
 
+    /** 临时使用的对象映射器。*/
+    private final static
+    ObjectMapper OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
+
     /** 在每个测试方法开始前，填充测试数据。*/
     @BeforeEach
-    void setUpTestData()
+    void setUpTestData() throws JsonProcessingException
     {
-        this.validSentIndicatorJSON   = "{\"type\":\"SentIndicator\",\"localDateTime\":\"2025-11-20T11:18:55.2319387\",\"address\":\"192.168.1.2\",\"indicator\":{\"type\":\"connectionUsage\",\"maxConnections\":1000,\"currentConnections\":500,\"connectUsagePercent\":50.0}}";
+        this.validSentIndicatorJSON = OBJECT_MAPPER.writeValueAsString(
+            new SentIndicator<>(
+                UUID.randomUUID().toString(),
+                LocalDateTime.parse("2025-11-20T11:18:55.2319387"),
+                "192.168.1.2",
+                ConnectionUsage.builder()
+                    .maxConnections(1000)
+                    .currentConnections(500)
+                    .connectUsagePercent(50.00)
+                    .build()
+            )
+        );
+
+        this.nullSentIndicatorJSON = OBJECT_MAPPER.writeValueAsString(
+            new SentIndicator<>(
+                UUID.randomUUID().toString(),
+                LocalDateTime.parse("2025-11-20T11:18:55.2319387"),
+                "192.168.1.2",
+                null
+            )
+        );
+
+        this.invalidIPv4SentIndicatorJSON = OBJECT_MAPPER.writeValueAsString(
+            new SentIndicator<>(
+                UUID.randomUUID().toString(),
+                LocalDateTime.parse("2025-11-20T11:18:55.2319387"),
+                "aaa.bbb.ccc.ddd",
+                ConnectionUsage.builder()
+                    .maxConnections(1000)
+                    .currentConnections(500)
+                    .connectUsagePercent(50.00)
+                    .build()
+            )
+        );
+
         this.invalidSentIndicatorJSON = "{...INVALID JSON HERE...}";
-        this.nullSentIndicatorJSON    = "{\"type\":\"SentIndicator\",\"localDateTime\":\"2025-11-20T10:46:35.0747631\",\"address\":\"192.168.1.2\",\"indicator\": null}";
-        this.invalidIPv4SentIndicatorJSON
-            = "{\"type\":\"SentIndicator\",\"localDateTime\":\"2025-11-20T11:18:55.2319387\",\"address\":\"aaa.bbb.ccc.ddd\",\"indicator\":{\"type\":\"connectionUsage\",\"maxConnections\":1000,\"currentConnections\":500,\"connectUsagePercent\":50.0}}";
 
         this.validDelivery           = this.createMockDelivery(this.validSentIndicatorJSON);
         this.invalidDelivery         = this.createMockDelivery(this.invalidSentIndicatorJSON);
@@ -126,6 +162,7 @@ class IndicatorReceiverUnitTests
         // 构建一个测试用指标数据
         SentIndicator<ConnectionUsage>
             sentIndicator = new SentIndicator<>(
+                UUID.randomUUID().toString(),
                 LocalDateTime.now(),
                 "192.168.1.2",
                 ConnectionUsage.builder()
@@ -212,12 +249,13 @@ class IndicatorReceiverUnitTests
     @Test
     void parseDeliveriesShouldRejectToDLQWhenNullIndicatorJSON() throws Exception
     {
-        SentIndicator<ConnectionUsage>
-            withNullIndicator = new SentIndicator<>(
+        SentIndicator<ConnectionUsage> withNullIndicator
+            = new SentIndicator<>(
+                UUID.randomUUID().toString(),
                 LocalDateTime.now(),
-            "192.1681.1.2",
-            null
-        );
+                "192.1681.1.2",
+                null
+            );
 
         Mockito.when(
                 this.objectMapper
@@ -245,15 +283,16 @@ class IndicatorReceiverUnitTests
     @Test
     void parseDeliveriesShouldRejectToDLQWhenInvalidIPv4IndicatorJSON() throws Exception
     {
-        SentIndicator<ConnectionUsage>
-            withInvalidIPIndicator = new SentIndicator<>(
-            LocalDateTime.now(),
-            "aaa.bbb.ccc.ddd",
-            ConnectionUsage.builder()
-                .maxConnections(1000)
-                .currentConnections(500)
-                .connectUsagePercent(50.00)
-                .build()
+        SentIndicator<ConnectionUsage> withInvalidIPIndicator
+            = new SentIndicator<>(
+                UUID.randomUUID().toString(),
+                LocalDateTime.now(),
+                "aaa.bbb.ccc.ddd",
+                ConnectionUsage.builder()
+                    .maxConnections(1000)
+                    .currentConnections(500)
+                    .connectUsagePercent(50.00)
+                    .build()
         );
 
         Mockito.when(
