@@ -18,6 +18,14 @@ public class LuaOperatorResult
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final String message;
 
+    /**
+     * Lua 脚本读取的数据
+     *（JSON 字符串形式，应用层要自行完成序列化，可以为 null）
+     */
+    @Nullable
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final String data;
+
     /** Lua 脚本执行完成时的时间戳。*/
     private final long timestamp;
 }
