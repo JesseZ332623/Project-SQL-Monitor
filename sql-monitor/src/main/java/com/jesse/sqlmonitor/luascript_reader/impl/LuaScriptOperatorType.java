@@ -14,6 +14,9 @@ public enum LuaScriptOperatorType
     /** 缓存操作 Lua 脚本。*/
     INDICATOR_CACHER("indicator-cacher"),
 
+    /** 服务实例 Worker ID 操作脚本。*/
+    WORKER_ID_ALLOC("worker-id-allocator"),
+
     /** 其他 Lua 脚本。*/
     OTHERS("others");
 
