@@ -9,17 +9,23 @@ import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 
 import static java.lang.String.format;
 
@@ -33,11 +39,85 @@ final public class LuaScriptReaderImpl implements LuaScriptReader
     @Value("${app.lua-root-classpath:lua-script}")
     private String LUA_SCRIPT_ROOT_CLASSPATH;
 
+    /** 合法的 Lua 脚本名构成。*/
+    private static final
+    Pattern LEGAL_SCRIPT_NAME = Pattern.compile("[a-zA-Z0-9_.-]+");
+
     /** Lua 脚本缓存：operatorType -> (scriptName -> script) */
     private final ConcurrentMap<
         LuaScriptOperatorType,
         ConcurrentMap<String, DefaultRedisScript<LuaOperatorResult>>>
         scriptCache = new ConcurrentHashMap<>();
+
+    /** 严格验证 Lua 脚本名和脚本路径。*/
+    private @NonNull String
+    validateClasspath(LuaScriptOperatorType operatorType, @NonNull String luaScriptName)
+    {
+        if (!luaScriptName.endsWith(".lua")) {
+            luaScriptName = luaScriptName + ".lua";
+        }
+
+        if (!LEGAL_SCRIPT_NAME.matcher(luaScriptName).matches())
+        {
+            throw new
+            LuaScriptSecurityException(
+                format("Lua script name: %s contains illegal character!", luaScriptName),
+                luaScriptName
+            );
+        }
+
+        // 拼接 Lua 脚本的 classpath，
+        // 格式：lua-script/{operator-type}/{script-name.lua}
+        final String fullPath
+            = LUA_SCRIPT_ROOT_CLASSPATH        +
+              "/" + operatorType.getTypeName() +
+              "/" + luaScriptName;
+
+        final String[] segments   = fullPath.split("/");
+        final Deque<String> stack = new ArrayDeque<>();
+
+        for (String segment : segments)
+        {
+            // 跳过空和 '.' 路径段
+            if (segment.isEmpty() || ".".equals(segment)) {
+                continue;
+            }
+
+            // 剔除路径中间的 '..'
+            // 以及绝对不允许路径以 '..' 开头
+            if ("..".equals(segment))
+            {
+                if (!stack.isEmpty()) {
+                    stack.removeLast();
+                }
+                else
+                {
+                    throw new
+                    LuaScriptSecurityException(
+                        "Lua script path not allowed start with '..'",
+                        fullPath
+                    );
+                }
+            }
+            else {
+                stack.add(segment);
+            }
+        }
+
+        // 构造出最终的合法路径
+        final String finalPath = String.join("/", stack);
+
+        if (!finalPath.startsWith(LUA_SCRIPT_ROOT_CLASSPATH))
+        {
+            throw new
+                LuaScriptSecurityException(
+                format("Lua script path escapes the root directory: %s", LUA_SCRIPT_ROOT_CLASSPATH),
+                finalPath
+            );
+        }
+
+        return finalPath;
+    }
 
     /** 从 classpath 中加载脚本。*/
     @Contract("_, _ -> new")
@@ -45,38 +125,23 @@ final public class LuaScriptReaderImpl implements LuaScriptReader
     DefaultRedisScript<LuaOperatorResult>
     loadFromClassPath(@NotNull LuaScriptOperatorType operatorType, String luaScriptName) throws IOException
     {
-        // 拼接 Lua 脚本的 classpath，
-        // 格式：lua-script/{operator-type}/{script-name.lua}
-        final String scriptClasspathStr
-            = LUA_SCRIPT_ROOT_CLASSPATH        +
-              "/" + operatorType.getTypeName() +
-              "/" + luaScriptName;
+        final String scriptClasspath
+            = this.validateClasspath(operatorType, luaScriptName);
 
-        if (scriptClasspathStr.startsWith(LUA_SCRIPT_ROOT_CLASSPATH + "/"))
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(scriptClasspath))
         {
-            try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(scriptClasspathStr))
+            if (Objects.isNull(inputStream))
             {
-                if (Objects.isNull(inputStream))
-                {
-                    throw new
-                    LuaScriptNotFound(
-                        format("Lua script: %s not found!", scriptClasspathStr)
-                    );
-                }
-
-                return new
-                DefaultRedisScript<>(
-                    new String(inputStream.readAllBytes(), StandardCharsets.UTF_8),
-                    LuaOperatorResult.class
+                throw new
+                LuaScriptNotFound(
+                    format("Lua script: %s not exist!", scriptClasspath)
                 );
             }
-        }
-        else
-        {
-            throw new
-            LuaScriptSecurityException(
-                format("Illegal Lua script classpath attempt! (%s)", scriptClasspathStr),
-                scriptClasspathStr
+
+            return new
+            DefaultRedisScript<>(
+                new String(inputStream.readAllBytes(), StandardCharsets.UTF_8),
+                LuaOperatorResult.class
             );
         }
     }
@@ -102,7 +167,7 @@ final public class LuaScriptReaderImpl implements LuaScriptReader
      * @return 由 {@link DefaultRedisScript} 包装的，
      *         发布 Lua 脚本执行结果 {@link LuaOperatorResult} 的 {@link Mono}
      */
-    private @NotNull Mono<DefaultRedisScript<LuaOperatorResult>>
+    private @NotNull Mono<RedisScript<LuaOperatorResult>>
     getScriptFromCache(LuaScriptOperatorType operatorType, String luaScriptName)
     {
         return
@@ -146,10 +211,31 @@ final public class LuaScriptReaderImpl implements LuaScriptReader
      *         发布 Lua 脚本执行结果 {@link LuaOperatorResult} 的 {@link Mono}
      */
     @Override
-    public @NotNull Mono<DefaultRedisScript<LuaOperatorResult>>
+    public @NotNull Mono<RedisScript<LuaOperatorResult>>
     read(LuaScriptOperatorType operatorType, String luaScriptName)
     {
         return
         this.getScriptFromCache(operatorType, luaScriptName);
+    }
+
+    /** 清理所有缓存的 Lua 脚本。*/
+    @Override
+    public Mono<Integer> cleanCache()
+    {
+        return
+        Mono.fromCallable(() -> {
+            final int scripts
+                = this.scriptCache.values().stream()
+                      .mapToInt(Map::size)
+                      .sum();
+
+            log.info(
+                "Clear cache of lua script complete! " +
+                "a total {} script instances were cleared.", scripts
+            );
+
+            return scripts;
+        })
+        .doFinally((ignore) -> this.scriptCache.clear());
     }
 }
