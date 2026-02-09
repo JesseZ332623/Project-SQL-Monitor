@@ -136,6 +136,7 @@ public class SnowFlakeWorkerIdAllocator implements SmartLifecycle
                         })
                         .retryWhen(
                             Retry.backoff(this.properties.getMaxRenewRetries(), this.properties.getBackoffStart())
+                                 .transientErrors(true)
                                  .filter((exception) ->
                                      exception instanceof LuaScriptExecuteFailed)
                                  .doBeforeRetry((signal) ->
