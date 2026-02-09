@@ -65,6 +65,15 @@ app:
           auth: true
           connectiontimeout: 5000
 
+  # Snowflake Worker ID 分配器属性配置
+  snow-worker-id-alloc:
+    lock-key-prefix: "snowflake:wid:lock:"
+    acquire-timeout: 15s
+    lease: 60s
+    renew-interval: 20s
+    max-renew-retries: 5
+    backoff-start: 1s
+
   redis:
     host: localhost
     port: 6379

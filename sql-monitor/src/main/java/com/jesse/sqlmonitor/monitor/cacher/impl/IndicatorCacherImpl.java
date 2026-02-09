@@ -1,7 +1,7 @@
 package com.jesse.sqlmonitor.monitor.cacher.impl;
 
-import cn.hutool.core.util.IdUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jesse.sqlmonitor.config.snowflakeworker.SnowFlakeWorkerIdAllocator;
 import com.jesse.sqlmonitor.indicator_record.service.IndicatorSender;
 import com.jesse.sqlmonitor.luascript_reader.LuaScriptReader;
 import com.jesse.sqlmonitor.luascript_reader.impl.LuaOperatorResult;
@@ -83,6 +83,10 @@ public class IndicatorCacherImpl implements IndicatorCacher
     /** Redis 健康状态检查器。*/
     private final
     RedisHealthChecker redisHealthChecker;
+
+    /** Snowflake Worker ID 分配器。*/
+    private final
+    SnowFlakeWorkerIdAllocator workerIdAllocator;
 
     /** 获取主数据的 IP + PORT 字符串。*/
     private @NotNull String
@@ -312,12 +316,11 @@ public class IndicatorCacherImpl implements IndicatorCacher
                               .getLock(this.getLockKey(keyNames));
                     // 获取线程号
                     //（响应式环境下线程号不可靠，这里使用雪花算法生成的 ID 在上下文传递）
-                    final long threadId  = IdUtil.getSnowflakeNextId();
+                    final long threadId  = this.workerIdAllocator.nextId();
                     final long waitTime  = this.redisCacheProperties
                                                .getLockWaitTimeout().toSeconds();
                     final long leaseTime = this.redisCacheProperties
                                                .getLockLeaseTime();
-
                     return
                     Mono.usingWhen(
                         lock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS, threadId),
