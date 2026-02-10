@@ -18,7 +18,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
-/** R2DBC 从数据库配置类。*/
+/** R2DBC 从数据库配置类。（存储指标数据的数据库）*/
 @Configuration
 @RequiredArgsConstructor
 public class R2dbcSlaverConfiguration
@@ -35,7 +35,10 @@ public class R2dbcSlaverConfiguration
                 "&allowPublicKeyRetrieval=true" +
                 "&useUnicode=true"              +
                 "&characterEncoding=UTF8"       +
-                "&sslMode=preferred",
+                "&sslMode=preferred"            +
+                "&connectTimeout=PT10S"         +
+                "&socketTimeout=PT30S"          +
+                "&tcpKeepAlive=true",
                 slaverProperties.getUser(),
                 URLEncoder.encode(slaverProperties.getPassword(), StandardCharsets.UTF_8),
                 slaverProperties.getHost(),
@@ -43,22 +46,25 @@ public class R2dbcSlaverConfiguration
                 slaverProperties.getDefaultSchema()
         );
 
-        ConnectionFactory connectionFactory = ConnectionFactories.get(coonectionURL);
+        final ConnectionFactory connectionFactory = ConnectionFactories.get(coonectionURL);
 
         // 配置连接池
-        ConnectionPoolConfiguration poolConfiguration
+        final ConnectionPoolConfiguration poolConfiguration
             = ConnectionPoolConfiguration.builder()
+                .name("sql-monitor-r2dbc-slaver-pool")   // 连接池名
                 .connectionFactory(connectionFactory)
                 .validationQuery("SELECT 1")             // 连接验证查询语句
                 .validationDepth(ValidationDepth.REMOTE) // 连接验证深度（远程）
-                .initialSize(0)                          // 初始连接池大小
+                .initialSize(5)                          // 初始连接池大小
+                .minIdle(2)                              // 最低闲置连接数 (r2dbc-pool 0.9+)
                 .maxSize(15)                             // 最大连接池大小
-                .backgroundEvictionInterval(Duration.ofMinutes(1L)) // 定期验证限制连接间隔
-                .maxIdleTime(Duration.ofMinutes(30))                // 连接最大闲置时间
-                .maxLifeTime(Duration.ofHours(1L))                  // 连接最大存活时间
-                .maxAcquireTime(Duration.ofSeconds(30L))            // 获取连接期限时间
-                .acquireRetry(3)                      // 获取连接失败最多重试次数
+                .backgroundEvictionInterval(Duration.ofSeconds(30L)) // 失效连接检查间隔
+                .maxIdleTime(Duration.ofMinutes(5L))                 // 连接最大闲置时间
+                .maxLifeTime(Duration.ofMinutes(30L))                // 连接最大存活时间
+                .maxAcquireTime(Duration.ofSeconds(10L))             // 获取连接期限时间
+                .acquireRetry(5)                       // 获取连接失败最多重试次数
                 .maxCreateConnectionTime(Duration.ofSeconds(10L))   // 建立单个连接期限时间
+                .registerJmx(true)                                  // 将本连接池注册到 JMX，方便观察调试
                 .build();
 
         return new ConnectionPool(poolConfiguration);
