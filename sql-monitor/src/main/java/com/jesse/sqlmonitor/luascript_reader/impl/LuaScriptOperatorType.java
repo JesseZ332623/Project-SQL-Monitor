@@ -17,6 +17,9 @@ public enum LuaScriptOperatorType
     /** 服务实例 Worker ID 操作脚本。*/
     WORKER_ID_ALLOC("worker-id-allocator"),
 
+    /** 邮件发送相关脚本。*/
+    EMAIL_SEND("email-send"),
+
     /** 其他 Lua 脚本。*/
     OTHERS("others");
 
