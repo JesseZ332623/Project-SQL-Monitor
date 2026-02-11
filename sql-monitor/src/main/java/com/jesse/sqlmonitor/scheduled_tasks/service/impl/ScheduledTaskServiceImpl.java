@@ -2,7 +2,7 @@ package com.jesse.sqlmonitor.scheduled_tasks.service.impl;
 
 import com.jesse.sqlmonitor.scheduled_tasks.HistoricalIndicatorCleaner;
 import com.jesse.sqlmonitor.scheduled_tasks.IntervalIndicatorReporter;
-import com.jesse.sqlmonitor.scheduled_tasks.constants.TaskExecuter;
+import com.jesse.sqlmonitor.scheduled_tasks.constants.TaskExecutor;
 import com.jesse.sqlmonitor.scheduled_tasks.exception.ScheduledTasksException;
 import com.jesse.sqlmonitor.scheduled_tasks.service.ScheduledTaskService;
 import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
@@ -36,7 +36,7 @@ public class ScheduledTaskServiceImpl implements ScheduledTaskService
     {
         return
         this.historicalIndicatorCleaner
-            .cleanIndicatorUntilLastWeek(TaskExecuter.HTTP_REQUEST)
+            .cleanIndicatorUntilLastWeek(TaskExecutor.HTTP_REQUEST)
             .subscribeOn(Schedulers.boundedElastic())
             .flatMap((cleanUpRes) ->
                 ReactiveResponseBuilder.OK(
@@ -57,7 +57,7 @@ public class ScheduledTaskServiceImpl implements ScheduledTaskService
     {
         return
         this.intervalIndicatorReporter
-            .sendIntervalIndicatorReport(TaskExecuter.HTTP_REQUEST)
+            .sendIntervalIndicatorReport(TaskExecutor.HTTP_REQUEST)
             .subscribeOn(Schedulers.boundedElastic())
             .then(
                 ReactiveResponseBuilder.OK(
