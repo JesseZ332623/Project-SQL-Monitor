@@ -20,4 +20,4 @@
 
 ### [Apache License Version 2.0](https://github.com/JesseZ332623/Project-SQL-Monitor/blob/main/LICENSE)
 
-*Last Update: 2026.01.05*
+*Last Update: 2026.02.11*
