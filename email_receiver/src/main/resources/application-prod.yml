@@ -1,0 +1,88 @@
+server:
+  address: 0.0.0.0
+  port: 37645
+  shutdown: graceful
+
+  ssl:
+    enabled: true
+    key-store: classpath:sslkey.p12
+    key-store-password: 1234567890
+    keyStoreType: PKCS12
+    keyAlias: sshkeys
+
+app:
+  rabbitmq:
+    host: localhost
+    port: 5672
+    user: jesse
+    password: 1234567890
+    virtualhost: /
+    connect-timeout: 30000
+
+  r2dbc:
+    slaver: # 记录监测数据的数据库服务器
+      host: localhost
+      port: 3306
+      user: Jesse_EC233
+      password: 3191955858_EC
+      default-schema: sql_monitor
+
+  operation-staff:
+    email: zhj3191955858@gmail.com
+
+  email-receiver:
+    consum-queue-name: email-receiver-queue
+    prefetch-count: 128
+    restart-delay: 3s
+    shutdown-delay: 10m
+
+  # 是否启用本邮件发送器依赖？（默认启用）
+  reactive-email-sender:
+    enabled: true
+    smtp-host: smtp.qq.com # 提供 SMTP 服务的运营商主机名
+    smtp-port: 465         # SMTP 端口号
+    backoff:
+      max-attempt-times: 5
+      start-backoff-interval: 2 # 指数退避起始时间间隔（单位：秒，默认为 1）
+      max-backoff-interval: 5   # 指数退避封顶时间间隔（单位：秒，默认为 10）
+    max-attachment-size: 8
+    sender-email: 3191955858@qq.com # 发件人邮箱地址
+    session-props:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+          auth: true
+          connectiontimeout: 5000
+
+spring:
+  application:
+    name: email-receiver
+  main:
+    web-application-type: reactive
+    banner-mode: console
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+logging:
+  file:
+    path: ./email_receiver_logs
+
+springdoc:
+  api-docs:
+    path: /email-receiver-api-docs
+  swagger-ui:
+    path: /email-receiver-api-docs.html
+    enabled: true
+    deep-linking: true
+    display-request-duration: true
+  webjars:
+    prefix: /webjars
+  cache:
+    disabled: true
+  packages-to-scan: com.jesse.email_receiver
+  model-converters:
+    jackson:
+      enabled: true
+  model-and-view-allowed: true
+  default-produces-media-type: application/json
