@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
  * 考虑使用本枚举来表述定时任务的执行者。
  */
 @RequiredArgsConstructor
-public enum TaskExecuter
+public enum TaskExecutor
 {
     /** 由 Corn 表达式驱动，指定时间点自动调用。*/
     AUTO_TASK("(Auto-Task)"),
@@ -17,5 +17,5 @@ public enum TaskExecuter
     HTTP_REQUEST("(Http-Request)");
 
     @Getter
-    private final String executer;
+    private final String executor;
 }

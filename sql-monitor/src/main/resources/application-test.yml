@@ -65,6 +65,12 @@ app:
           auth: true
           connectiontimeout: 5000
 
+  # 邮件发送限流相关属性
+  email-traffic-limiting:
+    burst: 10          # 令牌桶容量
+    fill-duration: 1h  # 填充令牌操作的时间间隔
+    fill-tokens: 10    # 每个 fill-duration 填充的令牌数量
+
   # Snowflake Worker ID 分配器属性配置
   snow-worker-id-alloc:
     lock-key-prefix: "snowflake:wid:lock:"

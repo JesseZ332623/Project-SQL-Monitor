@@ -3,7 +3,7 @@ package com.jesse.sqlmonitor.scheduled_tasks;
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.properties.HistoricalIndicatorCleanerProps;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
-import com.jesse.sqlmonitor.scheduled_tasks.constants.TaskExecuter;
+import com.jesse.sqlmonitor.scheduled_tasks.constants.TaskExecutor;
 import com.jesse.sqlmonitor.scheduled_tasks.dto.CleanUpResult;
 import com.jesse.sqlmonitor.scheduled_tasks.exception.ScheduledTasksException;
 import com.jesse.sqlmonitor.utils.DatetimeFormatter;
@@ -68,7 +68,7 @@ public class HistoricalIndicatorCleaner
     @Scheduled(cron = "0 0 0 ? * SUN")
     public void startTask()
     {
-        this.cleanIndicatorUntilLastWeek(TaskExecuter.AUTO_TASK)
+        this.cleanIndicatorUntilLastWeek(TaskExecutor.AUTO_TASK)
             .subscribe();
     }
 
@@ -81,9 +81,9 @@ public class HistoricalIndicatorCleaner
      * @return 清理任务的执行结果
      */
     public @NotNull Mono<CleanUpResult>
-    cleanIndicatorUntilLastWeek(@NonNull TaskExecuter taskExecuter)
+    cleanIndicatorUntilLastWeek(@NonNull TaskExecutor taskExecuter)
     {
-        final String executerName = taskExecuter.getExecuter();
+        final String executerName = taskExecuter.getExecutor();
 
         return
         Mono.defer(() -> {
@@ -100,7 +100,7 @@ public class HistoricalIndicatorCleaner
 
                 // 如果是自动执行的话，可以吞掉异常，只保留日志即可
                 // 反之如果是 Http 请求手动调用，必须要往上传递异常
-                return (taskExecuter.equals(TaskExecuter.AUTO_TASK))
+                return (taskExecuter.equals(TaskExecutor.AUTO_TASK))
                         ? Mono.empty()
                         : Mono.error(new ScheduledTasksException(concurrencyMessage));
             }

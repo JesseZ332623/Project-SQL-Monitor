@@ -3,14 +3,20 @@ package com.jesse.sqlmonitor.scheduled_tasks;
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.indicator_record.repository.dto.AverageNetworkTraffic;
 import com.jesse.sqlmonitor.indicator_record.repository.dto.IndicatorGrowth;
+import com.jesse.sqlmonitor.luascript_reader.LuaScriptReader;
+import com.jesse.sqlmonitor.luascript_reader.impl.LuaOperatorResult;
+import com.jesse.sqlmonitor.luascript_reader.impl.LuaScriptOperatorType;
 import com.jesse.sqlmonitor.monitor.MySQLIndicatorsRepository;
+import com.jesse.sqlmonitor.properties.EmailTrafficLimitingProps;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
 import com.jesse.sqlmonitor.response_body.ConnectionUsage;
 import com.jesse.sqlmonitor.response_body.qps_statistics.ExtremeQPS;
 import com.jesse.sqlmonitor.response_body.qps_statistics.StandingDeviationQPS;
-import com.jesse.sqlmonitor.scheduled_tasks.constants.TaskExecuter;
+import com.jesse.sqlmonitor.scheduled_tasks.constants.TaskExecutor;
 import com.jesse.sqlmonitor.scheduled_tasks.dto.IndicatorReport;
 import com.jesse.sqlmonitor.scheduled_tasks.exception.ScheduledTasksException;
+import com.jesse.sqlmonitor.scheduled_tasks.exception.SendEmailContentFailed;
+import com.jesse.sqlmonitor.scheduled_tasks.service.EmailContentSender;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
 import io.github.jessez332623.reactive_email_sender.exception.EmailException;
@@ -18,14 +24,15 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.lang.String.format;
@@ -44,15 +51,31 @@ public class IntervalIndicatorReporter
     /** 响应式邮件发送器接口。*/
     private final ReactiveEmailSender emailSender;
 
+    /** 邮件内容 {@link EmailContent} 发送器。*/
+    private final EmailContentSender emailContentSender;
+
+    /** Lua 脚本读取器。*/
+    private final LuaScriptReader luaScriptReader;
+
+    /** 专用于执行 Lua 脚本的 Redis 模板。*/
+    private final
+    ReactiveRedisTemplate<String, LuaOperatorResult> luaScriptTemplate;
+
     /** 被检测数据库属性类。*/
-    private final R2dbcMasterProperties masterProperties;
+    private final
+    R2dbcMasterProperties masterProperties;
+
+    /** 邮件发送限流相关属性。*/
+    private final
+    EmailTrafficLimitingProps emailTrafficLimitingProps;
 
     /** 监控日志实体仓储类。*/
     private final MonitorLogRepository      monitorLogRepository;
     private final MySQLIndicatorsRepository indicatorsRepository;
 
     /** 本定时任务是否正在运行中的标志位。*/
-    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+    private final
+    AtomicBoolean isRunning = new AtomicBoolean(false);
 
     /**
      * 使用 Corn 表达式，
@@ -61,7 +84,7 @@ public class IntervalIndicatorReporter
     @Scheduled(cron = "0 0 9,18 * * ?")
     public void startTask()
     {
-        this.sendIntervalIndicatorReport(TaskExecuter.AUTO_TASK)
+        this.sendIntervalIndicatorReport(TaskExecutor.AUTO_TASK)
             .subscribe();
     }
 
@@ -79,73 +102,170 @@ public class IntervalIndicatorReporter
      *     <li>当前数据库连接使用率</li>
      * </ul>
      *
-     * @param taskExecuter 任务的调用者是？
+     * @param taskExecutor 任务的调用者是？
      */
     public @NotNull Mono<Void>
-    sendIntervalIndicatorReport(@NonNull TaskExecuter taskExecuter)
+    sendIntervalIndicatorReport(@NotNull TaskExecutor taskExecutor)
     {
-        final String executerName = taskExecuter.getExecuter();
+        final String executorName = taskExecutor.getExecutor();
 
         return
-        Mono.defer(() -> {
-            // 检查本定时任务是否正在被执行，避免并行的调用。
-            if (!this.isRunning.compareAndSet(false, true))
-            {
-                final String concurrencyMessage
-                    = format(
-                        "%s The task sendIntervalIndicatorReport() already executing, skip...",
-                        executerName
-                    );
-
-                log.warn(concurrencyMessage);
-
-                // 如果是自动执行的话，可以吞掉异常，只保留日志即可
-                // 反之如果是 Http 请求手动调用，必须要往上传递异常
-                return
-                (taskExecuter.equals(TaskExecuter.AUTO_TASK))
-                    ? Mono.empty()
-                    : Mono.error(new ScheduledTasksException(concurrencyMessage));
-            }
-
-            return
-            this.fetchIndicatorReport()
+        Mono.defer(() ->
+            this.runningCheck(taskExecutor)
+                .then(this.sendTrafficLimiting(taskExecutor))
+                .then(this.fetchIndicatorReport())
                 .flatMap(this::makeIndicatorReportEmail)
-                .flatMap(this.emailSender::sendEmail)
-                .onErrorResume(EmailException.class,
-                    (emailException) ->
-                        Mono.error(
-                            new ScheduledTasksException(
-                                format(
-                                    "%s Send interval indicator report email to operation staff %s failed." +
-                                    "Error Type: [%s]",
-                                    executerName,
-                                    this.operationsStaffEmail,
-                                    emailException.getErrorType().name()
-                                )
-                            )
-                        )
+                .flatMap((emailContent) ->
+                    this.emailContentSender
+                        .sendEmailContent(emailContent)
+                        .onErrorResume(
+                            SendEmailContentFailed.class,
+                            (exception) -> {
+                                log.error("{}", exception.getMessage());
+
+                                return
+                                this.downGradeSend(executorName, emailContent);
+                        })
                 )
-                .onErrorResume((exception) ->
-                    Mono.error(
-                        new ScheduledTasksException(
-                            format(
-                                "%s Send interval indicator report email to operation staff %s failed. " +
-                                "Caused by: %s",
-                                executerName,
-                                this.operationsStaffEmail,
-                                exception.getMessage()
-                            )
-                        )
-                    )
-                )
+                .onErrorResume((exception) -> {
+                    if (exception instanceof ScheduledTasksException) {
+                        return Mono.error(exception);
+                    }
+                    else
+                    {
+                        final String errorMessage
+                            = format(
+                                "%s Send interval indicator report email to operation staff %s failed.",
+                                executorName,
+                                this.operationsStaffEmail
+                            );
+
+                        return Mono.error(
+                            new ScheduledTasksException(errorMessage, exception)
+                        );
+                    }
+                })
                 .doFinally((signal) -> {
                     this.isRunning.set(false);
                     log.info(
                         "{} Task sendIntervalIndicatorReport() execute complete! signal type: {}.",
-                        executerName, signal
+                        executorName, signal
                     );
-                });
-        });
+                })
+        );
+    }
+
+    /** 邮件发送限流键前缀。*/
+    private String trafficLimitKeyPrefix() {
+        return "sql-monitor-mail-rate:"+ this.masterProperties.getHost();
+    }
+
+    /** 检查本定时任务是否正在被执行，避免并行的调用。*/
+    private Mono<Void>
+    runningCheck(@NotNull TaskExecutor taskExecutor)
+    {
+        if (!this.isRunning.compareAndSet(false, true))
+        {
+            final String concurrencyMessage
+                = format(
+                "%s The task sendIntervalIndicatorReport() already executing, skip...",
+                taskExecutor.getExecutor()
+            );
+
+            log.warn(concurrencyMessage);
+
+            // 如果是自动执行的话，可以吞掉异常，只保留日志即可
+            // 反之如果是 Http 请求手动调用，必须要往上传递异常
+            return
+            (taskExecutor.equals(TaskExecutor.AUTO_TASK))
+                ? Mono.empty()
+                : Mono.error(new ScheduledTasksException(concurrencyMessage));
+        }
+
+        return Mono.empty();
+    }
+
+    /**
+     * 当无法将邮件内容发往消息队列时，就直接在这个请求发送邮件
+     *（作为 {@link IntervalIndicatorReporter#sendIntervalIndicatorReport(TaskExecutor)} 的优雅降级策略存在）
+     *
+     * @param executorName 任务的执行者是？
+     * @param emailContent 邮件内容实例
+     *
+     * @throws ScheduledTasksException 连兜底策略都失败了，直接向上传播本异常
+     */
+    private @NotNull Mono<Void>
+    downGradeSend(String executorName, EmailContent emailContent)
+    {
+        return
+        this.emailSender
+            .sendEmail(emailContent)
+            .onErrorResume(EmailException.class,
+                (emailException) -> {
+                final String errorMessage
+                    = format(
+                        "%s Send interval indicator report email to operation staff %s failed." +
+                        "Error Type: [%s]",
+                        executorName,
+                        this.operationsStaffEmail,
+                        emailException.getErrorType().name()
+                    );
+
+                return Mono.error(new ScheduledTasksException(errorMessage));
+            });
+    }
+
+    /**
+     * 采用令牌桶策略对邮件发送进行限流（限流参数通过配置给出）。
+     *
+     * @param executor 任务的执行者是？
+     */
+    private @NotNull Mono<Void>
+    sendTrafficLimiting(@NotNull TaskExecutor executor)
+    {
+        // 定时任务不受限流的约束
+        if (executor.equals(TaskExecutor.AUTO_TASK)) {
+            return Mono.empty();
+        }
+
+        return
+        this.luaScriptReader
+            .read(LuaScriptOperatorType.EMAIL_SEND, "trafficLimiting.lua")
+            .flatMap((script) -> {
+                final String keyPrefix    = this.trafficLimitKeyPrefix();
+                final int    fillTokens   = this.emailTrafficLimitingProps.getFillTokens();
+                final long   fillDuration = this.emailTrafficLimitingProps.getFillDuration().toSeconds();
+                final double rate         = (double) fillTokens / fillDuration;
+                final int    burst        = this.emailTrafficLimitingProps.getBurst();
+
+                return
+                this.luaScriptTemplate
+                    .execute(script, List.of(keyPrefix), rate, burst)
+                    .next()
+                    .flatMap((result) ->
+                        switch (result.getStatus())
+                        {
+                            case "SEND_PASS" -> Mono.empty();
+
+                            case "SEND_REJECT" ->
+                                Mono.error(
+                                    new ScheduledTasksException(
+                                        "The number of attempts has exceeded the limit. Please try again later."
+                                    )
+                                );
+
+                            case "UNKNOWN_ERROR" ->
+                                Mono.error(new ScheduledTasksException(result.getMessage()));
+
+                             // 不可到达的
+                            default ->
+                                Mono.error(
+                                    new IllegalStateException(
+                                        "Unexpected value: " + result.getStatus()
+                                    )
+                                );
+                        });
+            });
     }
 
     /** 收集各种指标，构建一个从今天开始到此刻时间段内的指标报告。*/
@@ -197,12 +317,22 @@ public class IntervalIndicatorReporter
     private @NotNull Mono<EmailContent>
     makeIndicatorReportEmail(@NotNull IndicatorReport report)
     {
+        if (report.getIndicatorGrowth().getGrowthDataPoints() <= 0)
+        {
+            return
+            EmailContent.fromJustText(
+                this.operationsStaffEmail,
+                "【数据库指标监视器】例行数据库指标报告",
+                "今日暂无新指标。。。"
+            );
+        }
+
         return
         EmailContent.fromJustText(
             this.operationsStaffEmail,
             "【数据库指标监视器】例行数据库指标报告",
             """
-            截止 %s，数据库（IP 地址：%s，端口：%s）今日共增长 %d 条指标数据，
+            从今天开始截止到 %s，数据库（IP 地址：%s，端口：%s）今日共增长 %d 条指标数据，
             当前 QPS 平均值 = %f
                  QPS 中位数 = %f
                  最大 QPS = %f，最小 QPS = %f，
