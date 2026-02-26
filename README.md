@@ -6,7 +6,13 @@
     </a>
 </p>
 
-![img_2.png](/documents/application-preview.png)
+## 界面
+
+![前端界面](/documents/application-preview.png)
+
+## 架构图
+
+![系统架构图](/documents/architecture_diagram/Project-SQL-Monitor%20架构图.png)
 
 ## 模块速览
 
@@ -20,4 +26,4 @@
 
 ### [Apache License Version 2.0](https://github.com/JesseZ332623/Project-SQL-Monitor/blob/main/LICENSE)
 
-*Last Update: 2026.02.11*
+*Last Update: 2026.02.26*
