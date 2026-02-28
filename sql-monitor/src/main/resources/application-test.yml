@@ -80,6 +80,10 @@ app:
     max-renew-retries: 5
     backoff-start: 1s
 
+  luascript-reader:
+    enabled: true # 是否启用本依赖？（默认启用）
+    script-root-classpath: lua-script # lua 脚本根类路径
+
   redis:
     host: localhost
     port: 6379
@@ -103,9 +107,6 @@ app:
     check-interval: 1s
     # PING 操作的超时时间
     ping-timeout: 1s
-
-  # 项目 Lua 脚本 root classpath
-  lua-root-classpath: lua-script
 
   # 历史指标数据删除任务相关属性
   historical-indicator-cleaner:

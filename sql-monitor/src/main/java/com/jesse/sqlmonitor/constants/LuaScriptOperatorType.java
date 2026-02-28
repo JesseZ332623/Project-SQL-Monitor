@@ -1,13 +1,12 @@
-package com.jesse.sqlmonitor.luascript_reader.impl;
+package com.jesse.sqlmonitor.constants;
 
-import lombok.Getter;
+import io.github.jessez332623.reactive_luascript_reader.impl.LuaScriptCatalogue;
 import lombok.RequiredArgsConstructor;
 
 /** 要读取的 Lua 脚本的类型枚举。*/
 @RequiredArgsConstructor
-public enum LuaScriptOperatorType
+public enum LuaScriptOperatorType implements LuaScriptCatalogue
 {
-    // SOME_TYPES("...")
     /** 测试用。*/
     TEST_SCRIPT("test"),
 
@@ -20,9 +19,13 @@ public enum LuaScriptOperatorType
     /** 邮件发送相关脚本。*/
     EMAIL_SEND("email-send"),
 
-    /** 其他 Lua 脚本。*/
+    /** 其他脚本。*/
     OTHERS("others");
 
-    @Getter
-    private final String typeName;
+    private final String catalogue;
+
+    @Override
+    public String getCatalogue() {
+        return this.catalogue;
+    }
 }

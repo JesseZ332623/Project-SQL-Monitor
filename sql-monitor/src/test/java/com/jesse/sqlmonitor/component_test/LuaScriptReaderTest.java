@@ -1,12 +1,12 @@
 package com.jesse.sqlmonitor.component_test;
 
 import cn.hutool.core.util.RandomUtil;
-import com.jesse.sqlmonitor.luascript_reader.LuaScriptReader;
-import com.jesse.sqlmonitor.luascript_reader.impl.LuaOperatorResult;
-import com.jesse.sqlmonitor.luascript_reader.impl.LuaScriptOperatorType;
+import com.jesse.sqlmonitor.constants.LuaScriptOperatorType;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
 import com.jesse.sqlmonitor.properties.RedisCacheProperties;
 import com.jesse.sqlmonitor.utils.PrettyJSONPrinter;
+import io.github.jessez332623.reactive_luascript_reader.LuaScriptReader;
+import io.github.jessez332623.reactive_luascript_reader.impl.LuaOperatorResult;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

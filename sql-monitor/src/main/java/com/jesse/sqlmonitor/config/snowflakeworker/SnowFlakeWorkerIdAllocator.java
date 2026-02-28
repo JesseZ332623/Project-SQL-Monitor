@@ -2,10 +2,10 @@ package com.jesse.sqlmonitor.config.snowflakeworker;
 
 import cn.hutool.core.lang.Snowflake;
 import cn.hutool.core.util.IdUtil;
-import com.jesse.sqlmonitor.luascript_reader.LuaScriptReader;
-import com.jesse.sqlmonitor.luascript_reader.impl.LuaOperatorResult;
-import com.jesse.sqlmonitor.luascript_reader.impl.exception.LuaScriptExecuteFailed;
 import com.jesse.sqlmonitor.properties.SnowFlakeWorkerAllocatorProps;
+import io.github.jessez332623.reactive_luascript_reader.LuaScriptReader;
+import io.github.jessez332623.reactive_luascript_reader.impl.LuaOperatorResult;
+import io.github.jessez332623.reactive_luascript_reader.impl.exception.LuaScriptExecuteFailed;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,11 +29,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.jesse.sqlmonitor.luascript_reader.impl.LuaScriptOperatorType.WORKER_ID_ALLOC;
+import static com.jesse.sqlmonitor.constants.LuaScriptOperatorType.WORKER_ID_ALLOC;
 
 /**
  * Snowflake Worker ID 分配器实现，
- * 在应用启动时基于 Redis 原子抢占 workerId。
+ * 在应用启动时去 Redis 原子抢占 workerId。
  */
 @Slf4j
 @Configuration
