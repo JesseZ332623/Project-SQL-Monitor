@@ -1,8 +1,8 @@
 package com.jesse.sqlmonitor.route.route_function;
 
-import com.jesse.sqlmonitor.luascript_reader.LuaScriptReader;
 import com.jesse.sqlmonitor.route.endpoints_config.LuaScriptReaderEndpoints;
 import com.jesse.sqlmonitor.route.route_function.filter.MonitoringFilter;
+import io.github.jessez332623.reactive_luascript_reader.LuaScriptReader;
 import io.github.jessez332623.reactive_response_builder.ReactiveResponseBuilder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
