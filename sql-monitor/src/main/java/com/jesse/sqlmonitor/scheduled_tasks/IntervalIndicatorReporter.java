@@ -1,11 +1,9 @@
 package com.jesse.sqlmonitor.scheduled_tasks;
 
+import com.jesse.sqlmonitor.constants.LuaScriptOperatorType;
 import com.jesse.sqlmonitor.indicator_record.repository.MonitorLogRepository;
 import com.jesse.sqlmonitor.indicator_record.repository.dto.AverageNetworkTraffic;
 import com.jesse.sqlmonitor.indicator_record.repository.dto.IndicatorGrowth;
-import com.jesse.sqlmonitor.luascript_reader.LuaScriptReader;
-import com.jesse.sqlmonitor.luascript_reader.impl.LuaOperatorResult;
-import com.jesse.sqlmonitor.luascript_reader.impl.LuaScriptOperatorType;
 import com.jesse.sqlmonitor.monitor.MySQLIndicatorsRepository;
 import com.jesse.sqlmonitor.properties.EmailTrafficLimitingProps;
 import com.jesse.sqlmonitor.properties.R2dbcMasterProperties;
@@ -20,6 +18,8 @@ import com.jesse.sqlmonitor.scheduled_tasks.service.EmailContentSender;
 import io.github.jessez332623.reactive_email_sender.ReactiveEmailSender;
 import io.github.jessez332623.reactive_email_sender.dto.EmailContent;
 import io.github.jessez332623.reactive_email_sender.exception.EmailException;
+import io.github.jessez332623.reactive_luascript_reader.LuaScriptReader;
+import io.github.jessez332623.reactive_luascript_reader.impl.LuaOperatorResult;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
