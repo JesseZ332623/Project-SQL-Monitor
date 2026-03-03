@@ -15,7 +15,7 @@ public class ReceiverLifeCycleServiceImpl implements ReceiverLifeCycleService
     private final
     ReceiverLifecycleManager receiverLifecycleManager;
 
-    /** 获取指标数据消费者运行状态。*/
+    /** 手动启动邮件消费者。*/
     @Override
     public Mono<ServerResponse>
     start(ServerRequest request)
@@ -36,7 +36,7 @@ public class ReceiverLifeCycleServiceImpl implements ReceiverLifeCycleService
             );
     }
 
-    /** 手动启动指标数据消费者。*/
+    /** 手动关闭邮件消费者。*/
     @Override
     public Mono<ServerResponse>
     stop(ServerRequest request)
@@ -57,7 +57,7 @@ public class ReceiverLifeCycleServiceImpl implements ReceiverLifeCycleService
             );
     }
 
-    /** 手动关闭指标数据消费者。*/
+    /** 获取邮件消费者运行状态。*/
     @Override
     public Mono<ServerResponse>
     runStatus(ServerRequest request)
