@@ -1,0 +1,67 @@
+server:
+  address: 0.0.0.0
+  port: 34334
+  shutdown: graceful
+
+# 测试环境无需 SSL
+#  ssl:
+#    enabled: true
+#    key-store: classpath:sslkey.p12
+#    key-store-password: 1234567890
+#    keyStoreType: PKCS12
+#    keyAlias: sshkeys
+
+spring:
+  application:
+    name: id-allocator
+  main:
+    web-application-type: reactive
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+app:
+  # Snowflake Worker ID 分配器属性配置
+  snow-worker-id-alloc:
+    lock-key-prefix: "snowflake:wid:lock:"
+    acquire-timeout: 15s
+    lease: 60s
+    renew-interval: 20s
+    max-renew-retries: 5
+    backoff-start: 1s
+
+  # ID 自动给补货器属性配置类
+  id-replenisher:
+    id-list-key: "ids:buffer:global"
+    target-buffer: 2000
+    start-delay: 500ms
+    interval: 10s
+    restart-delay: 3s
+
+  luascript-reader:
+    enabled: true # 是否启用本依赖？（默认启用）
+    script-root-classpath: lua-script # lua 脚本根类路径
+
+  redis:
+    host: localhost
+    port: 6379
+    username: Jesse
+    password: 1234567890
+
+springdoc:
+  api-docs:
+    path: /id-allocator-api-docs
+  swagger-ui:
+    path: /id-allocator-api-docs.html
+    enabled: true
+    deep-linking: true
+    display-request-duration: true
+  webjars:
+    prefix: /webjars
+  cache:
+    disabled: true
+  packages-to-scan: com.jesse.id_allocator
+  model-converters:
+    jackson:
+      enabled: true
+  model-and-view-allowed: true
+  default-produces-media-type: application/json
