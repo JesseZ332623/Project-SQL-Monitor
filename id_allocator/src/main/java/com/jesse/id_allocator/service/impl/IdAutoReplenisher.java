@@ -47,7 +47,7 @@ public class IdAutoReplenisher
 
     /**
      * 每隔指定的时间执行一次 ID 补货操作的响应式流，
-     * {@link ReplenisherLifecycleManagerImpl} 负责管理这个流的生命周期。
+     * {@link ReplenisherLifecycleManager} 负责管理这个流的生命周期。
      */
     public Mono<Void> replenishWithBackpressure()
     {
