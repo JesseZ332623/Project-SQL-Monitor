@@ -179,7 +179,6 @@ public class ReplenisherLifecycleManager
         final Disposable disposable
             = this.idAutoReplenisher
                   .replenishWithBackpressure()
-                  .subscribeOn(Schedulers.boundedElastic())
                   .subscribe(null, errorConsumer, completeConsumer);
 
         this.replenisherDisposable.set(disposable);
