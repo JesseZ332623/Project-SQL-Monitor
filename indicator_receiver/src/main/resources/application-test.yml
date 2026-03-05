@@ -44,6 +44,23 @@ app:
     #（有 CountDownLatch 在，设置一个很长的时间只是一个兜底操作）
     shutdown-delay: 10m
 
+  id-consumer:
+    global-id-key: "ids:buffer:global"
+    blockTimeout: 1s
+    retries: 3
+    start-backoff: 100ms
+    max-backoff: 500ms
+
+  luascript-reader:
+    enabled: true # 是否启用本依赖？（默认启用）
+    script-root-classpath: lua-script # lua 脚本根类路径
+
+  redis:
+    host: localhost
+    port: 6379
+    username: Jesse
+    password: 1234567890
+
 logging:
   file:
     path: ./indicator_receiver_logs
