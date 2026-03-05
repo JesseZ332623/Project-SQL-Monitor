@@ -31,7 +31,7 @@ app:
   # ID 自动给补货器属性配置类
   id-replenisher:
     id-list-key: "ids:buffer:global"
-    target-buffer: 2000
+    target-buffer: 200
     start-delay: 500ms
     interval: 10s
     restart-delay: 3s
