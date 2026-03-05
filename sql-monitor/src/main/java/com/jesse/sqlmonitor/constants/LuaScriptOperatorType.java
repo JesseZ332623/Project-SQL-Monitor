@@ -13,8 +13,8 @@ public enum LuaScriptOperatorType implements LuaScriptCatalogue
     /** 缓存操作 Lua 脚本。*/
     INDICATOR_CACHER("indicator-cacher"),
 
-    /** 服务实例 Worker ID 操作脚本。*/
-    WORKER_ID_ALLOC("worker-id-allocator"),
+    /** 全局 ID 消费相关脚本。*/
+    GLOBAL_ID_CONSUMER("global-id-consumer"),
 
     /** 邮件发送相关脚本。*/
     EMAIL_SEND("email-send"),
