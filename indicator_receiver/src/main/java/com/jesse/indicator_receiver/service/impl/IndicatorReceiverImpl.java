@@ -1,6 +1,5 @@
 package com.jesse.indicator_receiver.service.impl;
 
-import cn.hutool.core.util.IdUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jesse.indicator_receiver.entity.IndicatorType;
@@ -9,14 +8,16 @@ import com.jesse.indicator_receiver.properties.IndicatorReceiverProperties;
 import com.jesse.indicator_receiver.repository.MonitorLogRepository;
 import com.jesse.indicator_receiver.response_body.SentIndicator;
 import com.jesse.indicator_receiver.service.IndicatorReceiver;
+import com.jesse.indicator_receiver.utils.GlobalIdConsumer;
 import com.jesse.indicator_receiver.utils.IPv4Converter;
 import com.jesse.indicator_receiver.utils.exception.InvalidIPv4Exception;
-import com.rabbitmq.client.Delivery;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.ConsumeOptions;
@@ -36,6 +37,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class IndicatorReceiverImpl implements IndicatorReceiver
 {
+    /** 全局 ID 消费器。*/
+    private final GlobalIdConsumer globalIdConsumer;
+
     /** 来自配置文件的指标接收器相关属性。*/
     private final
     IndicatorReceiverProperties properties;
@@ -70,6 +74,14 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
     @Getter
     private final CountDownLatch countDownLatch = new CountDownLatch(1);
 
+    @Getter
+    @AllArgsConstructor
+    private static class MonitorLogAndDelivery
+    {
+        private MonitorLog log;
+        private AcknowledgableDelivery delivery;
+    }
+
     /** 设置是否正在运行的原子标志位。*/
     public void
     setRunningFlag(boolean flag)
@@ -94,6 +106,112 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
         delivery.nack(false, false);
     }
 
+    /** 处理解析载荷的过程中遇到的错误。*/
+    private void
+    handleDeliveryError(AcknowledgableDelivery delivery, Throwable error)
+    {
+        switch (error)
+        {
+            case JsonProcessingException ignored ->
+                this.rejectToDLQ(delivery, "INVALID_JSON");
+
+            case InvalidIPv4Exception ignored ->
+                this.rejectToDLQ(delivery, "INVALID_IPV4_ADDRESS");
+
+            default -> {
+                log.error("Unexpected error processing message, will requeue", error);
+                delivery.nack(false, true);
+            }
+        }
+    }
+
+    private Tuple2<List<MonitorLog>, List<AcknowledgableDelivery>>
+    splitLogsAndDeliveries(List<MonitorLogAndDelivery> pairs)
+    {
+        if (pairs.isEmpty()) {
+            return Tuples.of(List.of(), List.of());
+        }
+
+        final List<MonitorLog> logs = new ArrayList<>(pairs.size());
+        final List<AcknowledgableDelivery> deliveries = new ArrayList<>(pairs.size());
+
+        for (MonitorLogAndDelivery pair : pairs)
+        {
+            logs.add(pair.getLog());
+            deliveries.add(pair.getDelivery());
+        }
+
+        return Tuples.of(logs, deliveries);
+    }
+
+    private Mono<MonitorLogAndDelivery>
+    processSingleDelivery(AcknowledgableDelivery delivery)
+    {
+        return
+        Mono.fromCallable(() -> {
+                // 提取消息载荷
+                final String payload = new String(delivery.getBody(), StandardCharsets.UTF_8);
+                return Tuples.of(payload, delivery);
+            })
+            .flatMap(tuple -> {
+                final String sentIndicatorJson   = tuple.getT1();
+                final AcknowledgableDelivery del = tuple.getT2();
+
+                return
+                Mono.fromCallable(() ->
+                        this.mapper.readValue(sentIndicatorJson, SentIndicator.class))
+                    .filter(sent -> {
+                        if (Objects.isNull(sent.getIndicator()))
+                        {
+                            this.rejectToDLQ(del, "NULL_INDICATOR");
+                            return false;
+                        }
+                        return true;
+                    })
+                    .flatMap(sent -> {
+                        final String indicatorJson;
+                        try {
+                            indicatorJson = mapper.writeValueAsString(sent.getIndicator());
+                        }
+                        catch (JsonProcessingException e) {
+                            return Mono.error(e);
+                        }
+
+                        final IndicatorType type;
+
+                        try {
+                            type = IndicatorType.valueOf(sent.getIndicator().getClass().getSimpleName());
+                        }
+                        catch (IllegalArgumentException e) {
+                            return Mono.error(e);
+                        }
+
+                        final String ipPart = sent.getAddress().split(":")[0];
+                        final long serverIpLong;
+
+                        try {
+                            serverIpLong = IPv4Converter.ipToLong(ipPart);
+                        }
+                        catch (InvalidIPv4Exception e) {
+                            return Mono.error(e);
+                        }
+
+                        return
+                        this.globalIdConsumer.nextId()
+                            .map(id ->
+                                MonitorLog.builder()
+                                    .logId(id)
+                                    .messageId(sent.getMessageId())
+                                    .datetime(sent.getLocalDateTime())
+                                    .serverIP(serverIpLong)
+                                    .indicator(indicatorJson)
+                                    .indicatorType(type)
+                                    .build())
+                            .map(log -> new MonitorLogAndDelivery(log, del));
+                    });
+            });
+    }
+
     /**
      * 解析从 RabbitMQ 队列消费的指标数据，
      * 将其转换成 {@link MonitorLog} 存入列表后返回，
@@ -104,116 +222,25 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
      *
      * @return 由监控指标实体列表和表示有效载荷信息的 Delivery 组成的元组。
      */
-    private @NotNull Tuple2<List<MonitorLog>, List<Delivery>>
+    private @NotNull Mono<Tuple2<List<MonitorLog>, List<AcknowledgableDelivery>>>
     parseDeliveries(@NotNull List<AcknowledgableDelivery> deliveries)
     {
-        final List<MonitorLog> monitorLogs          = new ArrayList<>();
-        final List<Delivery>   successfulDeliveries = new ArrayList<>();
+        if (deliveries.isEmpty()) {
+            return Mono.just(Tuples.of(List.of(), List.of()));
+        }
 
-
-        deliveries.forEach((delivery) -> {
-
-            // 提取消息载荷
-            final String sentIndicator
-                = new String(delivery.getBody(), StandardCharsets.UTF_8);
-
-            final SentIndicator<?> sentIndicatorInstance;
-            final String indicatorJSON;
-
-            try
-            {
-                // 解析从消息队列中读取的 JSON
-                sentIndicatorInstance
-                    = this.mapper.readValue(sentIndicator, SentIndicator.class);
-
-                // 对于消息载荷实例中指标数据为空的情况，不确认且移入死信队列
-                if (Objects.isNull(sentIndicatorInstance.getIndicator()))
-                {
-                    log.warn(
-                        "Received message with null indicator, " +
-                        "message will be discarded: {}", sentIndicator
-                    );
-
-                    this.rejectToDLQ(delivery, "NULL_INDICATOR");
-                    return;
-                }
-
-                // 再将内部的实体信息转化成 JSON 字符串
-                indicatorJSON
-                    = this.mapper
-                          .writeValueAsString(sentIndicatorInstance.getIndicator());
-            }
-            catch (JsonProcessingException exception)
-            {
-                /*
-                 * 如果出现 JSON 解析失败的异常
-                 *（比如直接从 RabbitMQ 前端控制台向这个队列发送无关消息），
-                 * 不要抛出异常，应该记录错误并丢弃该消息，确保消费者一直在监听这个队列。
-                 */
-                log.error(
-                    "Could not prase JSON {} caused by: {}",
-                    (sentIndicator.length() < 64)
-                        ? sentIndicator : sentIndicator.substring(0,  64) + "...",
-                    exception.getMessage()
-                );
-
-                // 不确认且移入死信队列
-                this.rejectToDLQ(delivery, "INVALID_MESSAGE");
-                return;
-            }
-
-            // 正常的处理流程
-            try
-            {
-                // 获取指标的类型信息
-                IndicatorType indicatorTypeName
-                    = IndicatorType.valueOf(
-                        sentIndicatorInstance.getIndicator()
-                            .getClass()
-                            .getSimpleName()
-                );
-
-                // 分割数据库的 IP 地址
-                String ipaddress
-                    = sentIndicatorInstance.getAddress().split(":")[0];
-
-                // 构造监控指标实体
-                MonitorLog monitorLog
-                    = MonitorLog.builder()
-                        .logId(IdUtil.getSnowflakeNextId())
-                        .messageId(sentIndicatorInstance.getMessageId())
-                        .datetime(sentIndicatorInstance.getLocalDateTime())
-                        .serverIP(IPv4Converter.ipToLong(ipaddress))
-                        .indicator(indicatorJSON)
-                        .indicatorType(indicatorTypeName)
-                        .build();
-
-                monitorLogs.add(monitorLog);        // 保存日志
-                successfulDeliveries.add(delivery); // 保存成功的 delivery
-            }
-            catch (Throwable exception)
-            {
-                if (exception instanceof InvalidIPv4Exception)
-                {
-                    // 对于 IP 地址非法的消息，
-                    // 由于没法做统计，也移入死信队列
-                    log.error("{}", exception.getMessage());
-                    this.rejectToDLQ(delivery, "INVALID_IPV4_ADDRESS");
-                }
-
-                // 对于其他业务逻辑处理失败的消息载荷，
-                // 可能是暂时性错误不确认并重新归队
-                log.error(
-                    "Business logic processing failed, message will be redelivered. " +
-                    "Caused by: {}",
-                    exception.getMessage(), exception
-                );
-
-                delivery.nack(false, true);
-            }
-        });
-
-        return Tuples.of(monitorLogs, successfulDeliveries);
+        return
+        Flux.fromIterable(deliveries)
+            .concatMap(delivery ->
+                this.processSingleDelivery(delivery)
+                    .onErrorResume(error -> {
+                        this.handleDeliveryError(delivery, error);
+                        return Mono.empty();
+                    })
+            )
+            .collectList()
+            .map(this::splitLogsAndDeliveries)
+            .defaultIfEmpty(Tuples.of(List.of(), List.of()));
     }
 
     /**
@@ -223,11 +250,11 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
     private Mono<Long>
     batchInsertThenACK(
         @NotNull
-        Tuple2<List<MonitorLog>, List<Delivery>> parsed
+        Tuple2<List<MonitorLog>, List<AcknowledgableDelivery>> parsed
     )
     {
         final List<MonitorLog> monitorLogs          = parsed.getT1();
-        final List<Delivery>   successfulDeliveries = parsed.getT2();
+        final List<AcknowledgableDelivery>   successfulDeliveries = parsed.getT2();
 
         // 若这一批载荷中没有任何有效的消息，就不麻烦数据库了。
         if (monitorLogs.isEmpty()) {
@@ -244,7 +271,7 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
             );
 
             successfulDeliveries.forEach((delivery) ->
-                ((AcknowledgableDelivery) delivery).nack(false, true)
+                delivery.nack(false, true)
             );
 
             return Mono.just(0L);
@@ -271,7 +298,7 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
                     .timeout(this.properties.getBatchInsertTimeout())
                     .doOnSuccess((result) -> {
                         successfulDeliveries.forEach((delivery) ->
-                            ((AcknowledgableDelivery) delivery).ack(false));
+                            delivery.ack(false));
 
                         log.info(
                             "Successfully processed and acknowledged {} indicators.",
@@ -280,7 +307,7 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
                     })
                     .doOnError((error) -> {
                         successfulDeliveries.forEach((delivery) ->
-                            ((AcknowledgableDelivery) delivery).nack(false, true));
+                            delivery.nack(false, true));
 
                         log.error(
                             "Database insert failed, indicators will be redelivered, Caused by: {}",
@@ -309,7 +336,7 @@ public class IndicatorReceiverImpl implements IndicatorReceiver
         this.receiver
             .consumeManualAck(QUEUE_NAME, consumeOptions)
             .bufferTimeout(this.properties.getBufferSize(), this.properties.getBufferTimeout())
-            .map(this::parseDeliveries)
+            .flatMap(this::parseDeliveries)
             .flatMap(this::batchInsertThenACK)
             .then();
     }
