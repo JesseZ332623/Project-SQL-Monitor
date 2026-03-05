@@ -2,18 +2,20 @@
 
 ## 项目概述
 
-这是一个基于响应式架构的 MySQL 数据库指标监控系统，采用多模块设计。项目主要由四个核心模块组成：
+这是一个基于响应式架构的 MySQL 数据库指标监控系统，采用多模块设计。项目主要由六个核心模块组成：
 
 1. **sql-monitor**：数据库指标监控模块，负责主动监控 MySQL 数据库的各种指标。
 2. **indicator_receiver**：监控指标接收器模块，通过 RabbitMQ 接收指标数据并存储。
-3. **SQL-Monitor-Dashboard**：前端监控仪表盘，使用 Vue.js 和 Chart.js 实现可视化展示。
-4. **gatling**：高并发性能测试模块，用于系统负载测试。
+3. **email_receiver**：基于 RabbitMQ 的邮件报告消费者服务。
+4. **id_allocator**：基于雪花算法的全局 ID 分配服务。
+5. **SQL-Monitor-Dashboard**：前端监控仪表盘，使用 Vue.js 和 Chart.js 实现可视化展示。
+6. **gatling**：高并发性能测试模块，用于系统负载测试。
 
 整个系统使用 Spring WebFlux 响应式编程模型，结合 Redis 缓存、RabbitMQ 消息队列和 MySQL 数据库，实现了一个完整的监控解决方案。
 
 ## 技术栈
 
-- **后端**: Java 21, Spring Boot 3.5.6, Spring WebFlux (响应式), R2DBC
+- **后端**: Java 21, Spring Boot 3.5.11, Spring WebFlux (响应式), R2DBC
 - **数据库**: MySQL (R2DBC 驱动), Redis (缓存和分布式锁)
 - **消息队列**: RabbitMQ
 - **前端**: Vue 3, Chart.js, Vite, Web Workers
@@ -43,7 +45,19 @@
    - 支持指标数据的查询和统计分析
    - 实现批量处理和缓冲区机制以提高性能
 
-3. **SQL-Monitor-Dashboard 模块**:
+3. **email_receiver 模块**:
+   - 基于 RabbitMQ 的邮件报告消费者服务
+   - 消费指标数据并生成邮件报告
+   - 使用响应式邮件发送器实现邮件发送功能
+   - 支持批量邮件处理和状态监控
+
+4. **id_allocator 模块**:
+   - 基于雪花算法的全局 ID 分配服务
+   - 使用 Redis 实现分布式 ID 生成
+   - 提供响应式 API 供其他服务获取全局唯一 ID
+   - 包含 ID 自动补充机制，确保 ID 池充足
+
+5. **SQL-Monitor-Dashboard 模块**:
    - 前端 Vue 3 应用
    - 提供图表化界面展示监控指标
    - 包含 QPS 图表和网络流量图表
@@ -53,7 +67,7 @@
    - 实现本地缓存功能，保存查询参数
    - 提供手动执行定时任务的界面
 
-4. **gatling 模块**:
+6. **gatling 模块**:
    - 高并发性能测试模块
    - 使用 Gatling 进行负载测试
    - 生成性能测试报告和图表
@@ -68,6 +82,14 @@
 
 - **indicator_receiver**:
   - `application-test.yml`: 测试环境配置，端口 65531
+  - `application-prod.yml`: 生产环境配置
+
+- **email_receiver**:
+  - `application-test.yml`: 测试环境配置
+  - `application-prod.yml`: 生产环境配置
+
+- **id_allocator**:
+  - `application-test.yml`: 测试环境配置
   - `application-prod.yml`: 生产环境配置
 
 ## 构建和运行
@@ -85,6 +107,16 @@ mvn spring-boot:run -Pprod  # 使用生产配置
 
 # 运行 indicator_receiver 模块
 cd indicator_receiver
+mvn spring-boot:run -Ptest  # 使用测试配置
+mvn spring-boot:run -Pprod  # 使用生产配置
+
+# 运行 email_receiver 模块
+cd email_receiver
+mvn spring-boot:run -Ptest  # 使用测试配置
+mvn spring-boot:run -Pprod  # 使用生产配置
+
+# 运行 id_allocator 模块
+cd id_allocator
 mvn spring-boot:run -Ptest  # 使用测试配置
 mvn spring-boot:run -Pprod  # 使用生产配置
 
@@ -109,7 +141,7 @@ npm run preview  # 预览构建结果
 - 使用 Redis 缓存减少重复计算和查询
 - 使用 RabbitMQ 实现异步指标数据传输
 - 使用 Lua 脚本优化 Redis 操作（如缓存指标数据）
-- 代码覆盖率要求：sql-monitor 模块不低于 80%，indicator_receiver 模块不低于 75%
+- 代码覆盖率要求：sql-monitor 模块不低于 80%，indicator_receiver 模块不低于 75%，email_receiver 模块不低于 80%
 - 使用分布式锁确保缓存操作的原子性
 - 实现自动单元测试和集成测试
 - 使用 Spring @Scheduled 实现定时任务
@@ -134,22 +166,8 @@ npm run preview  # 预览构建结果
 - **本地缓存**: 前端支持查询参数本地缓存
 - **手动执行定时任务**: 前端提供界面手动执行定时任务
 - **性能测试**: 集成 Gatling 进行负载测试
-
-## API 端点
-
-### sql-monitor 模块
-- `/api/sql-monitor/qps` - 获取 QPS 指标
-- `/api/sql-monitor/connection-usage` - 获取连接使用情况
-- `/api/sql-monitor/network-traffic` - 获取网络流量指标
-- `/api/sql-monitor/cache-hit-rate` - 获取 InnoDB 缓存命中率
-- `/api/sql-monitor/running-time` - 获取服务器运行时间
-- `/api/sql-monitor/base-address` - 获取服务器基础地址
-- `/api/scheduled-task/indicator-report` - 手动执行指标报告发送任务 (POST)
-- `/api/scheduled-task/historical-indicator` - 手动执行历史指标清理任务 (DELETE)
-
-### indicator_receiver 模块
-- `/api/indicator/log` - 查询指标日志（支持分页）
-- `/api/indicator/qps-statistics` - 获取 QPS 统计数据
+- **全局 ID 分配**: 基于雪花算法的分布式 ID 生成服务
+- **邮件消费服务**: 基于 RabbitMQ 的邮件报告消费服务
 
 ## 项目结构
 
@@ -188,6 +206,29 @@ Project-SQL-Monitor/
 │       ├── application.yml
 │       ├── application-test.yml
 │       └── application-prod.yml
+├── email_receiver/        # 邮件接收器服务
+│   ├── src/main/java/com/jesse/email_receiver/
+│   │   ├── config/        # 配置类
+│   │   ├── properties/    # 配置属性
+│   │   ├── route/         # 路由配置
+│   │   └── service/       # 业务逻辑层
+│   └── src/main/resources/
+│       ├── application.yml
+│       ├── application-test.yml
+│       └── application-prod.yml
+├── id_allocator/          # ID 分配器服务
+│   ├── src/main/java/com/jesse/id_allocator/
+│   │   ├── config/        # 配置类
+│   │   ├── contsants/     # 常量定义
+│   │   ├── pojo/          # 数据传输对象
+│   │   ├── properties/    # 配置属性
+│   │   ├── route/         # 路由配置
+│   │   └── service/       # 业务逻辑层
+│   └── src/main/resources/
+│       ├── application.yml
+│       ├── application-test.yml
+│       └── application-prod.yml
+│       └── lua-script/    # Lua脚本
 ├── SQL-Monitor-Dashboard/ # 前端仪表盘
 │   ├── src/
 │   │   ├── components/    # Vue组件
@@ -279,14 +320,20 @@ Project-SQL-Monitor/
 - 支持批量删除超时和失败邮件通知
 - 使用响应式邮件发送器实现
 
+### 全局 ID 分配服务
+- 基于雪花算法的分布式 ID 生成服务
+- 使用 Redis 实现 ID 池管理和自动补充
+- 提供高并发下的全局唯一 ID 生成能力
+- 包含 Worker ID 分配和管理机制
+
 ## 依赖管理
 
 ### 后端依赖更新
-- Spring Boot 3.5.6
+- Spring Boot 3.5.11
 - Redisson 3.52.0 (用于分布式锁)
-- Reactive Email Sender 1.1.5 (邮件发送功能)
+- Reactive Email Sender 1.1.6 (邮件发送功能)
 - Micrometer 1.15.5 (监控指标)
-- Hutool 5.8.41 (工具库)
+- Hutool 5.8.41 (工具库) / 5.8.43 (ID 分配器)
 - Reactor RabbitMQ 1.5.6 (异步消息处理)
 - SpringDoc OpenAPI 2.8.13 (API文档)
 - Gatling 3.14.9 (性能测试)
@@ -301,7 +348,8 @@ Project-SQL-Monitor/
 
 - sql-monitor 模块代码覆盖率要求不低于 80%
 - indicator_receiver 模块代码覆盖率要求不低于 75%
+- email_receiver 模块代码覆盖率要求不低于 80%
 - 使用 JaCoCo 进行覆盖率分析
 - 包含单元测试和集成测试
 - 包含WebTestClient集成测试，覆盖指标查询和统计功能
-- 包含Gatling性能测试，验证系统在高并发场景下的表现
+- 包含Gatling性能测试，验证系统在高并发场景下的表现

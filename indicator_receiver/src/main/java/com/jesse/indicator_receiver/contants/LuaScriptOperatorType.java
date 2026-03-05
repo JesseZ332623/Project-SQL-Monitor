@@ -1,4 +1,4 @@
-package com.jesse.sqlmonitor.constants;
+package com.jesse.indicator_receiver.contants;
 
 import io.github.jessez332623.reactive_luascript_reader.impl.LuaScriptCatalogue;
 import lombok.RequiredArgsConstructor;
@@ -7,17 +7,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum LuaScriptOperatorType implements LuaScriptCatalogue
 {
-    /** 测试用。*/
-    TEST_SCRIPT("test"),
-
-    /** 缓存操作 Lua 脚本。*/
-    INDICATOR_CACHER("indicator-cacher"),
 
     /** 全局 ID 消费相关脚本。*/
     GLOBAL_ID_CONSUMER("global-id-consumer"),
-
-    /** 邮件发送相关脚本。*/
-    EMAIL_SEND("email-send"),
 
     /** 其他脚本。*/
     OTHERS("others");

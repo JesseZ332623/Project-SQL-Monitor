@@ -1,8 +1,8 @@
-package com.jesse.sqlmonitor.config.snowflakeworker;
+package com.jesse.id_allocator.service.impl;
 
 import cn.hutool.core.lang.Snowflake;
 import cn.hutool.core.util.IdUtil;
-import com.jesse.sqlmonitor.properties.SnowFlakeWorkerAllocatorProps;
+import com.jesse.id_allocator.properties.SnowFlakeWorkerAllocatorProps;
 import io.github.jessez332623.reactive_luascript_reader.LuaScriptReader;
 import io.github.jessez332623.reactive_luascript_reader.impl.LuaOperatorResult;
 import io.github.jessez332623.reactive_luascript_reader.impl.exception.LuaScriptExecuteFailed;
@@ -11,8 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.context.SmartLifecycle;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.stereotype.Component;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -29,14 +29,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static com.jesse.sqlmonitor.constants.LuaScriptOperatorType.WORKER_ID_ALLOC;
+import static com.jesse.id_allocator.contsants.LuaScriptOperatorType.WORKER_ID_ALLOC;
 
 /**
  * Snowflake Worker ID 分配器实现，
  * 在应用启动时去 Redis 原子抢占 workerId。
  */
 @Slf4j
-@Configuration
+@Component
 @RequiredArgsConstructor
 public class SnowFlakeWorkerIdAllocator implements SmartLifecycle
 {
@@ -178,8 +178,9 @@ public class SnowFlakeWorkerIdAllocator implements SmartLifecycle
                 this.redisTemplate.opsForValue()
                     .setIfAbsent(key, this.instanceUUID, this.properties.getLease())
                     .filter(Boolean::booleanValue)
-                    .doOnNext((acquired) -> {
-                        this.assignedWorkerId = workerId;
+                    .flatMap((acquired) -> Mono.just(workerId))
+                    .doOnNext((acquiredId) -> {
+                        this.assignedWorkerId = acquiredId;
                         this.snowflake        = IdUtil.getSnowflake(this.assignedWorkerId);
 
                         log.info(
@@ -188,12 +189,12 @@ public class SnowFlakeWorkerIdAllocator implements SmartLifecycle
                         );
 
                         this.startRenewTask(key);
-                    })
-                    .map((acquired) -> workerId);
+                    });
             })
             .take(1)
             .blockLast(this.properties.getAcquireTimeout());
 
+        // 若本机的所有 workerId 都被抢占，本服务不得启动
         if (Objects.isNull(this.assignedWorkerId)) {
             throw new
             IllegalStateException("Could not acquire workerId! All slot has been occupy...");
@@ -277,10 +278,10 @@ public class SnowFlakeWorkerIdAllocator implements SmartLifecycle
         return this.isRunning.get();
     }
 
-    /** 令其较晚构建，较早销毁。*/
+    /** 确定启动顺序，本分配器在服务中最早被实例化。*/
     @Override
     public int getPhase() {
-        return Integer.MAX_VALUE - 100;
+        return Integer.MAX_VALUE - 200;
     }
 
     /** 获取下一个 ID。 */
@@ -293,5 +294,16 @@ public class SnowFlakeWorkerIdAllocator implements SmartLifecycle
         }
 
         return this.snowflake.nextId();
+    }
+
+    /** 生成指定数量的一批 ID。*/
+    public List<String>
+    nextBatchIds(int batchSize)
+    {
+        return
+        IntStream.range(0, batchSize)
+            .boxed()
+            .map((index) -> String.valueOf(this.nextId()))
+            .toList();
     }
 }

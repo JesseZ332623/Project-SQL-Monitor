@@ -1,7 +1,7 @@
 package com.jesse.sqlmonitor.monitor.cacher.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jesse.sqlmonitor.config.snowflakeworker.SnowFlakeWorkerIdAllocator;
+import com.jesse.sqlmonitor.utils.GlobalIdConsumer;
 import com.jesse.sqlmonitor.constants.LuaScriptOperatorType;
 import com.jesse.sqlmonitor.indicator_record.service.IndicatorSender;
 import com.jesse.sqlmonitor.monitor.cacher.IndicatorCacher;
@@ -84,9 +84,9 @@ public class IndicatorCacherImpl implements IndicatorCacher
     private final
     RedisHealthChecker redisHealthChecker;
 
-    /** Snowflake Worker ID 分配器。*/
+    /** 全局 ID 消费器。*/
     private final
-    SnowFlakeWorkerIdAllocator workerIdAllocator;
+    GlobalIdConsumer globalIdConsumer;
 
     /** 获取主数据的 IP + PORT 字符串。*/
     private @NotNull String
@@ -309,53 +309,56 @@ public class IndicatorCacherImpl implements IndicatorCacher
             .flatMap((indicator) ->
                 CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
             .switchIfEmpty(             // 如果缓存内部没有数据
-                Mono.defer(() -> {
-                    // 获取锁实例
-                    final RLockReactive lock
-                        = this.redissonReactiveClient
-                              .getLock(this.getLockKey(keyNames));
-                    // 获取线程号
-                    //（响应式环境下线程号不可靠，这里使用雪花算法生成的 ID 在上下文传递）
-                    final long threadId  = this.workerIdAllocator.nextId();
-                    final long waitTime  = this.redisCacheProperties
-                                               .getLockWaitTimeout().toSeconds();
-                    final long leaseTime = this.redisCacheProperties
-                                               .getLockLeaseTime();
-                    return
-                    Mono.usingWhen(
-                        lock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS, threadId),
-                        (isLocked) -> {
-                            if (isLocked)
-                            {
-                               return
-                               this.getIndicatorCache(keyNames, indicatorType)
-                                   .flatMap((indicator) ->
-                                       CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
-                                   .switchIfEmpty(
-                                       // 第二次检查仍然没有数据，
-                                       // 最终去数据库获取并计算指标数据然后更新缓存并同时发往消息队列
-                                       indicatorSupplier
-                                           .flatMap((indicator) ->
-                                               this.cacheIndicatorData(keyNames, indicator, indicatorType)
-                                                   .thenReturn(indicator)
-                                           )
-                                   );
-                            }
-                            else
-                            {
-                               /* 指定时间内没有获取锁，抛出异常降级处理。*/
-                               log.error(
-                                   "Acquire lock of {} timeout! (wait time: {} seconds)",
-                                   keyNames, waitTime
-                               );
+                this.globalIdConsumer.nextId()
+                    .flatMap((nextId) ->
+                        Mono.defer(() -> {
+                            // 获取锁实例
+                            final RLockReactive lock
+                                = this.redissonReactiveClient.getLock(this.getLockKey(keyNames));
 
-                               return Mono.error(EMPTY_TIMEOUT_EXCEPTION);
-                           }
-                       },
-                        (ignore) ->
-                            lock.unlock(threadId) // 释放锁
-                    );
-                })
+                            // 获取线程号
+                            //（响应式环境下线程号不可靠，这里使用雪花算法生成的 ID 在上下文传递）
+                            final long threadId  = nextId;
+                            final long waitTime  = this.redisCacheProperties
+                                                       .getLockWaitTimeout().toSeconds();
+                            final long leaseTime = this.redisCacheProperties
+                                                       .getLockLeaseTime();
+                            return
+                            Mono.usingWhen(
+                                lock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS, threadId),
+                                (isLocked) -> {
+                                    if (isLocked)
+                                    {
+                                        return
+                                        this.getIndicatorCache(keyNames, indicatorType)
+                                            .flatMap((indicator) ->
+                                                CacheDataConverter.safeIndicatorTypeCast(indicator, indicatorType))
+                                            .switchIfEmpty(
+                                                // 第二次检查仍然没有数据，
+                                                // 最终去数据库获取并计算指标数据然后更新缓存并同时发往消息队列
+                                            indicatorSupplier
+                                                .flatMap((indicator) ->
+                                                        this.cacheIndicatorData(keyNames, indicator, indicatorType)
+                                                            .thenReturn(indicator)
+                                                )
+                                            );
+                                    }
+                                    else
+                                    {
+                                        /* 指定时间内没有获取锁，抛出异常降级处理。*/
+                                        log.error(
+                                            "Acquire lock of {} timeout! (wait time: {} seconds)",
+                                            keyNames, waitTime
+                                        );
+
+                                        return Mono.error(EMPTY_TIMEOUT_EXCEPTION);
+                                    }
+                                },
+                                (ignore) ->
+                                    lock.unlock(threadId) // 释放锁
+                            );
+                        })
+                    )
             )
             .onErrorResume((exception) -> {
                // 若 Redis 缓存、锁操作失败、队列发送失败或者发生其他错误，

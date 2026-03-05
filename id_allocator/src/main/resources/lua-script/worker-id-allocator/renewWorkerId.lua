@@ -1,5 +1,5 @@
 --[[
-    本服务实例定时续租 worker ID
+    定时续租 worker ID 操作
 
     KEYS:
         workIdKey 服务实例 workerId 键（例 snowflake:wid:lock:22）
@@ -12,7 +12,7 @@
 local workIdKey = KEYS[1]
 
 local instanceUUID  = ARGV[1]
-local leasDuration = ARGV[2]
+local leasDuration  = ARGV[2]
 
 -- 获取当前时间戳
 local function getTimestamp()
