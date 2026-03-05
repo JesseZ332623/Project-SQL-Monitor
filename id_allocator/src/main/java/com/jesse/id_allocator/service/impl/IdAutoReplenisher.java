@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.List;
@@ -58,6 +59,7 @@ public class IdAutoReplenisher
 
         return
         Flux.interval(startDelay, interval)
+            .publishOn(Schedulers.boundedElastic())
             .flatMap((tick) ->
                 this.scriptReader
                     .read(ID_AUTO_REPLENISHER, "idAutoReplenisher.lua")
@@ -73,6 +75,7 @@ public class IdAutoReplenisher
                         this.redisLuaTemplate
                             .execute(script, List.of(idListKey), args)
                             .next()
+                            .publishOn(Schedulers.boundedElastic())
                             .flatMap((result) -> {
                                 if (!"UNKNOWN_ERROR".equals(result.getStatus()))
                                 {
@@ -102,6 +105,6 @@ public class IdAutoReplenisher
                                 }
                             });
                         })
-                ).then();
+                ).subscribeOn(Schedulers.boundedElastic()).then();
     }
 }
