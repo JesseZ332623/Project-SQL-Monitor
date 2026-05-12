@@ -45,6 +45,10 @@ app:
   operation-staff:
     email: zhj3191955858@gmail.com
 
+  thymeleaf:
+    # 邮件模板的存放路径
+    prefix: templates/mail/
+
   # 是否启用本邮件发送器依赖？（默认启用）
   reactive-email-sender:
     enabled: true
