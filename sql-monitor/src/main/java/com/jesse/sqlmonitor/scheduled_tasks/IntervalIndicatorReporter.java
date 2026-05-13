@@ -28,11 +28,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringWebFluxTemplateEngine;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static java.lang.String.format;
@@ -43,6 +45,10 @@ import static java.lang.String.format;
 @RequiredArgsConstructor
 public class IntervalIndicatorReporter
 {
+    /**指标报告标题。*/
+    private static final String
+    REPORT_SUBJECT = "【数据库指标监视器】例行数据库指标报告";
+
     /** 运维人员的邮箱号（大嘘）。*/
     @Getter
     @Value("${app.operation-staff.email}")
@@ -53,6 +59,9 @@ public class IntervalIndicatorReporter
 
     /** 邮件内容 {@link EmailContent} 发送器。*/
     private final EmailContentSender emailContentSender;
+
+    /** Spring 响应式模板引擎（用于 Thymeleaf 框架的 HTML 渲染）。*/
+    private final SpringWebFluxTemplateEngine templateEngine;
 
     /** Lua 脚本读取器。*/
     private final LuaScriptReader luaScriptReader;
@@ -313,6 +322,47 @@ public class IntervalIndicatorReporter
         });
     }
 
+    private Mono<String>
+    makeIndicatorContext(IndicatorReport report)
+    {
+        // 对于空指标，直接渲染空模板的 Context 即可
+        if (Objects.isNull(report))
+        {
+            return Mono.fromCallable(() ->
+                this.templateEngine.process(
+                    "database-empty-indicator-report",
+                    new Context(Locale.getDefault())
+                )
+            );
+        }
+
+        final Map<String, Object> indicatorMap = new HashMap<>();
+
+        indicatorMap.put("checkTime",     report.getIndicatorGrowth().getCheckTime());
+        indicatorMap.put("host",          this.masterProperties.getHost());
+        indicatorMap.put("port",          this.masterProperties.getPort());
+        indicatorMap.put("growthPoints",  report.getIndicatorGrowth().getGrowthDataPoints());
+        indicatorMap.put("averageQps",    report.getAverageQPS());
+        indicatorMap.put("medianQps",     report.getMedianQPS());
+        indicatorMap.put("maxQps",        report.getExtremeQPS().getMax());
+        indicatorMap.put("minQps",        report.getExtremeQPS().getMin());
+        indicatorMap.put("stddev",        report.getStandingDeviationQPS().getStddev());
+        indicatorMap.put("loadStability", report.getStandingDeviationQPS().getLoadStability());
+        indicatorMap.put("avgReceived",   report.getAverageNetworkTraffic().getAverageReceived());
+        indicatorMap.put("avgSent",       report.getAverageNetworkTraffic().getAverageSent());
+        indicatorMap.put("currentConn",   report.getConnectionUsage().getCurrentConnections());
+        indicatorMap.put("maxConn",       report.getConnectionUsage().getMaxConnections());
+        indicatorMap.put("usagePercent",  report.getConnectionUsage().getConnectUsagePercent());
+
+        return
+        Mono.fromCallable(() ->
+            this.templateEngine.process(
+                "database-indicator-report",
+                new Context(Locale.getDefault(), indicatorMap)
+            )
+        );
+    }
+
     /** 根据指标报告，构造一份指标报告邮件。*/
     private @NotNull Mono<EmailContent>
     makeIndicatorReportEmail(@NotNull IndicatorReport report)
@@ -320,45 +370,24 @@ public class IntervalIndicatorReporter
         if (report.getIndicatorGrowth().getGrowthDataPoints() <= 0)
         {
             return
-            EmailContent.fromJustText(
-                this.operationsStaffEmail,
-                "【数据库指标监视器】例行数据库指标报告",
-                "今日暂无新指标。。。"
-            );
+            this.makeIndicatorContext(null)
+                .flatMap((html) ->
+                    EmailContent.fromHtml(
+                        this.operationsStaffEmail,
+                        REPORT_SUBJECT,
+                        html
+                    )
+                );
         }
 
         return
-        EmailContent.fromJustText(
-            this.operationsStaffEmail,
-            "【数据库指标监视器】例行数据库指标报告",
-            """
-            从今天开始截止到 %s，数据库（IP 地址：%s，端口：%s）今日共增长 %d 条指标数据，
-            当前 QPS 平均值 = %f
-                 QPS 中位数 = %f
-                 最大 QPS = %f，最小 QPS = %f，
-                 QPS 标准差 = %f，负载均衡律 = %f
-            当前 数据库服务器网络流量平均值为：
-                接收：%f Kb/s
-                发送：%f Kb/s
-            当前 数据库连接使用率为：
-                %d / %d（%f %%）
-            """.formatted(
-                report.getIndicatorGrowth().getCheckTime(),
-                this.masterProperties.getHost(),
-                this.masterProperties.getPort(),
-                report.getIndicatorGrowth().getGrowthDataPoints(),
-                report.getAverageQPS(),
-                report.getMedianQPS(),
-                report.getExtremeQPS().getMax(),
-                report.getExtremeQPS().getMin(),
-                report.getStandingDeviationQPS().getStddev(),
-                report.getStandingDeviationQPS().getLoadStability(),
-                report.getAverageNetworkTraffic().getAverageReceived(),
-                report.getAverageNetworkTraffic().getAverageSent(),
-                report.getConnectionUsage().getCurrentConnections(),
-                report.getConnectionUsage().getMaxConnections(),
-                report.getConnectionUsage().getConnectUsagePercent()
-            )
-        );
+        this.makeIndicatorContext(report)
+            .flatMap((html) ->
+                EmailContent.fromHtml(
+                    this.operationsStaffEmail,
+                    REPORT_SUBJECT,
+                    html
+                )
+            );
     }
 }
