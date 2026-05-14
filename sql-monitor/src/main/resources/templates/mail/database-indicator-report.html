@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>数据库指标报告</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #0d1117;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .header {
+            background-color: #010409;
+            padding: 20px;
+            border-bottom: 1px solid #30363d;
+        }
+        .header h2 {
+            margin: 0;
+            color: #f0f6fc;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 20px;
+        }
+        .line {
+            margin: 0 0 12px 0;
+            color: #c9d1d9;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .indent {
+            padding-left: 20px;
+        }
+        .value {
+            color: #58a6ff;
+            font-weight: 600;
+        }
+        .footer {
+            padding: 16px 20px;
+            background-color: #010409;
+            border-top: 1px solid #30363d;
+            color: #8b949e;
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2>📊 【数据库指标监视器】例行数据库指标报告</h2>
+    </div>
+
+    <div class="content">
+        <div class="line">
+            从今天开始截止到 <span class="value" th:text="${checkTime}"></span>，
+            数据库（IP 地址：<span class="value" th:text="${host}"></span>，
+            端口：<span class="value" th:text="${port}"></span>）
+            今日共增长 <span class="value" th:text="${growthPoints}"></span> 条指标数据
+        </div>
+
+        <div class="line">
+            当前 QPS 平均值 = <span class="value" th:text="${#numbers.formatDecimal(averageQps, 1, 2)}"></span>
+        </div>
+
+        <div class="line indent">
+            QPS 中位数 = <span class="value" th:text="${#numbers.formatDecimal(medianQps, 1, 2)}"></span>
+        </div>
+
+        <div class="line indent">
+            最大 QPS = <span class="value" th:text="${#numbers.formatDecimal(maxQps, 1, 2)}"></span>，
+            最小 QPS = <span class="value" th:text="${#numbers.formatDecimal(minQps, 1, 2)}"></span>
+        </div>
+
+        <div class="line indent">
+            QPS 标准差 = <span class="value" th:text="${#numbers.formatDecimal(stddev, 1, 2)}"></span>，
+            负载均衡率 = <span class="value" th:text="${#numbers.formatDecimal(loadStability, 1, 2)}"></span>
+        </div>
+
+        <div class="line">
+            当前 数据库服务器网络流量平均值为：
+        </div>
+
+        <div class="line indent">
+            接收：<span class="value" th:text="${#numbers.formatDecimal(avgReceived, 1, 2)}"></span> Kb/s
+        </div>
+
+        <div class="line indent">
+            发送：<span class="value" th:text="${#numbers.formatDecimal(avgSent, 1, 2)}"></span> Kb/s
+        </div>
+
+        <div class="line">
+            当前 数据库连接使用率为：
+        </div>
+
+        <div class="line indent">
+            <span class="value" th:text="${currentConn}"></span> / <span class="value" th:text="${maxConn}"></span>
+            （<span class="value" th:text="${#numbers.formatDecimal(usagePercent, 1, 2)}"></span> %）
+        </div>
+    </div>
+
+    <div class="footer">
+        Project SQL Monitor · 自动生成
+    </div>
+</div>
+</body>
+</html>
