@@ -14,4 +14,10 @@ public class IdAllocatorEndpoints
 
     public static final String
     RUN_STATUS     = "/run-status";
+
+    public static final String
+    NEXT_ID = "/next";
+
+    public static final String
+    NEXT_BATCH_IDS = "/next-batch";
 }
